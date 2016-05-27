@@ -28,6 +28,8 @@ connection (
 
 output 'asdf-{{.Client}}.xlsx'
 
+usergroup 'commercial'
+
 query 'name1' from azure (
     SELECT 1
 ) into range [0,0]:[0,1]
@@ -61,7 +63,7 @@ func TestParse(t *testing.T) {
 		Convey("The metadata should be correctly parsed", func() {
 			So(r, ShouldNotBeNil)
 			So(r.metadata, ShouldNotBeNil)
-			So(r.metadata, ShouldHaveLength, 4)
+			So(r.metadata, ShouldHaveLength, 5)
 			So(r.metadata[0].Type, ShouldEqual, "report")
 			So(r.metadata[0].Data, ShouldEqual, "Report Name")
 			So(r.metadata[1].Type, ShouldEqual, "description")
@@ -69,6 +71,8 @@ func TestParse(t *testing.T) {
 			So(r.metadata[2].Type, ShouldEqual, "template")
 			So(r.metadata[2].Data, ShouldEqual, "asdf.xlsx")
 			So(r.metadata[3].Type, ShouldEqual, "output")
+			So(r.metadata[4].Type, ShouldEqual, "usergroup")
+			So(r.metadata[4].Data, ShouldEqual, "commercial")
 		})
 		Convey("The parameters should be correctly parsed", func() {
 			So(r, ShouldNotBeNil)

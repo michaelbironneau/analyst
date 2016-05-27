@@ -12,13 +12,14 @@ type Parameter struct {
 
 //Report represents a templated Excel report.
 type Report struct {
-	Name         string
-	Description  string
-	TemplateFile string
-	OutputFile   string
-	Parameters   map[string]Parameter
-	Connections  map[string]string
-	Queries      map[string]Query
+	Name               string
+	Description        string
+	TemplateFile       string
+	OutputFile         string
+	PermissionRequired string
+	Parameters         map[string]Parameter
+	Connections        map[string]string
+	Queries            map[string]Query
 }
 
 //ValidateAndConvert validates the parsed report and converts it to the more useful Report struct.
@@ -111,13 +112,15 @@ func processParameters(source *report, dest *Report) error {
 //  2) Report description is optional but should be unique and fewer than 128 characters
 //  3) Template should be present and unique
 //  4) Output should be present and unique
+//  5) Permission is optional but should be unique
 //At this stage we're ignoring blocks with unknown keywords - they should have been caught by the parser.
 func processMetadata(source *report, dest *Report) error {
 	var (
-		haveReport   bool
-		haveDesc     bool
-		haveTemplate bool
-		haveOutput   bool
+		haveReport     bool
+		haveDesc       bool
+		haveTemplate   bool
+		haveOutput     bool
+		havePermission bool
 	)
 
 	for i := range source.metadata {
@@ -148,6 +151,11 @@ func processMetadata(source *report, dest *Report) error {
 				return fmt.Errorf("Duplicate 'output' blocks")
 			}
 			dest.OutputFile = source.metadata[i].Data
+		case "permission":
+			if havePermission {
+				return fmt.Errorf("Duplication 'permission' blocks")
+			}
+			dest.PermissionRequired = source.metadata[i].Data
 		}
 	}
 	return nil
