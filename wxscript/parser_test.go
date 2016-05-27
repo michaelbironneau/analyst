@@ -26,7 +26,7 @@ connection (
     azure 'azure.conn'
 )
 
-output 'asdf-{{.Client}}-{{ .CurrentDate.Format "2016-06-01" }}.xlsx'
+output 'asdf-{{.Client}}.xlsx'
 
 query 'name1' from azure (
     SELECT 1

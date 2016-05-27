@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"text/template"
 )
 
 type metadataBlock struct {
@@ -103,7 +104,9 @@ func parseQuery(block []string, keyword string, keywordEnd int) (*Query, error) 
 		ret.Statement += block[i] + "\n"
 	}
 	ret.Statement = ret.Statement[0 : len(ret.Statement)-1] //strip trailing newline character
-
+	if _, err := template.New("t").Parse(ret.Statement); err != nil {
+		return nil, fmt.Errorf("Error parsing template in query: %v", err)
+	}
 	ret.Range = retRange
 	return &ret, nil
 }
@@ -122,9 +125,13 @@ func parseMetadataBlock(block []string, keyword string, keywordEnd int) (*metada
 
 	switch len(contentMatch) {
 	case 1:
+		d := contentMatch[0][1 : len(contentMatch[0])-1]
+		if _, err := template.New("m").Parse(d); err != nil {
+			return nil, fmt.Errorf("Error parsing template in metadata content: %v", err)
+		}
 		return &metadataBlock{
 			Type: keyword,
-			Data: contentMatch[0][1 : len(contentMatch[0])-1], //exclude leading and trailing '
+			Data: d, //exclude leading and trailing '
 		}, nil
 	default:
 		return nil, fmt.Errorf("Invalid block: should have syntax \"KEYWORD\" 'CONTENT'")
@@ -133,7 +140,7 @@ func parseMetadataBlock(block []string, keyword string, keywordEnd int) (*metada
 
 //parseConnectionBlock parses a connection block. Connection blocks look like this:
 //
-// connection {CONNECTION MANE} '{CONNECTION FILE}'
+// connection {CONNECTION NAME} '{CONNECTION FILE}'
 //
 // or
 //
