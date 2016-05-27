@@ -96,7 +96,7 @@ func TestParse(t *testing.T) {
 			So(strings.TrimSpace(r.queries[0].Statement), ShouldEqual, "SELECT 1")
 			So(r.queries[1].Name, ShouldEqual, "name2")
 			So(r.queries[1].Source, ShouldEqual, "g3")
-			So(r.queries[1].Range, ShouldResemble, queryRange{X1: 0, Y1: 0, X2: 0, Y2: "n"})
+			So(r.queries[1].Range, ShouldResemble, QueryRange{X1: 0, Y1: 0, X2: 0, Y2: "n"})
 			So(strings.TrimSpace(r.queries[1].Statement), ShouldEqual, strings.TrimSpace(`
 SELECT 2 FROM
 Table WHERE

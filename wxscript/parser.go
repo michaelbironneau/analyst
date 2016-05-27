@@ -7,25 +7,6 @@ import (
 	"strings"
 )
 
-type clauseType int
-type blockType int
-
-const (
-	quote clauseType = iota
-	name
-	keyword
-	queryExp
-	stringExp
-	rangeExp
-	cellCoordinate
-	cell
-)
-
-type block struct {
-	Type  string
-	Lines []string
-}
-
 type metadataBlock struct {
 	Type string
 	Data string
@@ -36,7 +17,7 @@ type parameterBlock struct {
 	Type string
 }
 
-type queryRange struct {
+type QueryRange struct {
 	X1 interface{}
 	X2 interface{}
 	Y1 interface{}
@@ -48,36 +29,36 @@ type connection struct {
 	File string
 }
 
-type queryBlock struct {
+type Query struct {
 	Name      string
 	Source    string
 	Statement string
-	Range     queryRange
+	Range     QueryRange
 }
 
 type report struct {
 	metadata    []metadataBlock
 	parameters  []parameterBlock
 	connections []connection
-	queries     []queryBlock
+	queries     []Query
 }
 
-//parseQueryBlock parses a query block. Query blocks look like this:
+//parseQuery parses a query block. Query blocks look like this:
 //
 //  query '{NAME}' from {CONNECTION NAME} (
 //          {QUERY CONTENT}
 //          {QUERY CONTENT}
 //  ) into range [{X1}, {Y1}]:[{X2},{Y2}]
 // where X1,Y1 are integers and X2, Y2 are either integers or 'n'. At most one of X2/Y2 can be 'n'.
-func parseQueryBlock(block []string, keyword string, keywordEnd int) (*queryBlock, error) {
+func parseQuery(block []string, keyword string, keywordEnd int) (*Query, error) {
 
 	if len(block) < 3 {
 		return nil, fmt.Errorf("Query block has invalid structure - should have at least 3 lines")
 	}
 
 	var (
-		ret            queryBlock
-		retRange       queryRange
+		ret            Query
+		retRange       QueryRange
 		validFirstLine = regexp.MustCompile("(?i)^[[:space:]]*query[[:space:]]*'([[:alnum:]]+)'[[:space:]]+from[[:space:]]([[:alnum:]]+)[[:space:]]*\\($")
 		validLastLine  = regexp.MustCompile("^(?i)[[:space:]]*\\)[[:space:]]+into[[:space:]]*range[[:space:]]*\\[([0-9]+)\\,[[:space:]]*([0-9]+)\\]\\:\\[([0-9n]+)\\,[[:space:]]*([0-9n]+)\\][[:space:]]*$")
 	)
@@ -187,7 +168,7 @@ func parseConnectionBlock(block []string, keyword string, keywordEnd int) ([]con
 		case len(content) == 1:
 			if len(content[0]) == 3 {
 				parsedBlocks = append(parsedBlocks, connection{
-					Name: string(content[0][1]),
+					Name: strings.ToLower(string(content[0][1])),
 					File: string(content[0][2]),
 				})
 			} else {
@@ -239,8 +220,8 @@ func parseParameterBlock(block []string, keyword string, keywordEnd int) ([]para
 		case len(content) == 1:
 			if len(content[0]) == 3 {
 				parsedBlocks = append(parsedBlocks, parameterBlock{
-					Name: string(content[0][1]),
-					Type: string(content[0][2]),
+					Name: capitalize(string(content[0][1])),
+					Type: strings.ToLower(string(content[0][2])),
 				})
 			} else {
 				return nil, fmt.Errorf("Syntax error in parameter block near '%s'", block[i])
@@ -253,6 +234,14 @@ func parseParameterBlock(block []string, keyword string, keywordEnd int) ([]para
 	}
 	return parsedBlocks, nil
 
+}
+
+//capitalize converts the word to Title case (capitalize the first letter, lowercase the rest)
+func capitalize(word string) string {
+	if len(word) == 1 {
+		return strings.ToUpper(word)
+	}
+	return strings.ToUpper(string(word[0])) + strings.ToLower(word[1:len(word)])
 }
 
 //getBlockType gets the block type and start of the block content (after keyword)
@@ -388,7 +377,7 @@ func Parse(script string) (*report, error) {
 
 		case "query":
 			//query block
-			bl, err := parseQueryBlock(blocks[i], keyword, keywordStop)
+			bl, err := parseQuery(blocks[i], keyword, keywordStop)
 
 			if err != nil {
 				return nil, fmt.Errorf("Error reading query block %d: %v", i, err.Error())
