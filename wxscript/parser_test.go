@@ -16,7 +16,7 @@ template 'asdf.xlsx'
 parameter Client string
 
 parameter (
-    Site integer    
+    Site number    
 )
 
 CONNECTION pg 'pg.conn'
@@ -76,7 +76,7 @@ func TestParse(t *testing.T) {
 			So(r.parameters[0].Name, ShouldEqual, "Client")
 			So(r.parameters[0].Type, ShouldEqual, "string")
 			So(r.parameters[1].Name, ShouldEqual, "Site")
-			So(r.parameters[1].Type, ShouldEqual, "integer")
+			So(r.parameters[1].Type, ShouldEqual, "number")
 		})
 		Convey("The connections should be correctly parsed", func() {
 			So(r, ShouldNotBeNil)
