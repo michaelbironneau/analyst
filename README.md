@@ -21,11 +21,22 @@ Developers and analysts should not have to spend large amounts of time providing
 
 ## Installing
 
-Install Go. Clone the repo. If need be open up port 8989 on your firewall.
+Install Go. Clone the repo. Make sure the $GOPATH environment variable is set and that $GOPATH/bin is added to $PATH. 
+
+If need be open up port 8989 on your firewall. Run 
+
+`go get github.com/michaelbironneau/analyst && go install github.com/michaelbironneau/analyst`
 
 Analyst requires a Postgres database. You can specify the connection details in the configuration file. 
 
-If you don't want to worry about that run the `install.sh` script with root privileges.
+If you don't want to worry about that run the `install.sh` script with root privileges. To run Analyst, 
+
+`analyst -config="file.yml"`
+
+Then visit `http://localhost:8989` in your browser.
+
+If you want Analyst to run as a service you can edit `analyst.conf` with location of config file and binary, copy to `etc/analyst.conf` and run `sudo service analyst start`. 
+
 
 ## Scaling and Reliability
 
