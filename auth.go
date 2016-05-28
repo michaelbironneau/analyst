@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+func hashPassword(password string) (string, error) {
+	b, err := bcrypt.GenerateFromPassword([]byte(password), 10)
+	return string(b), err
+}
+
 //validateLogin validates a login attempt
 func validateLogin(next echo.HandlerFunc) echo.HandlerFunc {
 
