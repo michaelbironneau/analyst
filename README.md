@@ -42,8 +42,8 @@ If you want Analyst to run as a service you can edit `analyst.conf` with locatio
 
 ## Scaling and Reliability
 
-For small and medium-sized organisations I can't imagine why one instance of Analyst wouldn't be enough, and I also can't imagine you wouldn't be able to tolerate the occasional hour of downtime if something goes wrong. 
+You probably don't need to read this section. If you are deploying this in a small to medium-sized company which can tolerate the odd hour of downtime, stop reading now.
 
-If that doesn't sound like your company, you can run multiple load-balanced instances of the web server against the same Postgres database and stuff should just work, but I haven't tested this so tread carefully. 
+You can run multiple load-balanced instances of the web server against the same Postgres database and stuff should just work, but I haven't tested this so tread carefully. 
 
 Backing up the database is your responsibility.
