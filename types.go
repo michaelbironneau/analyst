@@ -118,56 +118,87 @@ func (g Connection) Get(c echo.Context) (interface{}, error) {
 //Template is a report template.
 type Template struct {
 	gorm.Model
+	Content string `sql:"type:text"`
+}
+
+//Script is a report script.
+type Script struct {
+	gorm.Model
 	Name        string
 	Description string
 	Group       Group
-	Script      string `sql:"type:text"`
+	Content     string `sql:"type:text"`
 }
 
-//List is a DataFunc to list all templates
+//List is a DataFunc to list all scripts
 func (g Template) List(c echo.Context) (interface{}, error) {
 	db := c.Get("db").(gorm.DB)
-	user, _ := getCurrentUser(c)
 	var templates []Template
-	var groups []Group
-	if err := db.Model(&user).Related(&groups).Error; err != nil {
+	if err := db.Find(&templates).Error; err != nil {
 		return nil, err
 	}
-
-	for i := range groups {
-		var template Template
-		if !db.Model(&groups[i]).Related(&template).RecordNotFound() {
-			templates = append(templates, template)
-		}
-	}
-
 	return map[string]interface{}{"Templates": templates}, nil
 }
 
-//Get is a DataFunc to retrieve a single connection
+//Get is a DataFunc to retrieve a single script
 func (g Template) Get(c echo.Context) (interface{}, error) {
 	db := c.Get("db").(gorm.DB)
-	user, _ := getCurrentUser(c)
 	id := c.Param("template_id")
 	uid, err := strconv.Atoi(id)
 	if err != nil {
 		return nil, err
 	}
 	var template Template
-	if err := db.First(&template, uint(uid)).Error; err != nil {
+	if err := db.First(&template, uid).Error; err != nil {
+		return nil, err
+	}
+	return map[string]interface{}{"Template": template}, nil
+}
+
+//List is a DataFunc to list all templates
+func (g Script) List(c echo.Context) (interface{}, error) {
+	db := c.Get("db").(gorm.DB)
+	user, _ := getCurrentUser(c)
+	var scripts []Script
+	var groups []Group
+	if err := db.Model(&user).Related(&groups).Error; err != nil {
+		return nil, err
+	}
+
+	for i := range groups {
+		var script Script
+		if !db.Model(&groups[i]).Related(&script).RecordNotFound() {
+			scripts = append(scripts, script)
+		}
+	}
+
+	return map[string]interface{}{"Scripts": scripts}, nil
+}
+
+//Get is a DataFunc to retrieve a single connection
+func (g Script) Get(c echo.Context) (interface{}, error) {
+	db := c.Get("db").(gorm.DB)
+	user, _ := getCurrentUser(c)
+	id := c.Param("script_id")
+	uid, err := strconv.Atoi(id)
+	if err != nil {
+		return nil, err
+	}
+	var script Script
+	if err := db.First(&script, uint(uid)).Error; err != nil {
 		return nil, err
 	}
 	var found bool
 	for i := range user.Groups {
-		if user.Groups[i].ID == template.ID {
+		if user.Groups[i].ID == script.ID {
 			found = true
 			break
 		}
 	}
 	if !found {
-		return nil, fmt.Errorf("User not authorized to view template")
+		return nil, fmt.Errorf("User not authorized to view script")
 	}
-	return map[string]interface{}{"Template": template}, nil
+	return map[string]interface{}{"Script": script}, nil
 }
 
 //ReportProgress is the progress of a report that is currently being generated. When the report

@@ -80,11 +80,18 @@ func registerRoutes(e *echo.Echo) {
 	//e.DELETE("/users/:user_id")
 
 	//REPORT TEMPLATES
-	e.GET("/groups/:group_id/templates", renderView(http.StatusOK, "templates", false, false, nil))
-	e.GET("/groups/:group_id/templates/:template_id", renderView(http.StatusOK, "template", false, false, nil))
+	e.GET("/groups/:group_id/templates", renderView(http.StatusOK, "templates", false, false, Template{}.List))
+	e.GET("/groups/:group_id/templates/:template_id", renderView(http.StatusOK, "template", false, false, Template{}.Get))
 	//e.POST("/groups/:group_id/templates")
 	//e.PUT("/groups/:group_id/templates/:template_id")
 	//e.DELETE("/groups/:group_id/templates/:template_id")
+
+	//SCRIPTS
+	e.GET("/scripts", renderView(http.StatusOK, "templates", false, true, Script{}.List))
+	e.GET("/scripts/:script_id", renderView(http.StatusOK, "template", false, true, Script{}.Get))
+	//e.POST("/scripts")
+	//e.PUT("/scripts/:script_id")
+	//e.DELETE("/scripts/:script_id")
 
 	//REPORTS
 	e.GET("/groups/:group_id/templates/:template_id/reports", renderView(http.StatusOK, "reports", false, false, Report{}.List))
