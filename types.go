@@ -18,7 +18,7 @@ type Group struct {
 }
 
 //List is a DataFunc to list all groups
-func (g Group) List(c echo.Context) (interface{}, error) {
+func (g Group) List(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	var groups []Group
 	if err := db.Find(&groups).Error; err != nil {
@@ -28,7 +28,7 @@ func (g Group) List(c echo.Context) (interface{}, error) {
 }
 
 //Get is a DataFunc to retrieve a single group
-func (g Group) Get(c echo.Context) (interface{}, error) {
+func (g Group) Get(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	id := c.Param("group_id")
 	iid, err := strconv.Atoi(id)
@@ -53,7 +53,7 @@ type User struct {
 }
 
 //List is a DataFunc to list all groups
-func (g User) List(c echo.Context) (interface{}, error) {
+func (g User) List(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	var users []User
 	if err := db.Find(&users).Error; err != nil {
@@ -63,7 +63,7 @@ func (g User) List(c echo.Context) (interface{}, error) {
 }
 
 //Get is a DataFunc to retrieve a single group
-func (g User) Get(c echo.Context) (interface{}, error) {
+func (g User) Get(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	id := c.Param("user_id")
 	iid, err := strconv.Atoi(id)
@@ -91,7 +91,7 @@ type Connection struct {
 }
 
 //List is a DataFunc to list all connection
-func (g Connection) List(c echo.Context) (interface{}, error) {
+func (g Connection) List(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	var connections []Connection
 	if err := db.Find(&connections).Error; err != nil {
@@ -101,7 +101,7 @@ func (g Connection) List(c echo.Context) (interface{}, error) {
 }
 
 //Get is a DataFunc to retrieve a single connection
-func (g Connection) Get(c echo.Context) (interface{}, error) {
+func (g Connection) Get(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	id := c.Param("connection_id")
 	uid, err := strconv.Atoi(id)
@@ -131,7 +131,7 @@ type Script struct {
 }
 
 //List is a DataFunc to list all scripts
-func (g Template) List(c echo.Context) (interface{}, error) {
+func (g Template) List(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	var templates []Template
 	if err := db.Find(&templates).Error; err != nil {
@@ -141,7 +141,7 @@ func (g Template) List(c echo.Context) (interface{}, error) {
 }
 
 //Get is a DataFunc to retrieve a single script
-func (g Template) Get(c echo.Context) (interface{}, error) {
+func (g Template) Get(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	id := c.Param("template_id")
 	uid, err := strconv.Atoi(id)
@@ -156,7 +156,7 @@ func (g Template) Get(c echo.Context) (interface{}, error) {
 }
 
 //List is a DataFunc to list all templates
-func (g Script) List(c echo.Context) (interface{}, error) {
+func (g Script) List(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	user, _ := getCurrentUser(c)
 	var scripts []Script
@@ -176,7 +176,7 @@ func (g Script) List(c echo.Context) (interface{}, error) {
 }
 
 //Get is a DataFunc to retrieve a single connection
-func (g Script) Get(c echo.Context) (interface{}, error) {
+func (g Script) Get(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	user, _ := getCurrentUser(c)
 	id := c.Param("script_id")
@@ -228,7 +228,7 @@ type ReportListItem struct {
 }
 
 //List is a DataFunc to list all reports for a given template
-func (g Report) List(c echo.Context) (interface{}, error) {
+func (g Report) List(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	user, _ := getCurrentUser(c)
 	id := c.Param("template_id")

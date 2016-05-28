@@ -9,7 +9,7 @@ import (
 )
 
 //DataFunc is a function that returns view data
-type DataFunc func(c echo.Context) (interface{}, error)
+type DataFunc func(c echo.Context) (map[string]interface{}, error)
 
 func createServer() *echo.Echo {
 	return echo.New()
