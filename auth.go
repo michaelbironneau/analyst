@@ -1,45 +1,71 @@
-package main 
+package main
 
 import (
-	"github.com/labstack/echo"
-	jwt "github.com/dgrijalva/jwt-go"
 	"fmt"
-	"time"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/jinzhu/gorm"
+	"github.com/labstack/echo"
 	"golang.org/x/crypto/bcrypt"
+	"net/http"
+	"time"
 )
 
 //validateLogin validates a login attempt
-func validateLogin(c echo.Context) error {
-	login := c.FormValue("user")
-	password := c.FormValue("password")
-	
-	if len(login) == 0 || len(password) == 0 {
-		return c.Render(403, "unauthorized", nil)
+func validateLogin(next echo.HandlerFunc) echo.HandlerFunc {
+
+	return func(c echo.Context) error {
+		login := c.FormValue("user")
+		password := c.FormValue("password")
+
+		if len(login) == 0 || len(password) == 0 {
+			return next(c)
+		}
+
+		db := c.Get("db").(*gorm.DB)
+		var user User
+
+		if err := db.Where(&User{Login: login}).First(&user).Error; err != nil {
+			return c.Render(403, "unauthorized", nil)
+		}
+
+		if err := bcrypt.CompareHashAndPassword([]byte(user.Passhash), []byte(password)); err != nil {
+			return c.Render(403, "unauthorized", nil)
+		}
+
+		c.Set("user", user)
+		return next(c)
 	}
-	
-	db := c.Get("db").(*gorm.DB)
+}
+
+//getCurrentUser retrieves the current user
+func getCurrentUser(c echo.Context) (*User, error) {
+
+	//first try cached value in context
 	var user User
-	
-	
-	if err := db.Where(&User{Login:login}).First(&user).Error; err != nil {
-		return fmt.Errorf("Error retrieving user records")
+	user, ok := c.Get("user").(User)
+	if ok {
+		return &user, nil
 	}
-	
-	if err := bcrypt.CompareHashAndPassword([]byte(user.Passhash), []byte(password)); err != nil {
-		return c.Render(403, "unauthorized", nil)	
+
+	//retrieve from database
+	db := c.Get("db").(*gorm.DB)
+	login := c.Get("login").(string)
+	if err := db.Where(&User{Login: login}).First(&user).Error; err != nil {
+		return nil, fmt.Errorf("Error retrieving user records")
 	}
-	
-	c.Set("user", login)
-	return nil
+	//cache
+	c.Set("user.admin", user.IsAdmin)
+	c.Set("user.analyst", user.IsAnalyst)
+
+	return &user, nil
 }
 
 //setCookie sets the cookie after the user has been authenticated
 func setCookie(c echo.Context) error {
 	token := jwt.New(jwt.SigningMethodHS256)
-	user := c.Get("user").(string)
-	expiry :=  time.Now().Add(time.Hour*24)
-	token.Claims["user"] = user 
+	user := c.Get("user").(User)
+	expiry := time.Now().Add(time.Hour * 24)
+	token.Claims["user"] = user.Login
 	token.Claims["exp"] = expiry.Unix()
 	tokenString, err := token.SignedString(Config.SigningKey)
 	cookie := new(echo.Cookie)
@@ -50,35 +76,38 @@ func setCookie(c echo.Context) error {
 	return err
 }
 
-//getUser gets the authenticated user and stores it in context data.
-func getUser(c echo.Context) error {
-	cookie, err := c.Cookie("analyst")
-	
-	if err != nil {
-		return fmt.Errorf("Invalid user authentication (1)")
-	}
-	
-	if cookie.Expires().Before(time.Now()){
-		return fmt.Errorf("Invalid user authentication (2)")
-	}
-	
-	v := cookie.Value()
-	
-	t, err := jwt.Parse(v, func(token *jwt.Token) (interface{}, error){
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("Invalid user authentication (3)")
+//authenticate gets the authenticated user and stores it in context data.
+func authenticate(next echo.HandlerFunc) echo.HandlerFunc {
+	return func(c echo.Context) error {
+		cookie, err := c.Cookie("analyst")
+
+		if err != nil {
+			return c.Render(http.StatusForbidden, "login", nil)
 		}
-		return token.Header["user"], nil
-	})
-	
-	if !t.Valid || err != nil {
-		return fmt.Errorf("Invalid user authentication (4)")
+
+		if cookie.Expires().Before(time.Now()) {
+			return c.Render(http.StatusForbidden, "login", nil)
+		}
+
+		v := cookie.Value()
+
+		t, err := jwt.Parse(v, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, fmt.Errorf("Invalid signnig method")
+			}
+			return token.Header["user"], nil
+		})
+
+		if !t.Valid || err != nil {
+			return c.Render(http.StatusForbidden, "login", nil)
+		}
+		var login string
+		if login, ok := t.Header["user"].(string); !ok {
+			return c.Render(http.StatusForbidden, "login", nil)
+		} 
+		
+		c.Set("login", login)
+		
+		return next(c)
 	}
-	
-	if user, ok := t.Header["user"].(string); !ok {
-		return fmt.Errorf("Invalid user authentication (5)")
-	} else {
-		c.Set("user", user)
-	}	
-	return nil
 }
