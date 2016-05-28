@@ -1,11 +1,13 @@
 package main
 
 import (
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/postgres"	
-	"github.com/labstack/echo"
-	"strconv"
+	"encoding/base64"
 	"fmt"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
+	"github.com/labstack/echo"
+	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -26,14 +28,14 @@ func (g Group) List(c echo.Context) (interface{}, error) {
 }
 
 //Get is a DataFunc to retrieve a single group
-func (g Group) Get(c echo.Context) (interface{}, error){
+func (g Group) Get(c echo.Context) (interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	id := c.Param("group_id")
 	iid, err := strconv.Atoi(id)
 	if err != nil {
 		return nil, fmt.Errorf("Invalid user id")
 	}
-	var group Group 
+	var group Group
 	if err := db.First(&group, uint(iid)).Error; err != nil {
 		return nil, err
 	}
@@ -61,7 +63,7 @@ func (g User) List(c echo.Context) (interface{}, error) {
 }
 
 //Get is a DataFunc to retrieve a single group
-func (g User) Get(c echo.Context) (interface{}, error){
+func (g User) Get(c echo.Context) (interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	id := c.Param("user_id")
 	iid, err := strconv.Atoi(id)
@@ -99,20 +101,19 @@ func (g Connection) List(c echo.Context) (interface{}, error) {
 }
 
 //Get is a DataFunc to retrieve a single connection
-func (g Connection) Get(c echo.Context) (interface{}, error){
+func (g Connection) Get(c echo.Context) (interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	id := c.Param("connection_id")
 	uid, err := strconv.Atoi(id)
 	if err != nil {
 		return nil, err
 	}
-	var connection Connection 
+	var connection Connection
 	if err := db.First(&connection, uid).Error; err != nil {
 		return nil, err
 	}
 	return map[string]interface{}{"Connection": connection}, nil
 }
-
 
 //Template is a report template.
 type Template struct {
@@ -132,19 +133,19 @@ func (g Template) List(c echo.Context) (interface{}, error) {
 	if err := db.Model(&user).Related(&groups).Error; err != nil {
 		return nil, err
 	}
-	
+
 	for i := range groups {
 		var template Template
-		if !db.Model(&groups[i]).Related(&template).RecordNotFound(){
+		if !db.Model(&groups[i]).Related(&template).RecordNotFound() {
 			templates = append(templates, template)
 		}
 	}
-		
+
 	return map[string]interface{}{"Templates": templates}, nil
 }
 
 //Get is a DataFunc to retrieve a single connection
-func (g Template) Get(c echo.Context) (interface{}, error){
+func (g Template) Get(c echo.Context) (interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	user, _ := getCurrentUser(c)
 	id := c.Param("template_id")
@@ -152,11 +153,11 @@ func (g Template) Get(c echo.Context) (interface{}, error){
 	if err != nil {
 		return nil, err
 	}
-	var template Template 
+	var template Template
 	if err := db.First(&template, uint(uid)).Error; err != nil {
 		return nil, err
 	}
-	var found bool 
+	var found bool
 	for i := range user.Groups {
 		if user.Groups[i].ID == template.ID {
 			found = true
@@ -189,10 +190,10 @@ type Report struct {
 }
 
 type ReportListItem struct {
-	ReportID uint 
-	Filename string 
-	CreatedBy string 
-	CreatedAt time.Time 
+	ReportID  uint
+	Filename  string
+	CreatedBy string
+	CreatedAt time.Time
 }
 
 //List is a DataFunc to list all reports for a given template
@@ -210,12 +211,12 @@ func (g Report) List(c echo.Context) (interface{}, error) {
 			LEFT JOIN dbo.templates t ON t.group_id = g.group_id 
 			LEFT JOIN dbo.reports r ON r.template_id = t.id 
 			LEFT JOIN dbo.users u ON u.id = r.created_by
-		WHERE l.id = ?
-	`, user.ID).Rows()
+		WHERE l.id = ? r.id = ?
+	`, user.ID, uint(uid)).Rows()
 	if err != nil {
 		return nil, err
 	}
-	
+
 	var ret []ReportListItem
 	defer rows.Close()
 	for rows.Next() {
@@ -223,8 +224,45 @@ func (g Report) List(c echo.Context) (interface{}, error) {
 		rows.Scan(&rli.ReportID, &rli.Filename, &rli.CreatedBy, &rli.CreatedAt)
 		ret = append(ret, rli)
 	}
-		
+
 	return map[string]interface{}{"Reports": ret}, nil
+}
+
+func (g Report) Download(c echo.Context) error {
+	db := c.Get("db").(gorm.DB)
+	user, _ := getCurrentUser(c)
+	id := c.Param("report_id")
+	uid, err := strconv.Atoi(id)
+	if err != nil {
+		return err
+	}
+	var content string
+	row := db.Raw(`
+		SELECT TOP 1 r.content FROM dbo.users l
+			LEFT JOIN dbo.user_group g ON g.user_id = l.id  
+			LEFT JOIN dbo.templates t ON t.group_id = g.group_id 
+			LEFT JOIN dbo.reports r ON r.template_id = t.id 
+			LEFT JOIN dbo.users u ON u.id = r.created_by
+		WHERE l.id = ? AND r.id = ?	
+	`, user.ID, uint(uid)).Row()
+	if err != nil {
+		return err
+	}
+	row.Scan(&content)
+	var ret []byte
+	if len(content) == 0 {
+		return c.Render(http.StatusNoContent, "error", map[string]interface{}{"Message": "Report content is not yet available"})
+	}
+	ret, err = base64.StdEncoding.DecodeString(content)
+
+	if err != nil {
+		return err
+	}
+
+	//MIME type here: https://blogs.msdn.microsoft.com/vsofficedeveloper/2008/05/08/office-2007-file-format-mime-types-for-http-content-streaming-2/
+	c.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+	c.Response().Write(ret)
+	return nil
 }
 
 //autoMigrateDatabase creates the necessary tables and indexes in the database

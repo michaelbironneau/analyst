@@ -101,13 +101,16 @@ func authenticate(next echo.HandlerFunc) echo.HandlerFunc {
 		if !t.Valid || err != nil {
 			return c.Render(http.StatusForbidden, "login", nil)
 		}
-		var login string
-		if login, ok := t.Header["user"].(string); !ok {
+		var (
+			login string
+			ok    bool
+		)
+		if login, ok = t.Header["user"].(string); !ok {
 			return c.Render(http.StatusForbidden, "login", nil)
-		} 
-		
+		}
+
 		c.Set("login", login)
-		
+
 		return next(c)
 	}
 }

@@ -12,8 +12,7 @@ import (
 type DataFunc func(c echo.Context) (interface{}, error)
 
 func createServer() *echo.Echo {
-	e := echo.New()
-	return nil
+	return echo.New()
 }
 
 func addDBToContext(c echo.Context) error {
@@ -26,7 +25,7 @@ func addDBToContext(c echo.Context) error {
 }
 
 //renderView is a helper function to get some data using a DataFunc and render a view using that data
-//It short-circuits if admin/analyst privileges are required and they are not present. 
+//It short-circuits if admin/analyst privileges are required and they are not present.
 func renderView(status int, view string, requireAdmin bool, requireAnalyst bool, get DataFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		if err := addDBToContext(c); err != nil {
@@ -41,8 +40,8 @@ func renderView(status int, view string, requireAdmin bool, requireAnalyst bool,
 		}
 		if !(user.IsAnalyst || user.IsAdmin) && requireAnalyst {
 			return c.Render(http.StatusUnauthorized, "unauthorized", nil)
-		}		
-		
+		}
+
 		data, err := get(c)
 		if err != nil {
 			return c.Render(http.StatusInternalServerError, "error", map[string]interface{}{"Message": err.Error()})
@@ -64,7 +63,7 @@ func registerRoutes(e *echo.Echo) {
 	e.Static("/static", "static")
 	e.File("/", "index.html")
 
-	e.POST("/login")
+	//e.POST("/login")
 
 	//GROUPS
 	e.GET("/groups", renderView(http.StatusOK, "groups", true, false, Group{}.List))
@@ -91,7 +90,7 @@ func registerRoutes(e *echo.Echo) {
 	e.GET("/groups/:group_id/templates/:template_id/reports", renderView(http.StatusOK, "reports", false, false, Report{}.List))
 	//e.POST("/groups/:group_id/templates/:template_id/reports") //create new report
 	e.GET("/groups/:group_id/templates/:template_id/reports/:report_id", renderView(http.StatusOK, "report", false, false, nil))
-	e.GET("/groups/:group_id/templates/:template_id/reports/:report_id/download")
+	e.GET("/groups/:group_id/templates/:template_id/reports/:report_id/download", Report{}.Download)
 	//e.DELETE("/groups/:group_id/templates/:template_id/reports/:report_id")
 
 	//CONNECTIONS
