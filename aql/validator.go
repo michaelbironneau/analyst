@@ -12,13 +12,13 @@ type Parameter struct {
 
 //Report represents a templated Excel report.
 type Report struct {
-	Name               string
-	Description        string
-	TemplateFile       string
-	OutputFile         string
-	Parameters         map[string]Parameter
-	Connections        map[string]string
-	Queries            map[string]Query
+	Name         string
+	Description  string
+	TemplateFile string
+	OutputFile   string
+	Parameters   map[string]Parameter
+	Connections  map[string]string
+	Queries      map[string]Query
 }
 
 //ValidateAndConvert validates the parsed report and converts it to the more useful Report struct.
@@ -115,10 +115,10 @@ func processParameters(source *report, dest *Report) error {
 //At this stage we're ignoring blocks with unknown keywords - they should have been caught by the parser.
 func processMetadata(source *report, dest *Report) error {
 	var (
-		haveReport     bool
-		haveDesc       bool
-		haveTemplate   bool
-		haveOutput     bool
+		haveReport   bool
+		haveDesc     bool
+		haveTemplate bool
+		haveOutput   bool
 	)
 
 	for i := range source.metadata {

@@ -20,10 +20,10 @@ type parameterBlock struct {
 
 type QueryRange struct {
 	Sheet string
-	X1 interface{}
-	X2 interface{}
-	Y1 interface{}
-	Y2 interface{}
+	X1    interface{}
+	X2    interface{}
+	Y1    interface{}
+	Y2    interface{}
 }
 
 type connection struct {
