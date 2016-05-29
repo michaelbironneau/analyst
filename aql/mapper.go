@@ -10,10 +10,9 @@ import (
 
 type result [][]interface{}
 
-
 //DBQuery is a factory of QueryFunc for SQL database
-func DBQuery(args...interface{}) QueryFunc {
-	return func(driver, connection, statement string) (result, error){
+func DBQuery(args ...interface{}) QueryFunc {
+	return func(driver, connection, statement string) (result, error) {
 		db, err := sql.Open(driver, connection)
 		if err != nil {
 			return nil, err
@@ -81,23 +80,23 @@ func (r result) WriteToSheet(x1 int, y1 int, transpose bool, sheet *xlsx.Sheet) 
 	if len(r) == 0 {
 		panic("WriteToSheet() was called with empty result")
 	}
-	
-	for i := range r {
-			for j := range r[0] {
-				var err error
 
-				if transpose {
-					err = r.Write(i, j, sheet.Cell(i+x1, j+y1))
-				} else {
-					err = r.Write(i, j, sheet.Cell(j+x1, i+y1))
-				}
-				
-				if err != nil {
-					return err
-				}
-				
+	for i := range r {
+		for j := range r[0] {
+			var err error
+
+			if transpose {
+				err = r.Write(i, j, sheet.Cell(i+x1, j+y1))
+			} else {
+				err = r.Write(i, j, sheet.Cell(j+x1, i+y1))
 			}
+
+			if err != nil {
+				return err
+			}
+
 		}
+	}
 
 	return nil
 }
