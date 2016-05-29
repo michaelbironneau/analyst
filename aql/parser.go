@@ -353,7 +353,7 @@ func Parse(script string) (*report, error) {
 		}
 
 		switch keyword {
-		case "report", "description", "template", "output", "usergroup":
+		case "report", "description", "template", "output":
 			//metadata blocks
 			bl, err := parseMetadataBlock(blocks[i], keyword, keywordStop)
 

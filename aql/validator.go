@@ -16,7 +16,6 @@ type Report struct {
 	Description        string
 	TemplateFile       string
 	OutputFile         string
-	PermissionRequired string
 	Parameters         map[string]Parameter
 	Connections        map[string]string
 	Queries            map[string]Query
@@ -120,7 +119,6 @@ func processMetadata(source *report, dest *Report) error {
 		haveDesc       bool
 		haveTemplate   bool
 		haveOutput     bool
-		havePermission bool
 	)
 
 	for i := range source.metadata {
@@ -151,11 +149,6 @@ func processMetadata(source *report, dest *Report) error {
 				return fmt.Errorf("Duplicate 'output' blocks")
 			}
 			dest.OutputFile = source.metadata[i].Data
-		case "permission":
-			if havePermission {
-				return fmt.Errorf("Duplication 'permission' blocks")
-			}
-			dest.PermissionRequired = source.metadata[i].Data
 		}
 	}
 	return nil
