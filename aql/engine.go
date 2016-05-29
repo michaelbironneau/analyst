@@ -68,24 +68,24 @@ func (r result) WriteToSheet(x1 int, y1 int, transpose bool, sheet *xlsx.Sheet) 
 	if len(r) == 0 {
 		panic("WriteToSheet() was called with empty result")
 	}
-	if !transpose {
-		for i := range r {
+	
+	for i := range r {
 			for j := range r[0] {
-				if err := r.Write(i, j, sheet.Cell(i+x1, j+y1)); err != nil {
+				var err error
+
+				if transpose {
+					err = r.Write(i, j, sheet.Cell(i+x1, j+y1))
+				} else {
+					err = r.Write(i, j, sheet.Cell(j+x1, i+y1))
+				}
+				
+				if err != nil {
 					return err
 				}
+				
 			}
 		}
-		return nil
-	}
 
-	for i := range r[0] {
-		for j := range r {
-			if err := r.Write(i, j, sheet.Cell(i+x1, j+y1)); err != nil {
-				return err
-			}
-		}
-	}
 	return nil
 }
 
