@@ -1,25 +1,28 @@
 package main
 
 import (
+	"fmt"
+	"github.com/michaelbironneau/analyst/aql"
 	"github.com/urfave/cli"
 	"io/ioutil"
-	"github.com/michaelbironneau/analyst/aql"
-	"fmt"
 )
 
 //Validate validates the script
 func Validate(c *cli.Context) error {
 	scriptPath := c.String("script")
 	if len(scriptPath) == 0 {
-		return fmt.Errorf("Script path not set")
+		fmt.Println("Script path not set")
 	}
 	b, err := ioutil.ReadFile(scriptPath)
 	if err != nil {
-		return err
+		fmt.Println(err)
+		return nil
 	}
 	_, err = aql.Load(string(b))
 	if err == nil {
 		fmt.Println("[OK] Script is valid")
+		return nil
 	}
-	return err
+	fmt.Printf("[FAIL] %v", err)
+	return nil
 }

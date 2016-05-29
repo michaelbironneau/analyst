@@ -1,26 +1,30 @@
-package main 
+package main
 
 import (
 	"github.com/BurntSushi/toml"
 	"github.com/michaelbironneau/analyst/aql"
 )
 
-type ConnectionConfig struct {
-	Name string 
-	Driver string 
+type Connection struct {
+	Name             string
+	Driver           string
 	ConnectionString string
 }
 
+type ConnectionConfig struct {
+	Connections []Connection
+}
+
 func parseConn(file string) (map[string]aql.Connection, error) {
-	var connections []ConnectionConfig
-	if _, err := toml.DecodeFile(file, connections); err != nil {
+	var config ConnectionConfig
+	if _, err := toml.DecodeFile(file, &config); err != nil {
 		return nil, err
 	}
 	ret := make(map[string]aql.Connection)
-	for i := range connections {
-		ret[connections[i].Name] = aql.Connection{
-			Driver: connections[i].Driver,
-			ConnectionString: connections[i].ConnectionString,
+	for i := range config.Connections {
+		ret[config.Connections[i].Name] = aql.Connection{
+			Driver:           config.Connections[i].Driver,
+			ConnectionString: config.Connections[i].ConnectionString,
 		}
 	}
 	return ret, nil

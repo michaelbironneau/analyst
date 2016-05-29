@@ -21,8 +21,8 @@ func main() {
 					Usage: "path to script",
 				},
 				cli.StringFlag{
-					Name: "params",
-					Value: "",
+					Name:  "params",
+					Value: ":",
 					Usage: "script parameters, written as \"name:value;name_2:value_2;...\"",
 				},
 			},
