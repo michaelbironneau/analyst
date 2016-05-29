@@ -11,8 +11,7 @@ import (
 type result [][]interface{}
 
 //DBQuery is a factory of QueryFunc for SQL database
-func DBQuery(args ...interface{}) QueryFunc {
-	return func(driver, connection, statement string) (result, error) {
+func DBQuery(driver, connection, statement string) (result, error) {
 		db, err := sql.Open(driver, connection)
 		if err != nil {
 			return nil, err
@@ -23,7 +22,6 @@ func DBQuery(args ...interface{}) QueryFunc {
 		}
 		return rowsToInterface(rows)
 	}
-}
 
 //QueryFunc is a func that runs a SQL query and returns
 //interface matrix (instead of sql.Rows), and an error (if any).

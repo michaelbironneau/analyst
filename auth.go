@@ -47,6 +47,7 @@ func getCurrentUser(c echo.Context) (*User, error) {
 
 	//first try cached value in context
 	var user User
+	var group Group
 	user, ok := c.Get("user").(User)
 	if ok {
 		return &user, nil
@@ -58,9 +59,9 @@ func getCurrentUser(c echo.Context) (*User, error) {
 	if err := db.Where(&User{Login: login}).First(&user).Error; err != nil {
 		return nil, fmt.Errorf("Error retrieving user records")
 	}
-	//cache
-	c.Set("user.admin", user.IsAdmin)
-	c.Set("user.analyst", user.IsAnalyst)
+	db.Model(&user).Related(&group)
+	user.Group = group
+	c.Set("user", user)
 
 	return &user, nil
 }

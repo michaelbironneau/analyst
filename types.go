@@ -10,7 +10,9 @@ import (
 	"mime/multipart"
 	"net/http"
 	"strconv"
+	"github.com/tealeg/xlsx"
 	"time"
+	"bytes"
 )
 
 //Group is a collection of users. A user may be belong to multiple groups.
@@ -698,6 +700,101 @@ type ReportListItem struct {
 	Filename  string
 	CreatedBy string
 	CreatedAt time.Time
+}
+
+func (g Report) Create(c echo.Context) (map[string]interface{}, error){
+	db := c.Get("db").(gorm.DB)
+	currentUser, _ := c.Get("user").(User)
+	scriptID := c.Param("script_id")
+	iid, err := strconv.Atoi(scriptID)
+	if err != nil {
+		return nil, fmt.Errorf("Invalid script id")
+	}
+	var script Script
+	var group Group
+	if err := db.First(&script, iid).Error; err != nil {
+		return nil, err
+	}
+	if err := db.Model(&script).Related(&group).Error; err != nil {
+		return nil, err
+	}
+	if !(currentUser.IsAdmin || currentUser.IsAnalyst) && (group.ID != currentUser.Group.ID) {
+		return nil, fmt.Errorf("User not authorized to create report using this script")
+	}
+	r, err := aql.Load(script.Content)
+	if err != nil {
+		return nil, err
+	}
+	for k := range r.Parameters {
+		v := c.FormValue("param_" + k)
+		if len(v) == 0 {
+			return nil, fmt.Errorf("Missing parameter %s", v)
+		}
+		if err := r.SetParameter(k, v); err != nil {
+			return nil, err
+		}
+	}
+	t, err := r.ExecuteTemplates()
+	if err != nil {
+		return nil, err
+	}
+	var template Template 
+	err = db.Where(&Template{Name: t.TemplateFile}).First(&template).Error
+	if err != nil {
+		return nil, err
+	}
+	b, err := base64.StdEncoding.DecodeString(template.Content)
+	if err != nil {
+		return nil, err
+	}
+	templateFile, err := xlsx.OpenBinary(b)
+	if err != nil {
+		return nil, err
+	}
+	var dbConnections []Connection
+	
+	err = db.Find(&dbConnections).Error
+	if err != nil {
+		return nil, err
+	}
+	aqlConnections := make(map[string]aql.Connection)
+	for _, conn := range dbConnections {
+		aqlConnections[conn.Name] = aql.Connection{
+			Driver: conn.Driver,
+			ConnectionString: conn.ConnectionString,
+		}
+	}
+	var report Report 
+	report.CreatedBy = currentUser
+	report.Filename = t.OutputFile
+	report.Status = ReportProgress{
+		Message: "Running...",
+		Progress: 0,
+	}
+	err = db.Create(&report).Error
+	if err != nil {
+		return nil, err
+	}
+	progress := make(chan int)
+	go func(){
+		var b bytes.Buffer
+		result, err := t.Execute(aql.DBQuery,templateFile, aqlConnections, progress)
+		if err != nil {
+			report.Status.Message = err.Error()
+			db.Update(&report)
+			return
+		}
+		err = result.Write(&b)
+		if err != nil {
+			report.Status.Message = err.Error()
+			db.Update(&report)
+			return
+		}
+		report.Content = base64.StdEncoding.EncodeToString(b.Bytes())
+		db.Update(&report)	
+	}()
+
+	return map[string]interface{}{"Report": report}, nil
 }
 
 func (g Report) Delete(c echo.Context) (map[string]interface{}, error) {

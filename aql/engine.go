@@ -8,6 +8,7 @@ import (
 	_ "github.com/ziutek/mymysql/thrsafe" //Thread-safe MySQL driver
 	"sync"
 	"time"
+	"strconv"
 )
 
 //Connection represents a connection to a database
@@ -22,42 +23,38 @@ type queryResult struct {
 	Destination QueryRange
 }
 
-//Execute executes a report that already has parameters populated.
+//Execute executes a report that already has parameters populated and whose templates have been executed.
 func (r Report) Execute(qf QueryFunc, template *xlsx.File, connections map[string]Connection, progress chan<- int) (*xlsx.File, error) {
-	t, err := r.executeTemplates()
-	if err != nil {
-		return nil, err
-	}
 	var (
 		wg sync.WaitGroup
 	)
-	rs := make(chan queryResult, len(t.Queries))
-	errs := make(chan error, len(t.Queries))
-	wg.Add(len(t.Queries))
-	progressPerQuery := 100 / len(t.Queries)
-	for k := range t.Queries {
+	rs := make(chan queryResult, len(r.Queries))
+	errs := make(chan error, len(r.Queries))
+	wg.Add(len(r.Queries))
+	progressPerQuery := 100 / len(r.Queries)
+	for k := range r.Queries {
 		go func(qn string) {
-			connName := t.Connections[t.Queries[qn].Source] //existence is guaranteed by parser
+			connName := r.Connections[r.Queries[qn].Source] //existence is guaranteed by parser
 			connection, ok := connections[connName]
 			if !ok {
 				errs <- fmt.Errorf("Connection details not provided for %s", connName)
 				return
 			}
-			res, err := qf(connection.Driver, connection.ConnectionString, t.Queries[qn].Statement)
+			res, err := qf(connection.Driver, connection.ConnectionString, r.Queries[qn].Statement)
 			if err != nil {
 				errs <- err
 				return
 			}
 			rs <- queryResult{
 				Result:      res,
-				Destination: t.Queries[qn].Range,
+				Destination: r.Queries[qn].Range,
 			}
 			progress <- progressPerQuery
 			wg.Done()
 		}(k)
 	}
 	wg.Wait()
-	err = drainErrors(errs)
+	err := drainErrors(errs)
 	if err != nil {
 		return nil, err
 	}
@@ -120,6 +117,14 @@ func (r Report) SetParameter(k string, v interface{}) error {
 		switch v.(type) {
 		case int, float64:
 			break
+		case string:
+			//attempt string conversion to float 
+			f, err := strconv.ParseFloat(v.(string), 64)
+			if err != nil {
+				return err
+			}
+			r.Parameters[k] = Parameter{Value: f}
+			return nil
 		default:
 			return fmt.Errorf("Incorrect parameter value type: was expecting an int or float64")
 		}
@@ -128,9 +133,19 @@ func (r Report) SetParameter(k string, v interface{}) error {
 			return fmt.Errorf("Incorrect parameter value type: was expecting a string")
 		}
 	case "date":
-		if _, ok := v.(time.Time); !ok {
-			return fmt.Errorf("Incorrect parameter value type: was expecting a time.Time")
+		switch v.(type){
+			case time.Time:
+				break
+			case string:
+				t, err := time.Parse(time.RFC3339Nano, v.(string))
+				if err != nil {
+					return fmt.Errorf("Invalid datetime, expecting RFC3339 Nano format")
+				}
+				r.Parameters[k] = Parameter{Value: t}			
+			default:
+				return fmt.Errorf("Incorrect parameter value type: was expecting a time.Time")
 		}
+
 	default:
 		return fmt.Errorf("Unknown parameter type %s", r.Parameters[k].Type) //should never get reached as the validator takes care of weeding these out
 	}
