@@ -129,7 +129,7 @@ func registerRoutes(e *echo.Echo) {
 
 	//REPORTS
 	e.GET("/templates/:template_id/reports", renderView(http.StatusOK, "reports", false, false, Report{}.List))
-	//e.POST("/templates/:template_id/reports") //create new report
+	e.POST("/templates/:template_id/reports", renderView(http.StatusOK, "report", false, false, Report{}.Create)) //create new report
 	e.GET("/templates/:template_id/reports/:report_id", renderView(http.StatusOK, "report", false, false, Report{}.Get))
 	e.GET("/templates/:template_id/reports/:report_id/download", Report{}.Download)
 	e.POST("/templates/:template_id/reports/:report_id/delete", renderView(http.StatusOK, "reports", false, false, Report{}.Delete))
