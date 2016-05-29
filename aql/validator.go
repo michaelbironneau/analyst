@@ -1,4 +1,4 @@
-package wxscript
+package aql
 
 import (
 	"fmt"
