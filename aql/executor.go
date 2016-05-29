@@ -14,7 +14,7 @@ import (
 //  2) Queries
 //
 //Returns a Report with the templates executed.
-func (r *Report) Execute() (*Report, error) {
+func (r *Report) executeTemplates() (*Report, error) {
 	params := make(map[string]interface{})
 	var ret Report
 
