@@ -109,7 +109,7 @@ type User struct {
 	Passhash  string `gorm:"column:passhash"`
 	IsAdmin   bool
 	IsAnalyst bool
-	Group    Group
+	Group     Group
 }
 
 func (g User) Delete(c echo.Context) (map[string]interface{}, error) {
@@ -153,12 +153,12 @@ func (g User) Save(c echo.Context) (map[string]interface{}, error) {
 	}
 
 	var (
-		login     string
-		password  string
-		isAdmin   string
-		isAnalyst string
-		groupString     string
-		user      User
+		login       string
+		password    string
+		isAdmin     string
+		isAnalyst   string
+		groupString string
+		user        User
 	)
 	login = c.FormValue("login")
 	password = c.FormValue("password")
@@ -179,8 +179,8 @@ func (g User) Save(c echo.Context) (map[string]interface{}, error) {
 		if err != nil {
 			return nil, fmt.Errorf("Invalid group Id")
 		}
-		var group Group 
-		fErr := db.First(&group, gid).Error 
+		var group Group
+		fErr := db.First(&group, gid).Error
 		if fErr != nil {
 			return nil, fErr
 		}
@@ -228,9 +228,9 @@ func (g User) Save(c echo.Context) (map[string]interface{}, error) {
 			if err != nil {
 				return nil, fmt.Errorf("Invalid group Id")
 			}
-			
-			var group Group 
-			fErr := db.First(&group, gid).Error 
+
+			var group Group
+			fErr := db.First(&group, gid).Error
 			if fErr != nil {
 				return nil, fErr
 			}
@@ -491,7 +491,7 @@ func (g Script) Save(c echo.Context) (map[string]interface{}, error) {
 	user, _ := c.Get("user").(User)
 	scriptID := c.FormValue("script_id")
 	groupID := c.FormValue("group_id")
-	
+
 	if len(scriptID) == 0 {
 		scriptID = c.Param("script_id") //it is valid to pass the ID through form value or param
 	}
@@ -501,9 +501,9 @@ func (g Script) Save(c echo.Context) (map[string]interface{}, error) {
 	var gid int
 	var err error
 	gid, err = strconv.Atoi(groupID)
-		if err != nil || gid < 0 {
-			return nil, fmt.Errorf("Invalid group ID")
-		}
+	if err != nil || gid < 0 {
+		return nil, fmt.Errorf("Invalid group ID")
+	}
 
 	if !user.IsAnalyst {
 		return nil, fmt.Errorf("Only analyst users can modify scripts")
@@ -633,7 +633,7 @@ func (g Script) Get(c echo.Context) (map[string]interface{}, error) {
 		return nil, err
 	}
 	if script.Group.ID != user.Group.ID {
-		return nil, fmt.Errorf("User not authorized to view or use script")	
+		return nil, fmt.Errorf("User not authorized to view or use script")
 	}
 	return map[string]interface{}{"Script": script}, nil
 }
