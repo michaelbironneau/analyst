@@ -19,6 +19,7 @@ type parameterBlock struct {
 }
 
 type QueryRange struct {
+	Sheet string
 	X1 interface{}
 	X2 interface{}
 	Y1 interface{}
@@ -49,7 +50,7 @@ type report struct {
 //  query '{NAME}' from {CONNECTION NAME} (
 //          {QUERY CONTENT}
 //          {QUERY CONTENT}
-//  ) into range [{X1}, {Y1}]:[{X2},{Y2}]
+//  ) into sheet '{SHEET NAME}' range [{X1}, {Y1}]:[{X2},{Y2}]
 // where X1,Y1 are integers and X2, Y2 are either integers or 'n'. At most one of X2/Y2 can be 'n'.
 func parseQuery(block []string, keyword string, keywordEnd int) (*Query, error) {
 
@@ -61,7 +62,7 @@ func parseQuery(block []string, keyword string, keywordEnd int) (*Query, error) 
 		ret            Query
 		retRange       QueryRange
 		validFirstLine = regexp.MustCompile("(?i)^[[:space:]]*query[[:space:]]*'([[:alnum:]]+)'[[:space:]]+from[[:space:]]([[:alnum:]]+)[[:space:]]*\\($")
-		validLastLine  = regexp.MustCompile("^(?i)[[:space:]]*\\)[[:space:]]+into[[:space:]]*range[[:space:]]*\\[([0-9]+)\\,[[:space:]]*([0-9]+)\\]\\:\\[([0-9n]+)\\,[[:space:]]*([0-9n]+)\\][[:space:]]*$")
+		validLastLine  = regexp.MustCompile("^(?i)[[:space:]]*\\)[[:space:]]+into[[:space:]]+sheet[[:space:]]+'([[:ascii:]]*)'[[:space:]]+range[[:space:]]*\\[([0-9]+)\\,[[:space:]]*([0-9]+)\\]\\:\\[([0-9n]+)\\,[[:space:]]*([0-9n]+)\\][[:space:]]*$")
 	)
 
 	first := validFirstLine.FindAllStringSubmatch(block[0], -1)
@@ -80,24 +81,25 @@ func parseQuery(block []string, keyword string, keywordEnd int) (*Query, error) 
 	}
 
 	//error return can be discarded in these as regex above has already validated them as digits
-	retRange.X1, _ = strconv.Atoi(last[0][0])
-	retRange.Y1, _ = strconv.Atoi(last[0][1])
+	retRange.Sheet = last[0][1]
+	retRange.X1, _ = strconv.Atoi(last[0][2])
+	retRange.Y1, _ = strconv.Atoi(last[0][3])
 	var haveOne bool
 
-	if last[0][3] == "n" || last[0][3] == "N" {
+	if last[0][4] == "n" || last[0][4] == "N" {
 		retRange.X2 = "n"
 		haveOne = true
 	} else {
-		retRange.X2, _ = strconv.Atoi(last[0][3])
+		retRange.X2, _ = strconv.Atoi(last[0][4])
 	}
 
-	if last[0][4] == "n" || last[0][4] == "N" {
+	if last[0][5] == "n" || last[0][5] == "N" {
 		retRange.Y2 = "n"
 		if haveOne {
 			return nil, fmt.Errorf("At most one of x3 and x4 can be set to 'n'")
 		}
 	} else {
-		retRange.Y2, _ = strconv.Atoi(last[0][4])
+		retRange.Y2, _ = strconv.Atoi(last[0][5])
 	}
 
 	for i := 1; i < len(block)-1; i++ {

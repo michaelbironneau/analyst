@@ -30,13 +30,13 @@ output 'asdf-{{.Client}}.xlsx'
 
 query 'name1' from azure (
     SELECT 1
-) into range [0,0]:[0,1]
+) into sheet 'summary' range [0,0]:[0,1]
 
 QUERY 'name2' FROM g3 (
 SELECT 2 FROM
 Table WHERE
 something
-) into range [0,0]:[0,n]
+) into sheet 'bla' range [0,0]:[0,n]
 `
 
 func TestGetBlockType(t *testing.T) {
@@ -61,7 +61,7 @@ func TestParse(t *testing.T) {
 		Convey("The metadata should be correctly parsed", func() {
 			So(r, ShouldNotBeNil)
 			So(r.metadata, ShouldNotBeNil)
-			So(r.metadata, ShouldHaveLength, 5)
+			So(r.metadata, ShouldHaveLength, 4)
 			So(r.metadata[0].Type, ShouldEqual, "report")
 			So(r.metadata[0].Data, ShouldEqual, "Report Name")
 			So(r.metadata[1].Type, ShouldEqual, "description")
@@ -96,7 +96,7 @@ func TestParse(t *testing.T) {
 			So(strings.TrimSpace(r.queries[0].Statement), ShouldEqual, "SELECT 1")
 			So(r.queries[1].Name, ShouldEqual, "name2")
 			So(r.queries[1].Source, ShouldEqual, "g3")
-			So(r.queries[1].Range, ShouldResemble, QueryRange{X1: 0, Y1: 0, X2: 0, Y2: "n"})
+			So(r.queries[1].Range, ShouldResemble, QueryRange{Sheet: "bla", X1: 0, Y1: 0, X2: 0, Y2: "n"})
 			So(strings.TrimSpace(r.queries[1].Statement), ShouldEqual, strings.TrimSpace(`
 SELECT 2 FROM
 Table WHERE
