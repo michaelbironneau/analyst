@@ -109,7 +109,7 @@ type User struct {
 	Passhash  string `gorm:"column:passhash"`
 	IsAdmin   bool
 	IsAnalyst bool
-	Groups    []Group `gorm:"many2many:user_group"`
+	Group    Group
 }
 
 func (g User) Delete(c echo.Context) (map[string]interface{}, error) {
@@ -157,12 +157,14 @@ func (g User) Save(c echo.Context) (map[string]interface{}, error) {
 		password  string
 		isAdmin   string
 		isAnalyst string
+		groupString     string
 		user      User
 	)
 	login = c.FormValue("login")
 	password = c.FormValue("password")
 	isAdmin = c.FormValue("is_admin")
 	isAnalyst = c.FormValue("is_analyst")
+	groupString = c.FormValue("group_id")
 
 	if len(userID) == 0 {
 		//creation
@@ -170,6 +172,19 @@ func (g User) Save(c echo.Context) (map[string]interface{}, error) {
 			return nil, fmt.Errorf("Login cannot be empty")
 		}
 		user.Login = login
+		if len(groupString) == 0 {
+			return nil, fmt.Errorf("Group cannot be empty")
+		}
+		gid, err := strconv.Atoi(groupString)
+		if err != nil {
+			return nil, fmt.Errorf("Invalid group Id")
+		}
+		var group Group 
+		fErr := db.First(&group, gid).Error 
+		if fErr != nil {
+			return nil, fErr
+		}
+		user.Group = group
 		if len(password) < 8 {
 			return nil, fmt.Errorf("Password must have at least 8 characters")
 		}
@@ -207,6 +222,19 @@ func (g User) Save(c echo.Context) (map[string]interface{}, error) {
 		//update
 		if len(login) > 0 {
 			txFailure = txFailure || (tx.Model(&user).Update("login", login).Error != nil)
+		}
+		if len(groupString) > 0 {
+			gid, err := strconv.Atoi(groupString)
+			if err != nil {
+				return nil, fmt.Errorf("Invalid group Id")
+			}
+			
+			var group Group 
+			fErr := db.First(&group, gid).Error 
+			if fErr != nil {
+				return nil, fErr
+			}
+			txFailure = txFailure || (tx.Model(&user).Update("group_id", gid).Error != nil)
 		}
 		if len(password) > 0 && len(password) >= 8 {
 			h, err := hashPassword(password)
@@ -462,10 +490,20 @@ func (g Script) Save(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	user, _ := c.Get("user").(User)
 	scriptID := c.FormValue("script_id")
-
+	groupID := c.FormValue("group_id")
+	
 	if len(scriptID) == 0 {
 		scriptID = c.Param("script_id") //it is valid to pass the ID through form value or param
 	}
+	if len(groupID) == 0 {
+		return nil, fmt.Errorf("A group must be specified for the script")
+	}
+	var gid int
+	var err error
+	gid, err = strconv.Atoi(groupID)
+		if err != nil || gid < 0 {
+			return nil, fmt.Errorf("Invalid group ID")
+		}
 
 	if !user.IsAnalyst {
 		return nil, fmt.Errorf("Only analyst users can modify scripts")
@@ -473,7 +511,6 @@ func (g Script) Save(c echo.Context) (map[string]interface{}, error) {
 
 	var script Script
 	var iid int
-	var err error
 	var scriptContent *multipart.FileHeader
 	if len(scriptID) > 0 {
 		iid, err = strconv.Atoi(scriptID)
@@ -497,7 +534,7 @@ func (g Script) Save(c echo.Context) (map[string]interface{}, error) {
 	script.Name = s.Name
 	script.Description = s.Description
 	var group Group
-	err = db.Where(&Group{Name: s.PermissionRequired}).First(&group).Error
+	err = db.First(&group, gid).Error
 
 	if err != nil {
 		return nil, err
@@ -595,15 +632,8 @@ func (g Script) Get(c echo.Context) (map[string]interface{}, error) {
 	if err := db.First(&script, uint(uid)).Error; err != nil {
 		return nil, err
 	}
-	var found bool
-	for i := range user.Groups {
-		if user.Groups[i].ID == script.ID {
-			found = true
-			break
-		}
-	}
-	if !found {
-		return nil, fmt.Errorf("User not authorized to view script")
+	if script.Group.ID != user.Group.ID {
+		return nil, fmt.Errorf("User not authorized to view or use script")	
 	}
 	return map[string]interface{}{"Script": script}, nil
 }

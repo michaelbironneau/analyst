@@ -90,8 +90,6 @@ func registerRoutes(e *echo.Echo) {
 	e.POST("/users", renderView(http.StatusOK, "users", true, false, User{}.Save))
 	e.GET("/users/:user_id", renderView(http.StatusOK, "user", true, false, User{}.Get))
 	e.POST("/users/:user_id/delete", renderView(http.StatusOK, "user", true, false, User{}.Delete))
-	//e.POST("/users/:user_id/groups/:group_id/add")
-	//e.POST("/users/:user_id/groups/:group_id/remove")
 
 	//REPORT TEMPLATES
 	e.GET("/templates", renderView(http.StatusOK, "templates", false, false, Template{}.List))
