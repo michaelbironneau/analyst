@@ -351,7 +351,7 @@ func Parse(script string) (*report, error) {
 		keyword, keywordStop, err := getBlockType(blocks[i])
 
 		if err != nil {
-			return nil, fmt.Errorf("Error reading block %d: %v", i, err.Error())
+			return nil, fmt.Errorf("Error reading block %d: %v", i+1, err.Error())
 		}
 
 		switch keyword {
@@ -360,7 +360,7 @@ func Parse(script string) (*report, error) {
 			bl, err := parseMetadataBlock(blocks[i], keyword, keywordStop)
 
 			if err != nil {
-				return nil, fmt.Errorf("Error reading metadata block %d: %v", i, err.Error())
+				return nil, fmt.Errorf("Error reading metadata block %d: %v", i+1, err.Error())
 			}
 
 			ret.metadata = append(ret.metadata, *bl)
@@ -369,7 +369,7 @@ func Parse(script string) (*report, error) {
 			bl, err := parseParameterBlock(blocks[i], keyword, keywordStop)
 
 			if err != nil {
-				return nil, fmt.Errorf("Error reading parameter block %d: %v", i, err.Error())
+				return nil, fmt.Errorf("Error reading parameter block %d: %v", i+1, err.Error())
 			}
 
 			ret.parameters = append(ret.parameters, bl...)
@@ -379,7 +379,7 @@ func Parse(script string) (*report, error) {
 			bl, err := parseConnectionBlock(blocks[i], keyword, keywordStop)
 
 			if err != nil {
-				return nil, fmt.Errorf("Error reading connection block %d: %v", i, err.Error())
+				return nil, fmt.Errorf("Error reading connection block %d: %v", i+1, err.Error())
 			}
 
 			ret.connections = append(ret.connections, bl...)
@@ -389,7 +389,7 @@ func Parse(script string) (*report, error) {
 			bl, err := parseQuery(blocks[i], keyword, keywordStop)
 
 			if err != nil {
-				return nil, fmt.Errorf("Error reading query block %d: %v", i, err.Error())
+				return nil, fmt.Errorf("Error reading query block %d: %v", i+1, err.Error())
 			}
 
 			ret.queries = append(ret.queries, *bl)

@@ -38,11 +38,13 @@ func (r Report) Execute(qf QueryFunc, template *xlsx.File, connections map[strin
 			connection, ok := connections[connName]
 			if !ok {
 				errs <- fmt.Errorf("Connection details not provided for %s", connName)
+				wg.Done()
 				return
 			}
 			res, err := qf(connection.Driver, connection.ConnectionString, r.Queries[qn].Statement)
 			if err != nil {
 				errs <- err
+				wg.Done()
 				return
 			}
 			rs <- queryResult{
