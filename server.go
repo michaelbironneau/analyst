@@ -68,46 +68,43 @@ func registerRoutes(e *echo.Echo) {
 
 	//GROUPS
 	e.GET("/groups", renderView(http.StatusOK, "groups", true, false, Group{}.List))
-	e.POST("/groups", Group{}.Save)
+	e.POST("/groups", renderView(http.StatusOK, "groups", true, false, Group{}.Save))
 	e.GET("/groups/:group_id", renderView(http.StatusOK, "group", true, false, Group{}.Get))
-	e.DELETE("/groups/:group_id", Group{}.Delete)
-	e.PUT("/groups/:group_id", Group{}.Save)
+	e.POST("/groups/:group_id/delete", renderView(http.StatusOK, "group", true, false, Group{}.Delete))
 
 	//USERS
 	e.GET("/users", renderView(http.StatusOK, "users", true, false, User{}.List))
-	e.POST("/users", User{}.Save)
+	e.POST("/users", renderView(http.StatusOK, "users", true, false, User{}.Save))
 	e.GET("/users/:user_id", renderView(http.StatusOK, "user", true, false, User{}.Get))
-	e.PUT("/users/:user_id", User{}.Save)
-	e.DELETE("/users/:user_id", Group{}.Delete)
+	e.POST("/users/:user_id/delete", renderView(http.StatusOK, "user", true, false, User{}.Delete))
+	//e.POST("/users/:user_id/groups/:group_id/add")
+	//e.POST("/users/:user_id/groups/:group_id/remove")
 
 	//REPORT TEMPLATES
 	e.GET("/templates", renderView(http.StatusOK, "templates", false, false, Template{}.List))
 	e.GET("/templates/:template_id", renderView(http.StatusOK, "template", false, false, Template{}.Get))
 	//e.POST("/templates")
-	//e.PUT("/templates/:template_id")
-	e.DELETE("/templates/:template_id", Template{}.Delete)
+	e.POST("/templates/:template_id/delete", renderView(http.StatusOK, "templates", false, false, Template{}.Delete))
 
 	//SCRIPTS
-	e.GET("/scripts", renderView(http.StatusOK, "templates", false, true, Script{}.List))
-	e.GET("/scripts/:script_id", renderView(http.StatusOK, "template", false, true, Script{}.Get))
+	e.GET("/scripts", renderView(http.StatusOK, "scripts", false, true, Script{}.List))
+	e.GET("/scripts/:script_id", renderView(http.StatusOK, "script", false, true, Script{}.Get))
 	e.GET("/scripts/:script_id/download", Script{}.Download)
 	//e.POST("/scripts")
-	//e.PUT("/scripts/:script_id")
-	e.DELETE("/scripts/:script_id", Script{}.Delete)
+	e.POST("/scripts/:script_id/delete", renderView(http.StatusOK, "scripts", false, true, Script{}.Delete))
 
 	//REPORTS
 	e.GET("/templates/:template_id/reports", renderView(http.StatusOK, "reports", false, false, Report{}.List))
-	//e.POST("/groups/:group_id/templates/:template_id/reports") //create new report
+	//e.POST("/templates/:template_id/reports") //create new report
 	e.GET("/templates/:template_id/reports/:report_id", renderView(http.StatusOK, "report", false, false, Report{}.Get))
 	e.GET("/templates/:template_id/reports/:report_id/download", Report{}.Download)
-	e.DELETE("/templates/:template_id/reports/:report_id", Report{}.Delete)
+	e.POST("/templates/:template_id/reports/:report_id/delete", renderView(http.StatusOK, "reports", false, false, Report{}.Delete))
 
 	//CONNECTIONS
 	e.GET("/connections", renderView(http.StatusOK, "connections", false, true, Connection{}.List))
 	e.GET("/connections/:connection_id", renderView(http.StatusOK, "connection", false, true, Connection{}.Get))
-	//e.POST("/connections")
-	//e.PUT("/connections/:connection_id")
-	e.DELETE("/connections/:connection_id", Connection{}.Delete)
+	e.POST("/connections", renderView(http.StatusOK, "connections", false, true, Connection{}.List))
+	e.POST("/connections/:connection_id/delete", renderView(http.StatusOK, "connections", false, true, Connection{}.Delete))
 
 }
 
