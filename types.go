@@ -1,18 +1,18 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"fmt"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/labstack/echo"
 	"github.com/michaelbironneau/analyst/aql"
+	"github.com/tealeg/xlsx"
 	"mime/multipart"
 	"net/http"
 	"strconv"
-	"github.com/tealeg/xlsx"
 	"time"
-	"bytes"
 )
 
 //Group is a collection of users. A user may be belong to multiple groups.
@@ -702,7 +702,7 @@ type ReportListItem struct {
 	CreatedAt time.Time
 }
 
-func (g Report) Create(c echo.Context) (map[string]interface{}, error){
+func (g Report) Create(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	currentUser, _ := c.Get("user").(User)
 	scriptID := c.Param("script_id")
@@ -738,7 +738,7 @@ func (g Report) Create(c echo.Context) (map[string]interface{}, error){
 	if err != nil {
 		return nil, err
 	}
-	var template Template 
+	var template Template
 	err = db.Where(&Template{Name: t.TemplateFile}).First(&template).Error
 	if err != nil {
 		return nil, err
@@ -752,7 +752,7 @@ func (g Report) Create(c echo.Context) (map[string]interface{}, error){
 		return nil, err
 	}
 	var dbConnections []Connection
-	
+
 	err = db.Find(&dbConnections).Error
 	if err != nil {
 		return nil, err
@@ -760,15 +760,15 @@ func (g Report) Create(c echo.Context) (map[string]interface{}, error){
 	aqlConnections := make(map[string]aql.Connection)
 	for _, conn := range dbConnections {
 		aqlConnections[conn.Name] = aql.Connection{
-			Driver: conn.Driver,
+			Driver:           conn.Driver,
 			ConnectionString: conn.ConnectionString,
 		}
 	}
-	var report Report 
+	var report Report
 	report.CreatedBy = currentUser
 	report.Filename = t.OutputFile
 	report.Status = ReportProgress{
-		Message: "Running...",
+		Message:  "Running...",
 		Progress: 0,
 	}
 	err = db.Create(&report).Error
@@ -776,24 +776,44 @@ func (g Report) Create(c echo.Context) (map[string]interface{}, error){
 		return nil, err
 	}
 	progress := make(chan int)
-	go func(){
+	doneChan := make(chan bool)
+	go func() {
+		//execute script
 		var b bytes.Buffer
-		result, err := t.Execute(aql.DBQuery,templateFile, aqlConnections, progress)
+		result, err := t.Execute(aql.DBQuery, templateFile, aqlConnections, progress)
 		if err != nil {
 			report.Status.Message = err.Error()
 			db.Update(&report)
+			doneChan <- true
 			return
 		}
 		err = result.Write(&b)
 		if err != nil {
 			report.Status.Message = err.Error()
 			db.Update(&report)
+			doneChan <- true
 			return
 		}
 		report.Content = base64.StdEncoding.EncodeToString(b.Bytes())
-		db.Update(&report)	
+		db.Update(&report)
 	}()
-
+	go func() {
+		//update progress
+		var totalProgress int
+		for {
+			select {
+			case p := <-progress:
+				totalProgress += p
+				report.Status.Progress = float64(p)
+				db.Update(&report)
+				if totalProgress >= 100 {
+					return
+				}
+			case <-doneChan:
+				return
+			}
+		}
+	}()
 	return map[string]interface{}{"Report": report}, nil
 }
 
