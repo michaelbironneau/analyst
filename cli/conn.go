@@ -12,7 +12,7 @@ type Connection struct {
 }
 
 type ConnectionConfig struct {
-	Connections []Connection
+	Connections []Connection `toml:"connection"`
 }
 
 func parseConn(file string) (map[string]aql.Connection, error) {

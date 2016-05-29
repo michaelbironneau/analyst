@@ -34,10 +34,9 @@ func (r Report) Execute(qf QueryFunc, template *xlsx.File, connections map[strin
 	progressPerQuery := 100 / len(r.Queries)
 	for k := range r.Queries {
 		go func(qn string) {
-			connName := r.Connections[r.Queries[qn].Source] //existence is guaranteed by parser
-			connection, ok := connections[connName]
+			connection, ok := connections[r.Queries[qn].Source]
 			if !ok {
-				errs <- fmt.Errorf("Connection details not provided for %s", connName)
+				errs <- fmt.Errorf("Connection details not provided for %s", r.Queries[qn].Source)
 				wg.Done()
 				return
 			}

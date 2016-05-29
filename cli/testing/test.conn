@@ -1,0 +1,4 @@
+[[Connection]]
+Name = "pg"
+Driver = "mssql"
+ConnectionString = "server=test;"
