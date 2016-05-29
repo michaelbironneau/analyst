@@ -6,6 +6,8 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 	"github.com/labstack/echo"
+	"github.com/michaelbironneau/analyst/aql"
+	"mime/multipart"
 	"net/http"
 	"strconv"
 	"time"
@@ -21,17 +23,17 @@ func (g Group) Delete(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	currentUser, _ := c.Get("user").(User)
 	groupID := c.Param("group_id")
-	
+
 	if !currentUser.IsAdmin {
 		return nil, fmt.Errorf("Only administrative users may delete groups")
 	}
-	
+
 	iid, err := strconv.Atoi(groupID)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("Invalid group id")
 	}
-	var gp Group 
+	var gp Group
 	g.ID = uint(iid)
 	err = db.Unscoped().Delete(&gp).Error
 	if err != nil {
@@ -55,31 +57,31 @@ func (g Group) Save(c echo.Context) (map[string]interface{}, error) {
 	user, _ := c.Get("user").(User)
 	groupName := c.FormValue("name")
 	groupID := c.FormValue("group_id")
-	
+
 	if len(groupID) == 0 {
 		groupID = c.Param("group_id") //it is valid to pass the ID through form value or param
 	}
-	
+
 	if !user.IsAdmin {
 		return nil, fmt.Errorf("Only administrative users can modify groups")
 	}
 	if len(groupName) == 0 {
 		return nil, fmt.Errorf("Group name cannot be empty")
 	}
-	var group Group	
+	var group Group
 	var iid int
 	var err error
 	group.Name = groupName
-	
+
 	if len(groupID) > 0 {
 		iid, err = strconv.Atoi(groupID)
 		if err != nil || iid < 0 {
 			return nil, fmt.Errorf("Invalid group ID")
 		}
-	group.ID = uint(iid)	
+		group.ID = uint(iid)
 	}
-	
-	if err = db.Save(group).Error; err != nil {
+
+	if err = db.Save(&group).Error; err != nil {
 		return nil, fmt.Errorf("Error saving group")
 	}
 	return Group{}.List(c)
@@ -100,7 +102,6 @@ func (g Group) Get(c echo.Context) (map[string]interface{}, error) {
 	return map[string]interface{}{"Group": group}, nil
 }
 
-
 //User is a user of the system
 type User struct {
 	gorm.Model
@@ -115,18 +116,17 @@ func (g User) Delete(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	currentUser, _ := c.Get("user").(User)
 	userID := c.Param("user_id")
-	
+
 	if !currentUser.IsAdmin {
 		return nil, fmt.Errorf("Only administrative users may delete users")
 	}
-	
-	
+
 	iid, err := strconv.Atoi(userID)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("Invalid user id")
 	}
-	
+
 	if uint(iid) == currentUser.ID {
 		return nil, fmt.Errorf("A user may not delete themselves")
 	}
@@ -134,7 +134,7 @@ func (g User) Delete(c echo.Context) (map[string]interface{}, error) {
 	user.ID = uint(iid)
 	err = db.Unscoped().Delete(&user).Error
 	if err != nil {
-		return nil, err 
+		return nil, err
 	}
 	return User{}.List(c)
 }
@@ -143,46 +143,46 @@ func (g User) Save(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	currentUser, _ := c.Get("user").(User)
 	userID := c.FormValue("user_id")
-	
+
 	if len(userID) == 0 {
 		userID = c.Param("user_id") //it is valid to pass the ID through form value or param
 	}
-	
+
 	if !currentUser.IsAdmin && (userID != strconv.Itoa(int(currentUser.ID))) {
 		return nil, fmt.Errorf("Only administrative users can modify other users")
 	}
-	
+
 	var (
-		login string
-		password string 
-		isAdmin string 
+		login     string
+		password  string
+		isAdmin   string
 		isAnalyst string
-		user User
+		user      User
 	)
 	login = c.FormValue("login")
 	password = c.FormValue("password")
 	isAdmin = c.FormValue("is_admin")
 	isAnalyst = c.FormValue("is_analyst")
-	
+
 	if len(userID) == 0 {
-		//creation 
+		//creation
 		if len(login) == 0 {
 			return nil, fmt.Errorf("Login cannot be empty")
 		}
-		user.Login = login 
+		user.Login = login
 		if len(password) < 8 {
 			return nil, fmt.Errorf("Password must have at least 8 characters")
 		}
 		h, err := hashPassword(password)
 		if err != nil {
-				return nil, err
-			}
+			return nil, err
+		}
 		user.Passhash = h
 		var bErr error
 		user.IsAdmin, bErr = strconv.ParseBool(isAdmin)
 		if bErr != nil {
 			return nil, fmt.Errorf("Invalid value for is_admin")
-		} 
+		}
 		user.IsAnalyst, bErr = strconv.ParseBool(isAnalyst)
 		if bErr != nil {
 			return nil, fmt.Errorf("Invalid valud for is_analyst")
@@ -193,18 +193,18 @@ func (g User) Save(c echo.Context) (map[string]interface{}, error) {
 		}
 		return User{}.List(c)
 	}
-	
+
 	if len(userID) > 0 {
 		iid, err := strconv.Atoi(userID)
 		if err != nil || iid < 0 {
 			return nil, fmt.Errorf("Invalid user ID")
 		}
-		user.ID = uint(iid)	
+		user.ID = uint(iid)
 	}
 	tx := db.Begin()
 	var txFailure bool
 	if len(userID) > 0 {
-		//update 
+		//update
 		if len(login) > 0 {
 			txFailure = txFailure || (tx.Model(&user).Update("login", login).Error != nil)
 		}
@@ -233,7 +233,7 @@ func (g User) Save(c echo.Context) (map[string]interface{}, error) {
 				tx.Rollback()
 				return nil, fmt.Errorf("Invalid value for is_analyst")
 			}
-			txFailure = txFailure || (tx.Model(&user).Update("is_analyst", v).Error != nil) 
+			txFailure = txFailure || (tx.Model(&user).Update("is_analyst", v).Error != nil)
 		}
 		if txFailure {
 			tx.Rollback()
@@ -242,7 +242,7 @@ func (g User) Save(c echo.Context) (map[string]interface{}, error) {
 			tx.Commit()
 			return User{}.List(c)
 		}
-		
+
 	}
 	return User{}.List(c)
 }
@@ -279,37 +279,37 @@ func (g User) Get(c echo.Context) (map[string]interface{}, error) {
 //Connection is a connection to an SQL database
 type Connection struct {
 	gorm.Model
-	Name             string `gorm:"unique"`
-	Description      string
-	Driver           string
-	ConnectionString string
+	Name             string `gorm:"unique",form:"name"`
+	Description      string `form:"description"`
+	Driver           string `form:"driver"`
+	ConnectionString string `form:"connection_string"`
 }
 
 func (g Connection) Save(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	user, _ := c.Get("user").(User)
 	connectionID := c.FormValue("connection_id")
-	
+
 	if len(connectionID) == 0 {
 		connectionID = c.Param("connection_id") //it is valid to pass the ID through form value or param
 	}
-	
+
 	if !(user.IsAdmin || user.IsAnalyst) {
 		return nil, fmt.Errorf("Only administrative or analyst users can modify connections")
 	}
-	var connection Connection 
+	var connection Connection
 	if err := c.Bind(&connection); err != nil {
 		return nil, err
 	}
 	var iid int
 	var err error
-	
+
 	if len(connectionID) > 0 {
 		iid, err = strconv.Atoi(connectionID)
 		if err != nil || iid < 0 {
 			return nil, fmt.Errorf("Invalid group ID")
 		}
-	connection.ID = uint(iid)	
+		connection.ID = uint(iid)
 	}
 	if len(connection.Driver) == 0 || len(connection.Name) == 0 || len(connection.ConnectionString) == 0 {
 		return nil, fmt.Errorf("Driver, connection name, and connection string cannot be empty")
@@ -324,18 +324,17 @@ func (g Connection) Delete(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	currentUser, _ := c.Get("user").(User)
 	connectionID := c.Param("connection_id")
-	
+
 	if !(currentUser.IsAdmin || currentUser.IsAnalyst) {
 		return nil, fmt.Errorf("Only administrative users and analysts may delete connections")
 	}
-	
-	
+
 	iid, err := strconv.Atoi(connectionID)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("Invalid connection id")
 	}
-	
+
 	var connection Connection
 	connection.ID = uint(iid)
 	err = db.Unscoped().Delete(&connection).Error
@@ -344,7 +343,6 @@ func (g Connection) Delete(c echo.Context) (map[string]interface{}, error) {
 	}
 	return Connection{}.List(c)
 }
-
 
 //List is a DataFunc to list all connection
 func (g Connection) List(c echo.Context) (map[string]interface{}, error) {
@@ -374,35 +372,82 @@ func (g Connection) Get(c echo.Context) (map[string]interface{}, error) {
 //Template is a report template.
 type Template struct {
 	gorm.Model
-	Name string `gorm:"unique"`
+	Name    string `gorm:"unique"`
 	Content string `sql:"type:text"`
+}
+
+func (g Template) Save(c echo.Context) (map[string]interface{}, error) {
+	db := c.Get("db").(gorm.DB)
+	user, _ := c.Get("user").(User)
+	templateName := c.FormValue("name")
+	templateID := c.FormValue("template_id")
+
+	if len(templateID) == 0 {
+		templateID = c.Param("template_id") //it is valid to pass the ID through form value or param
+	}
+
+	if !user.IsAnalyst {
+		return nil, fmt.Errorf("Only analyst users can modify templates")
+	}
+	if len(templateName) == 0 {
+		return nil, fmt.Errorf("Template name cannot be empty")
+	}
+	var template Template
+	var iid int
+	var err error
+	var templateContent *multipart.FileHeader
+	if len(templateID) > 0 {
+		iid, err = strconv.Atoi(templateID)
+		if err != nil || iid < 0 {
+			return nil, fmt.Errorf("Invalid group ID")
+		}
+		template.ID = uint(iid)
+	}
+	if templateContent, err = c.FormFile("content"); err != nil {
+		//just update name
+		err2 := db.Model(&template).Update("name", templateName).Error
+		if err2 != nil {
+			return nil, err2
+		}
+		return Template{}.List(c)
+	}
+	//update everything
+	template.Name = templateName
+	content, err := readFile(templateContent)
+	if err != nil {
+		return nil, fmt.Errorf("Error reading template file upload")
+	}
+	encodedContent := base64.StdEncoding.EncodeToString(content)
+	template.Content = encodedContent
+	if err = db.Save(&template).Error; err != nil {
+		return nil, fmt.Errorf("Error saving template")
+	}
+	return Template{}.List(c)
 }
 
 func (g Template) Delete(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	currentUser, _ := c.Get("user").(User)
 	templateID := c.Param("template_id")
-	
+
 	if !(currentUser.IsAdmin || currentUser.IsAnalyst) {
 		return nil, fmt.Errorf("Only administrative users and analysts may delete templates")
 	}
-	
-	
+
 	iid, err := strconv.Atoi(templateID)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("Invalid template id")
 	}
-	
+
 	var template Template
 	template.ID = uint(iid)
-	err =db.Unscoped().Delete(&template).Error
+	err = db.Unscoped().Delete(&template).Error
 	if err != nil {
 		return nil, err
 	}
 	return Template{}.List(c)
 }
-
 
 //Script is a report script.
 type Script struct {
@@ -413,28 +458,81 @@ type Script struct {
 	Content     string `sql:"type:text"`
 }
 
+func (g Script) Save(c echo.Context) (map[string]interface{}, error) {
+	db := c.Get("db").(gorm.DB)
+	user, _ := c.Get("user").(User)
+	scriptID := c.FormValue("script_id")
+
+	if len(scriptID) == 0 {
+		scriptID = c.Param("script_id") //it is valid to pass the ID through form value or param
+	}
+
+	if !user.IsAnalyst {
+		return nil, fmt.Errorf("Only analyst users can modify scripts")
+	}
+
+	var script Script
+	var iid int
+	var err error
+	var scriptContent *multipart.FileHeader
+	if len(scriptID) > 0 {
+		iid, err = strconv.Atoi(scriptID)
+		if err != nil || iid < 0 {
+			return nil, fmt.Errorf("Invalid script ID")
+		}
+		script.ID = uint(iid)
+	}
+	if scriptContent, err = c.FormFile("content"); err != nil {
+		return nil, fmt.Errorf("Error reading script content")
+	}
+	content, err := readFile(scriptContent)
+	if err != nil {
+		return nil, fmt.Errorf("Error reading script file upload")
+	}
+	//parse script and get necessary attributes
+	s, err := aql.Load(string(content))
+	if err != nil {
+		return nil, err
+	}
+	script.Name = s.Name
+	script.Description = s.Description
+	var group Group
+	err = db.Where(&Group{Name: s.PermissionRequired}).First(&group).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	script.Group = group
+
+	sc := base64.StdEncoding.EncodeToString(content)
+	script.Content = sc
+	if err = db.Save(&script).Error; err != nil {
+		return nil, fmt.Errorf("Error saving script")
+	}
+	return Script{}.List(c)
+}
 
 func (g Script) Delete(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	currentUser, _ := c.Get("user").(User)
 	scriptID := c.Param("script_id")
-	
+
 	if !(currentUser.IsAdmin || currentUser.IsAnalyst) {
 		return nil, fmt.Errorf("Only administrative users and analysts may delete scripts")
 	}
-	
-	
+
 	iid, err := strconv.Atoi(scriptID)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("Invalid script id")
 	}
-	
+
 	var script Script
 	script.ID = uint(iid)
 	err = db.Unscoped().Delete(&script).Error
 	if err != nil {
-		return nil,err
+		return nil, err
 	}
 	return Script{}.List(c)
 }
@@ -546,7 +644,6 @@ func (g Script) Download(c echo.Context) error {
 	return nil
 }
 
-
 //ReportProgress is the progress of a report that is currently being generated. When the report
 //has been generated Progress will be 100 and Message will be "Successfully generated" (or something
 //to that effect).
@@ -577,18 +674,17 @@ func (g Report) Delete(c echo.Context) (map[string]interface{}, error) {
 	db := c.Get("db").(gorm.DB)
 	currentUser, _ := c.Get("user").(User)
 	reportID := c.Param("report_id")
-	
+
 	if !(currentUser.IsAdmin || currentUser.IsAnalyst) {
 		return nil, fmt.Errorf("Only administrative users and analysts may delete reports")
 	}
-	
-	
+
 	iid, err := strconv.Atoi(reportID)
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("Invalid report id")
 	}
-	
+
 	var report Report
 	report.ID = uint(iid)
 	err = db.Unscoped().Delete(&report).Error
@@ -663,7 +759,7 @@ func (g Report) Get(c echo.Context) (map[string]interface{}, error) {
 }
 
 func (g Report) Download(c echo.Context) error {
-		if err := addDBToContext(c); err != nil {
+	if err := addDBToContext(c); err != nil {
 		return err
 	}
 	db := c.Get("db").(gorm.DB)
@@ -699,8 +795,8 @@ func (g Report) Download(c echo.Context) error {
 
 	//MIME type here: https://blogs.msdn.microsoft.com/vsofficedeveloper/2008/05/08/office-2007-file-format-mime-types-for-http-content-streaming-2/
 	c.Response().Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-	
-	c.Response().Header().Set("Content-Disposition", "attachment; filename=\"" + filename + "\"")
+
+	c.Response().Header().Set("Content-Disposition", "attachment; filename=\""+filename+"\"")
 	c.Response().Write(ret)
 	return nil
 }

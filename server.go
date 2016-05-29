@@ -5,17 +5,30 @@ import (
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/engine/fasthttp"
 	"html/template"
+	"io/ioutil"
+	"mime/multipart"
 	"net/http"
 )
 
 //DataFunc is a function that returns view data
 type DataFunc func(c echo.Context) (map[string]interface{}, error)
 
+//converts a file to a byte slice
+func readFile(f *multipart.FileHeader) ([]byte, error) {
+	src, err := f.Open()
+	if err != nil {
+		return nil, err
+	}
+	defer src.Close()
+	return ioutil.ReadAll(src)
+}
+
 func createServer() *echo.Echo {
 	return echo.New()
 }
 
 func addDBToContext(c echo.Context) error {
+
 	db, err := gorm.Open(Config.Database.Driver, Config.Database.ConnectionString)
 	db.Set("gorm:insert_option", "ON CONFLICT UPDATE")
 	if err != nil {
@@ -83,14 +96,14 @@ func registerRoutes(e *echo.Echo) {
 	//REPORT TEMPLATES
 	e.GET("/templates", renderView(http.StatusOK, "templates", false, false, Template{}.List))
 	e.GET("/templates/:template_id", renderView(http.StatusOK, "template", false, false, Template{}.Get))
-	//e.POST("/templates")
+	e.POST("/templates", renderView(http.StatusOK, "templates", false, true, Template{}.List))
 	e.POST("/templates/:template_id/delete", renderView(http.StatusOK, "templates", false, false, Template{}.Delete))
 
 	//SCRIPTS
 	e.GET("/scripts", renderView(http.StatusOK, "scripts", false, true, Script{}.List))
 	e.GET("/scripts/:script_id", renderView(http.StatusOK, "script", false, true, Script{}.Get))
 	e.GET("/scripts/:script_id/download", Script{}.Download)
-	//e.POST("/scripts")
+	e.POST("/scripts", renderView(http.StatusOK, "scripts", false, true, Script{}.Save))
 	e.POST("/scripts/:script_id/delete", renderView(http.StatusOK, "scripts", false, true, Script{}.Delete))
 
 	//REPORTS
