@@ -30,7 +30,7 @@ output 'asdf-{{.Client}}.xlsx'
 
 query 'name1' from azure (
     SELECT 1
-) into sheet 'summary' range [0,0]:[0,1]
+) into table summary (col1 int, col2 string)
 
 QUERY 'name2' FROM g3 (
 SELECT 2 FROM
@@ -94,6 +94,9 @@ func TestParse(t *testing.T) {
 			So(r.queries[0].Name, ShouldEqual, "name1")
 			So(r.queries[0].Source, ShouldEqual, "azure")
 			So(strings.TrimSpace(r.queries[0].Statement), ShouldEqual, "SELECT 1")
+			So(r.queries[0].Range.TempTable, ShouldNotBeNil)
+			So(r.queries[0].Range.TempTable.Name, ShouldEqual, "summary")
+			So(r.queries[0].Range.TempTable.Columns, ShouldEqual, "(col1 int, col2 string)")
 			So(r.queries[1].Name, ShouldEqual, "name2")
 			So(r.queries[1].Source, ShouldEqual, "g3")
 			So(r.queries[1].Range, ShouldResemble, QueryRange{Sheet: "bla", X1: 0, Y1: 0, X2: 0, Y2: "n"})

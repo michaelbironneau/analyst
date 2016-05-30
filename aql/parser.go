@@ -8,6 +8,13 @@ import (
 	"text/template"
 )
 
+type SourceType int
+
+const (
+	FromConnection SourceType = iota
+	FromTempTable
+)
+
 type metadataBlock struct {
 	Type string
 	Data string
@@ -18,12 +25,18 @@ type parameterBlock struct {
 	Type string
 }
 
+type TempTableDeclaration struct {
+	Name    string
+	Columns string
+}
+
 type QueryRange struct {
-	Sheet string
-	X1    interface{}
-	X2    interface{}
-	Y1    interface{}
-	Y2    interface{}
+	Sheet     string
+	TempTable *TempTableDeclaration
+	X1        interface{}
+	X2        interface{}
+	Y1        interface{}
+	Y2        interface{}
 }
 
 type connection struct {
@@ -32,10 +45,11 @@ type connection struct {
 }
 
 type Query struct {
-	Name      string
-	Source    string
-	Statement string
-	Range     QueryRange
+	Name       string
+	Source     string
+	SourceType SourceType
+	Statement  string
+	Range      QueryRange
 }
 
 type report struct {
@@ -62,7 +76,8 @@ func parseQuery(block []string, keyword string, keywordEnd int) (*Query, error) 
 		ret            Query
 		retRange       QueryRange
 		validFirstLine = regexp.MustCompile("(?i)^[[:space:]]*query[[:space:]]*'([[:alnum:]]+)'[[:space:]]+from[[:space:]]([[:alnum:]]+)[[:space:]]*\\($")
-		validLastLine  = regexp.MustCompile("^(?i)[[:space:]]*\\)[[:space:]]+into[[:space:]]+sheet[[:space:]]+'([[:ascii:]]*)'[[:space:]]+range[[:space:]]*\\[([0-9]+)\\,[[:space:]]*([0-9]+)\\]\\:\\[([0-9n]+)\\,[[:space:]]*([0-9n]+)\\][[:space:]]*$")
+		excelLastLine  = regexp.MustCompile("^(?i)[[:space:]]*\\)[[:space:]]+into[[:space:]]+sheet[[:space:]]+'([[:ascii:]]*)'[[:space:]]+range[[:space:]]*\\[([0-9]+)\\,[[:space:]]*([0-9]+)\\]\\:\\[([0-9n]+)\\,[[:space:]]*([0-9n]+)\\][[:space:]]*$")
+		tempDBLastLine = regexp.MustCompile("^(?i)[[:space:]]*\\)[[:space:]]+into[[:space:]]+table[[:space:]]+([[:alnum:]]+)[[:space:]]+(\\(.*\\))[[:space:]]*$")
 	)
 
 	first := validFirstLine.FindAllStringSubmatch(block[0], -1)
@@ -74,32 +89,46 @@ func parseQuery(block []string, keyword string, keywordEnd int) (*Query, error) 
 	ret.Name = first[0][1]
 	ret.Source = first[0][2]
 
-	last := validLastLine.FindAllStringSubmatch(block[len(block)-1], -1)
-
-	if len(last) != 1 {
+	last := excelLastLine.FindAllStringSubmatch(block[len(block)-1], -1)
+	last2 := tempDBLastLine.FindAllStringSubmatch(block[len(block)-1], -1)
+	if len(last) != 1 && len(last2) != 1 {
 		return nil, fmt.Errorf("Syntax error in last line of block")
 	}
-
-	//error return can be discarded in these as regex above has already validated them as digits
-	retRange.Sheet = last[0][1]
-	retRange.X1, _ = strconv.Atoi(last[0][2])
-	retRange.Y1, _ = strconv.Atoi(last[0][3])
-	var haveOne bool
-
-	if last[0][4] == "n" || last[0][4] == "N" {
-		retRange.X2 = "n"
-		haveOne = true
-	} else {
-		retRange.X2, _ = strconv.Atoi(last[0][4])
+	
+	
+	//at most one of last and last2 can be matched so only one of the bodies of
+	//the following blocks will be reached
+	
+	if len(last2) == 1 {
+		ret.Range.TempTable = &TempTableDeclaration{
+			Name:    last2[0][1],
+			Columns: last2[0][2],
+		}
 	}
 
-	if last[0][5] == "n" || last[0][5] == "N" {
-		retRange.Y2 = "n"
-		if haveOne {
-			return nil, fmt.Errorf("At most one of x3 and x4 can be set to 'n'")
+	if len(last) == 1 {
+		//error return can be discarded in these as regex above has already validated them as digits
+		retRange.Sheet = last[0][1]
+		retRange.X1, _ = strconv.Atoi(last[0][2])
+		retRange.Y1, _ = strconv.Atoi(last[0][3])
+		var haveOne bool
+
+		if last[0][4] == "n" || last[0][4] == "N" {
+			retRange.X2 = "n"
+			haveOne = true
+		} else {
+			retRange.X2, _ = strconv.Atoi(last[0][4])
 		}
-	} else {
-		retRange.Y2, _ = strconv.Atoi(last[0][5])
+
+		if last[0][5] == "n" || last[0][5] == "N" {
+			retRange.Y2 = "n"
+			if haveOne {
+				return nil, fmt.Errorf("At most one of x3 and x4 can be set to 'n'")
+			}
+		} else {
+			retRange.Y2, _ = strconv.Atoi(last[0][5])
+		}
+		ret.Range = retRange
 	}
 
 	for i := 1; i < len(block)-1; i++ {
@@ -109,7 +138,7 @@ func parseQuery(block []string, keyword string, keywordEnd int) (*Query, error) 
 	if _, err := template.New("t").Parse(ret.Statement); err != nil {
 		return nil, fmt.Errorf("Error parsing template in query: %v", err)
 	}
-	ret.Range = retRange
+	
 	return &ret, nil
 }
 

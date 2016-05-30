@@ -21,8 +21,12 @@ connection (
 
 output '{{.Client}}.xlsx'
 
-query 'name1' from azure (
-    SELECT 1
+query 'something' from azure (
+	SELECT 1
+) into table tmp (col1 int, col2 string)
+
+query 'name1' from tmp (
+    SELECT * FROM tmp
 ) into sheet 'summary' range [0,0]:[n,1]
 `
 
