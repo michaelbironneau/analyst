@@ -222,12 +222,14 @@ func (r Report) tempTableMapping() (map[string]sourceSink, error) {
 	ret := make(map[string]sourceSink)
 	for qn, q := range r.Queries {
 		if q.SourceType == FromTempTable {
-			if v, ok := ret[q.Source]; ok {
-				v.Sinks = append(v.Sinks, qn)
-				ret[q.Source] = v
-			} else {
-				ret[q.Source] = sourceSink{
-					Sinks: []string{qn},
+			for _, tdb := range q.TempDBSourceTables {
+				if v, ok := ret[tdb]; ok {
+					v.Sinks = append(v.Sinks, qn)
+					ret[tdb] = v
+				} else {
+					ret[tdb] = sourceSink{
+						Sinks: []string{qn},
+					}
 				}
 			}
 		} else if q.Range.TempTable != nil {

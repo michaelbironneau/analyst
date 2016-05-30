@@ -72,22 +72,21 @@ func processTempTables(source *report, dest *Report) error {
 //  2) Connection name should be defined (so processQueries() should run after processConnections() )
 //  3) Temp table names should be defined (so processQueries() should run after processTempTables() )
 func processQueries(source *report, dest *Report) error {
-	var (
-		connFound bool 
-		tempTableFound bool
-	)
 	for _, q := range source.queries {
 		if _, ok1 := dest.Queries[q.Name]; ok1 {
 			return fmt.Errorf("Query '%s is not unique", q.Name)
 		}
-		if _, connFound = dest.Connections[q.Source]; !connFound {
-			if _, tempTableFound = dest.TempTables[q.Source]; !tempTableFound {
-				return fmt.Errorf("Connection/Temp table '%s' not found for query '%s'", q.Source, q.Name)
-			} else {
-				q.SourceType = FromTempTable
-			}
-		} else {
-			q.SourceType = FromConnection
+		switch q.SourceType {
+			case FromConnection:
+				if _, ok := dest.Connections[q.Source]; !ok {
+					return fmt.Errorf("Connection '%s' for query '%s' not found", q.Source, q.Name)
+				}
+			case FromTempTable:
+				for i := range q.TempDBSourceTables {
+					if _, ok := dest.TempTables[q.TempDBSourceTables[i]]; !ok {
+						return fmt.Errorf("TempDB source table '%s' not found for query '%s'", q.TempDBSourceTables[i], q.Name)
+					}
+				}
 		}
 
 		dest.Queries[q.Name] = q

@@ -64,6 +64,7 @@ func (r *Report) ExecuteTemplates() (*Report, error) {
 			Range:     q.Range,
 			Statement: b.String(),
 			SourceType: q.SourceType,
+			TempDBSourceTables: q.TempDBSourceTables,
 		}
 	}
 

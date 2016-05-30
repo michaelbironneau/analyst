@@ -32,7 +32,11 @@ query 'name1' from azure (
     SELECT 1
 ) into table summary (col1 int, col2 string)
 
-QUERY 'name2' FROM summary (
+query 'name2' from azure (
+	SELECT 2
+) into table table2 (col1 int)
+
+QUERY 'name3' FROM TEMPDB(summary,table2) (
 SELECT 2 FROM
 Table WHERE
 something
@@ -90,7 +94,7 @@ func TestParse(t *testing.T) {
 		})
 		Convey("The queries should be correctly parsed", func() {
 			So(r, ShouldNotBeNil)
-			So(r.queries, ShouldHaveLength, 2)
+			So(r.queries, ShouldHaveLength, 3)
 			So(r.queries[0].Name, ShouldEqual, "name1")
 			So(r.queries[0].Source, ShouldEqual, "azure")
 			So(strings.TrimSpace(r.queries[0].Statement), ShouldEqual, "SELECT 1")
@@ -98,9 +102,11 @@ func TestParse(t *testing.T) {
 			So(r.queries[0].Range.TempTable.Name, ShouldEqual, "summary")
 			So(r.queries[0].Range.TempTable.Columns, ShouldEqual, "(col1 int, col2 string)")
 			So(r.queries[1].Name, ShouldEqual, "name2")
-			So(r.queries[1].Source, ShouldEqual, "summary")
-			So(r.queries[1].Range, ShouldResemble, QueryRange{Sheet: "bla", X1: 0, Y1: 0, X2: 0, Y2: "n"})
-			So(strings.TrimSpace(r.queries[1].Statement), ShouldEqual, strings.TrimSpace(`
+			So(r.queries[1].Source, ShouldEqual, "azure")
+			So(r.queries[1].SourceType, ShouldEqual, FromConnection)
+			So(r.queries[2].Range, ShouldResemble, QueryRange{Sheet: "bla", X1: 0, Y1: 0, X2: 0, Y2: "n"})
+			So(r.queries[2].SourceType, ShouldEqual, FromTempTable)
+			So(strings.TrimSpace(r.queries[2].Statement), ShouldEqual, strings.TrimSpace(`
 SELECT 2 FROM
 Table WHERE
 something`))

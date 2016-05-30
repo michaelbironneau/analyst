@@ -47,6 +47,7 @@ type connection struct {
 type Query struct {
 	Name       string
 	Source     string
+	TempDBSourceTables []string
 	SourceType SourceType
 	Statement  string
 	Range      QueryRange
@@ -61,10 +62,12 @@ type report struct {
 
 //parseQuery parses a query block. Query blocks look like this:
 //
-//  query '{NAME}' from {CONNECTION NAME} (
+//  query '{NAME}' from {SOURCE} (
 //          {QUERY CONTENT}
 //          {QUERY CONTENT}
 //  ) into sheet '{SHEET NAME}' range [{X1}, {Y1}]:[{X2},{Y2}]
+//
+// where SOURCE is either a string (connection) or TEMPDB(table_1, table_2,...)
 // where X1,Y1 are integers and X2, Y2 are either integers or 'n'. At most one of X2/Y2 can be 'n'.
 func parseQuery(block []string, keyword string, keywordEnd int) (*Query, error) {
 
@@ -75,19 +78,35 @@ func parseQuery(block []string, keyword string, keywordEnd int) (*Query, error) 
 	var (
 		ret            Query
 		retRange       QueryRange
-		validFirstLine = regexp.MustCompile("(?i)^[[:space:]]*query[[:space:]]*'([[:alnum:]]+)'[[:space:]]+from[[:space:]]([[:alnum:]]+)[[:space:]]*\\($")
+		validConnFirstLine = regexp.MustCompile("(?i)^[[:space:]]*query[[:space:]]*'([[:alnum:]]+)'[[:space:]]+from[[:space:]]([[:alnum:]]+)[[:space:]]*\\($")
+		validTempDbFirstLine = regexp.MustCompile("(?i)^[[:space:]]*query[[:space:]]*'([[:alnum:]]+)'[[:space:]]+from[[:space:]]+tempdb[[:space:]]*\\(([^\\)]+)\\)[[:space:]]*\\($")
 		excelLastLine  = regexp.MustCompile("^(?i)[[:space:]]*\\)[[:space:]]+into[[:space:]]+sheet[[:space:]]+'([[:ascii:]]*)'[[:space:]]+range[[:space:]]*\\[([0-9]+)\\,[[:space:]]*([0-9]+)\\]\\:\\[([0-9n]+)\\,[[:space:]]*([0-9n]+)\\][[:space:]]*$")
 		tempDBLastLine = regexp.MustCompile("^(?i)[[:space:]]*\\)[[:space:]]+into[[:space:]]+table[[:space:]]+([[:alnum:]]+)[[:space:]]+(\\(.*\\))[[:space:]]*$")
 	)
 
-	first := validFirstLine.FindAllStringSubmatch(block[0], -1)
+	firstConn := validConnFirstLine.FindAllStringSubmatch(block[0], -1)
+	firstTempDb := validTempDbFirstLine.FindAllStringSubmatch(block[0], -1)
 
-	if len(first) != 1 {
+	if len(firstConn) != 1 && len(firstTempDb) != 1 {
 		return nil, fmt.Errorf("Syntax error in first line of block")
 	}
-
-	ret.Name = first[0][1]
-	ret.Source = first[0][2]
+	
+	if len(firstConn) == 1 {
+		ret.Name = firstConn[0][1]
+		ret.Source = firstConn[0][2]
+		ret.SourceType = FromConnection
+	}
+	
+	if len(firstTempDb) == 1 {
+		ret.Name = firstTempDb[0][1]
+		s := strings.ToLower(firstTempDb[0][2])
+		tables := strings.Split(s, ",")
+		for i := range tables {
+			ret.TempDBSourceTables = append(ret.TempDBSourceTables, strings.TrimSpace(tables[i]))
+		}
+		ret.SourceType = FromTempTable
+	}
+	
 
 	last := excelLastLine.FindAllStringSubmatch(block[len(block)-1], -1)
 	last2 := tempDBLastLine.FindAllStringSubmatch(block[len(block)-1], -1)

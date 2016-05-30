@@ -25,7 +25,7 @@ query 'something' from azure (
 	SELECT 1
 ) into table tmp (col1 int, col2 string)
 
-query 'name1' from tmp (
+query 'name1' from tempdb(tmp) (
     SELECT * FROM tmp
 ) into sheet 'summary' range [0,0]:[n,1]
 `
