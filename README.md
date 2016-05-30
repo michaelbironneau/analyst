@@ -192,11 +192,3 @@ This example selects some employee and salary data from two separate databases, 
     	SELECT emp.name, sal.value FROM emp, sal
         WHERE sal.e_id = emp.id
     ) into spreadsheet "Salaries" range [0,0]:[n,1]
-
-## Scaling and Reliability
-
-You probably don't need to read this section. If you are deploying this in a small to medium-sized company which can tolerate the odd hour of downtime, stop reading now.
-
-You can run multiple load-balanced instances of the web server against the same Postgres database and stuff should just work, but I haven't tested this so tread carefully. 
-
-Backing up the database is your responsibility.
