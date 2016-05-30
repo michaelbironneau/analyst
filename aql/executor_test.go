@@ -13,7 +13,7 @@ func TestExecute(t *testing.T) {
 			So(r, ShouldNotBeNil)
 			r.Parameters["Client"] = Parameter{Value: "test"}
 			r.Parameters["Site"] = Parameter{Value: 1.23}
-			r2, err2 := r.Execute()
+			r2, err2 := r.ExecuteTemplates()
 			So(err2, ShouldBeNil)
 			So(r2, ShouldNotBeNil)
 			So(r2.OutputFile, ShouldEqual, "asdf-test.xlsx")

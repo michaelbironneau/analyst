@@ -6,9 +6,9 @@ import (
 	_ "github.com/michaelbironneau/go-mssqldb" //MS SQL Server (this fork supports Azure SQL)
 	"github.com/tealeg/xlsx"
 	_ "github.com/ziutek/mymysql/thrsafe" //Thread-safe MySQL driver
+	"strconv"
 	"sync"
 	"time"
-	"strconv"
 )
 
 //Connection represents a connection to a database
@@ -73,12 +73,12 @@ func writeToSheet(f *xlsx.File, res queryResult, sheet string) error {
 	if !ok {
 		return fmt.Errorf("Sheet not found %s", sheet)
 	}
-	x1, _, y1, _, tr, err := res.Result.Map(&res.Destination)
+	x1, x2, y1, y2, tr, err := res.Result.Map(&res.Destination)
 	if err != nil {
 		return err
 	}
 
-	return res.Result.WriteToSheet(x1, y1, tr, s)
+	return res.Result.WriteToSheet(x1, x2, y1, y2, tr, s)
 }
 
 func drainErrors(errs chan error) error {
@@ -119,7 +119,7 @@ func (r Report) SetParameter(k string, v interface{}) error {
 		case int, float64:
 			break
 		case string:
-			//attempt string conversion to float 
+			//attempt string conversion to float
 			f, err := strconv.ParseFloat(v.(string), 64)
 			if err != nil {
 				return err
@@ -134,17 +134,17 @@ func (r Report) SetParameter(k string, v interface{}) error {
 			return fmt.Errorf("Incorrect parameter value type: was expecting a string")
 		}
 	case "date":
-		switch v.(type){
-			case time.Time:
-				break
-			case string:
-				t, err := time.Parse(time.RFC3339Nano, v.(string))
-				if err != nil {
-					return fmt.Errorf("Invalid datetime, expecting RFC3339 Nano format")
-				}
-				r.Parameters[k] = Parameter{Value: t}			
-			default:
-				return fmt.Errorf("Incorrect parameter value type: was expecting a time.Time")
+		switch v.(type) {
+		case time.Time:
+			break
+		case string:
+			t, err := time.Parse(time.RFC3339Nano, v.(string))
+			if err != nil {
+				return fmt.Errorf("Invalid datetime, expecting RFC3339 Nano format")
+			}
+			r.Parameters[k] = Parameter{Value: t}
+		default:
+			return fmt.Errorf("Incorrect parameter value type: was expecting a time.Time")
 		}
 
 	default:

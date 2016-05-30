@@ -12,16 +12,16 @@ type result [][]interface{}
 
 //DBQuery is a factory of QueryFunc for SQL database
 func DBQuery(driver, connection, statement string) (result, error) {
-		db, err := sql.Open(driver, connection)
-		if err != nil {
-			return nil, err
-		}
-		rows, err := db.Query(statement)
-		if err != nil {
-			return nil, err
-		}
-		return rowsToInterface(rows)
+	db, err := sql.Open(driver, connection)
+	if err != nil {
+		return nil, err
 	}
+	rows, err := db.Query(statement)
+	if err != nil {
+		return nil, err
+	}
+	return rowsToInterface(rows)
+}
 
 //QueryFunc is a func that runs a SQL query and returns
 //interface matrix (instead of sql.Rows), and an error (if any).
@@ -54,6 +54,8 @@ func (r result) Write(i int, j int, cell *xlsx.Cell) error {
 		return nil //nothing to write
 	}
 	switch v := r[i][j].(type) {
+	case int:
+		cell.SetInt(v)
 	case int64:
 		cell.SetInt64(v)
 	case float64:
@@ -74,7 +76,7 @@ func (r result) Write(i int, j int, cell *xlsx.Cell) error {
 }
 
 //WriteToSheet writes the result to the specified range in the sheet
-func (r result) WriteToSheet(x1 int, y1 int, transpose bool, sheet *xlsx.Sheet) error {
+func (r result) WriteToSheet(x1 int, x2 int, y1 int, y2 int, transpose bool, sheet *xlsx.Sheet) error {
 	if len(r) == 0 {
 		panic("WriteToSheet() was called with empty result")
 	}
@@ -83,9 +85,9 @@ func (r result) WriteToSheet(x1 int, y1 int, transpose bool, sheet *xlsx.Sheet) 
 		for j := range r[0] {
 			var err error
 
-			if transpose {
+			if transpose && (i+x1 <= x2 && j+y1 <= y2) {
 				err = r.Write(i, j, sheet.Cell(i+x1, j+y1))
-			} else {
+			} else if j+x1 <= x2 && i+y1 <= y2 {
 				err = r.Write(i, j, sheet.Cell(j+x1, i+y1))
 			}
 
@@ -125,9 +127,9 @@ func (r result) Map(qr *QueryRange) (x1 int, x2 int, y1 int, y2 int, transpose b
 
 	switch {
 	case ok && !ok2:
-		y2 = len(r) + y1
+		y2 = len(r) + y1 - 1
 	case ok2 && !ok:
-		x2 = len(r) + x1
+		x2 = len(r) + x1 - 1
 	}
 	transpose, err = r.needsTranspose(x1, x2, y1, y2)
 	return
@@ -136,15 +138,17 @@ func (r result) Map(qr *QueryRange) (x1 int, x2 int, y1 int, y2 int, transpose b
 
 //needsTranspose returns true if result should be transposed and false if not
 func (r result) needsTranspose(x1, x2, y1, y2 int) (bool, error) {
-	width := x2 - x1
-	height := y2 - y1
+	width := 1 + x2 - x1
+	height := 1 + y2 - y1
 	if width <= 0 || height <= 0 {
 		return false, fmt.Errorf("Invalid query range: both height and width must be strictly positive")
 	}
-	if height == len(r) && width == len(r[0]) {
+	switch {
+	case height <= len(r) && width == len(r[0]):
 		return false, nil
-	} else if height == len(r[0]) && width == len(r) {
+	case height == len(r[0]) && width <= len(r):
 		return true, nil
+	default:
+		return false, fmt.Errorf("Invalid query range: Incorrect number of columns, expected range to have width/height of %d or %d but it had width: %d, height: %d", width, height, len(r[0]), len(r))
 	}
-	return false, fmt.Errorf("Invalid query range: Incorrect number of columns, expected range to have width/height of %d or %d", width, height)
 }
