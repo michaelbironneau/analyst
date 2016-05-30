@@ -24,9 +24,20 @@ Install go. Add $GOPATH/bin to your $PATH. Run `go install github.com/michaelbir
 
 ## Usage
 
-There are two subcommands: `run` and `validate`. The second is essentially a dry run of the first.
+There are two subcommands: `run` and `validate`. The second is essentially a dry run of the first:
+
+    analyst run
+
+runs the script contained in the file ".analyst" in the current working directory.
+
+	analyst run -i
+
+runs in interactive mode, that is, prompting the user for parameters on STDIN.
+
 
 	analyst run -script "path/to/script" -params "param1:val1;param2:val2"
+
+runs the provided script, using the provided parameters.
 
 ## Analyst Query Language (AQL)
 

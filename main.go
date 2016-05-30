@@ -5,25 +5,31 @@ import (
 	"os"
 )
 
+
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "analyst"
 	app.Commands = []cli.Command{
 		{
-			Name:    "create",
-			Aliases: []string{"c"},
-			Usage:   "creates a spreadsheet out of a script",
-			Action:  Create,
+			Name:    "run",
+			Aliases: []string{"r"},
+			Usage:   "runs a script",
+			Action:  Run,
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "script",
-					Value: "",
+					Value: ".analyst",
 					Usage: "path to script",
 				},
 				cli.StringFlag{
 					Name:  "params",
 					Value: ":",
 					Usage: "script parameters, written as \"name:value;name_2:value_2;...\"",
+				},
+				cli.BoolFlag{
+					Name: "i",
+					Usage: "interactive mode (enter parameters on STDIN)",
 				},
 			},
 		},
@@ -35,7 +41,7 @@ func main() {
 			Flags: []cli.Flag{
 				cli.StringFlag{
 					Name:  "script",
-					Value: "",
+					Value: ".analyst",
 					Usage: "path to script",
 				},
 			},
