@@ -271,9 +271,17 @@ func (r Report) Execute(qf QueryFunc, template *xlsx.File, connections map[strin
 }
 
 func writeToSheet(f *xlsx.File, res queryResult, sheet string) error {
-	s, ok := f.Sheet[sheet]
+	var (
+		s *xlsx.Sheet 
+		ok bool
+		err error
+	)
+	s, ok = f.Sheet[sheet]
 	if !ok {
-		return fmt.Errorf("Sheet not found %s", sheet)
+		//create sheet 
+		if s, err = f.AddSheet(sheet); err != nil {
+			return err
+		}		
 	}
 	x1, x2, y1, y2, tr, err := res.Result.Map(&res.Destination)
 	if err != nil {
