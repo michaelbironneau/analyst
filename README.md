@@ -6,20 +6,13 @@ The queries can even be combined and manipulated in-memory using SQL (so you can
 
 If you try and to the same thing in Excel using PowerQuery or a macro, you'll usually crash Excel.
 
-Specifically, using Analyst you can:
-
-* Create scripted, templated Excel reports out of complex SQL queries, mapping query results to ranges
-* Let your users update those reports at the click of a button
-* Keep track of all generated/updated reports over time
-* Separate reports by user group
-
 ## Why not do all this in Excel?
 
 It crashes.
 
 It requires installing database clients on users' machines and updating credentials when they inevitably change. 
 
-It doesn't automatically track historically generated reports.
+Even though you can merge multiple queries, it's not as easy to operate on them as it would be using SQL.
 
 Developers and analysts should not have to spend large amounts of time providing IT support or teaching people how to use Excel.
 
