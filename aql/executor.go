@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"text/template"
+	"time"
 )
 
 //Execute takes a report with populated parameter values and executes the templates of all template-enabled fields. Panics if a template doesn't compile.
@@ -30,7 +31,7 @@ func (r *Report) ExecuteTemplates() (*Report, error) {
 		}
 		params[k] = v.Value
 	}
-
+	params["Now"] = time.Now()
 	t1 := template.Must(template.New("template").Parse(r.TemplateFile))
 	t2 := template.Must(template.New("output").Parse(r.OutputFile))
 

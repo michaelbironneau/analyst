@@ -82,6 +82,14 @@ Several blocks admit templating using Go templating syntax. To set the template 
         Param2 number
     )
 
+The parameter "Now" is always defined and is equal to the current date/time (`time.Now()`).
+
+Parameters can be used in the following blocks:
+
+* Template (metadata)
+* Output (metadata)
+* Query bodies (the SQL bit)
+
 ### Connections
 
 A connection defines how to access external data.
