@@ -64,7 +64,7 @@ func Create(c *cli.Context) error {
 	}
 	//Run script
 	progress := make(chan int)
-	errs := make(chan bool)
+	done := make(chan bool)
 	bar := pb.StartNew(100)
 	fmt.Println("Executing task...")
 	var totalProgress int
@@ -77,14 +77,14 @@ func Create(c *cli.Context) error {
 				if totalProgress >= 100 {
 					return
 				}
-			case <-errs:
+			case <-done:
 				return
 			}
 		}
 	}()
 	report, err := task.Execute(aql.DBQuery, templateFile, connections, progress)
+	done <- true
 	if err != nil {
-		errs <- true
 		fmt.Printf("[ERROR] %v", err)
 		return nil
 	}
