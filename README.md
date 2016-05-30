@@ -24,9 +24,9 @@ Install go. Add $GOPATH/bin to your $PATH. Run `go install github.com/michaelbir
 
 ## Usage
 
-There are two subcommands: `create` and `validate`. The second is essentially a dry run of the first.
+There are two subcommands: `run` and `validate`. The second is essentially a dry run of the first.
 
-	analyst create -script "path/to/script" -params "param1:val1;param2:val2"
+	analyst run -script "path/to/script" -params "param1:val1;param2:val2"
 
 ## Analyst Query Language (AQL)
 
