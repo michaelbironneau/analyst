@@ -63,6 +63,7 @@ func (r *Report) ExecuteTemplates() (*Report, error) {
 			Source:    q.Source,
 			Range:     q.Range,
 			Statement: b.String(),
+			SourceType: q.SourceType,
 		}
 	}
 

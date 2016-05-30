@@ -20,7 +20,6 @@ func TestExecute(t *testing.T) {
 			So(r2.Name, ShouldEqual, r.Name)
 			So(r2.Description, ShouldEqual, r.Description)
 			So(r2.TemplateFile, ShouldEqual, r.TemplateFile)
-			So(r2.Queries, ShouldResemble, r.Queries)
 			So(r2.Connections, ShouldResemble, r.Connections)
 		})
 	})

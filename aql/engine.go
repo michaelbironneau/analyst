@@ -62,11 +62,12 @@ func (e *executionPlan) qfFromTempDb(statement string) (result, error) {
 func (e *executionPlan) ExecuteStep(i int) error {
 	var wg sync.WaitGroup
 	r := e.Report
-	rs := make(chan queryResult, len(r.Queries))
+	rs := make(chan queryResult, len(e.Steps[i].Queries))
 	qf := e.Qf
 	errs := make(chan error, len(r.Queries))
 	progressPerQuery := 100 / len(e.Steps[i].Queries)
 	progressPerQuery = int((1.0 / float64(len(e.Steps))) * float64(progressPerQuery))
+	wg.Add(len(e.Steps[i].Queries))
 	for _, k := range e.Steps[i].Queries {
 		go func(qn string) {
 			connection, ok := e.Connections[r.Queries[qn].Source]
@@ -80,8 +81,10 @@ func (e *executionPlan) ExecuteStep(i int) error {
 			var err error
 			if ok {
 				res, err = qf(connection.Driver, connection.ConnectionString, r.Queries[qn].Statement)
-			} else {
+			} else if ok2 {
 				res, err = e.qfFromTempDb(r.Queries[qn].Statement)
+			} else {
+				panic("source not found")
 			}
 
 			if err != nil {
@@ -227,11 +230,10 @@ func (r Report) tempTableMapping() (map[string]sourceSink, error) {
 					Sinks: []string{qn},
 				}
 			}
-
 		} else if q.Range.TempTable != nil {
 			//make sure we have at most one source
 			if v, ok := ret[q.Range.TempTable.Name]; ok && len(v.Source) > 0 {
-				return nil, fmt.Errorf("Queries %s and %s are writing to the same temp table", qn, v.Source)
+				return nil, fmt.Errorf("Queries '%s' and '%s' are writing to the same temp table", qn, v.Source)
 			} else if ok {
 				v.Source = qn
 				ret[q.Range.TempTable.Name] = v
@@ -246,7 +248,7 @@ func (r Report) tempTableMapping() (map[string]sourceSink, error) {
 	//make sure we have at least one sink
 	for sn, v := range ret {
 		if len(v.Sinks) == 0 {
-			return nil, fmt.Errorf("Unused temp table %s", sn)
+			return nil, fmt.Errorf("Unused temp table '%s'", sn)
 		}
 	}
 	return ret, nil
@@ -254,43 +256,12 @@ func (r Report) tempTableMapping() (map[string]sourceSink, error) {
 
 //Execute executes a report that already has parameters populated and whose templates have been executed.
 func (r Report) Execute(qf QueryFunc, template *xlsx.File, connections map[string]Connection, progress chan<- int) (*xlsx.File, error) {
-	var (
-		wg sync.WaitGroup
-	)
-	rs := make(chan queryResult, len(r.Queries))
-	errs := make(chan error, len(r.Queries))
-	wg.Add(len(r.Queries))
-	progressPerQuery := 100 / len(r.Queries)
-	for k := range r.Queries {
-		go func(qn string) {
-			connection, ok := connections[r.Queries[qn].Source]
-			if !ok {
-				errs <- fmt.Errorf("Connection details not provided for %s", r.Queries[qn].Source)
-				wg.Done()
-				return
-			}
-			res, err := qf(connection.Driver, connection.ConnectionString, r.Queries[qn].Statement)
-			if err != nil {
-				errs <- err
-				wg.Done()
-				return
-			}
-			rs <- queryResult{
-				Result:      res,
-				Destination: r.Queries[qn].Range,
-			}
-			progress <- progressPerQuery
-			wg.Done()
-		}(k)
-	}
-	wg.Wait()
-	err := drainErrors(errs)
+	plan, err := r.plan(qf, template, connections, progress)
 	if err != nil {
 		return nil, err
 	}
-	results := drainResult(rs)
-	for i := range results {
-		if err := writeToSheet(template, results[i], results[i].Destination.Sheet); err != nil {
+	for i := range plan.Steps {
+		if err := plan.ExecuteStep(i); err != nil {
 			return nil, err
 		}
 	}

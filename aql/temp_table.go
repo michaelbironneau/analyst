@@ -18,13 +18,18 @@ func CreateTempTableFromRange(db *sql.DB, qr *QueryRange) error {
 	if qr.TempTable == nil {
 		panic("Tried to create temp table from range that was not temp table range!")
 	}
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
 	statement := fmt.Sprintf(`
-	BEGIN TRANSACTION;
 		CREATE TABLE %s %s;			
-	COMMIT;
 	`, qr.TempTable.Name, qr.TempTable.Columns)
-	_, err := db.Exec(statement)
-	return err
+	_, err = tx.Exec(statement)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (r result) WriteToTempTable(db *sql.DB, table string) error {
@@ -34,12 +39,18 @@ func (r result) WriteToTempTable(db *sql.DB, table string) error {
 		valueLines = append(valueLines, valueLine(r[i]))
 	}
 	statement := fmt.Sprintf(`
-	BEGIN TRANSACTION;
 		INSERT INTO %s VALUES 
-			%s	
-	COMMIT;`, table, strings.Join(valueLines, ","))
-	_, err := db.Exec(statement)
-	return err
+			%s
+		;`, table, strings.Join(valueLines, ","))
+	tx, err := db.Begin()
+	if err != nil {
+		return err
+	}
+	_, err = tx.Exec(statement)
+	if err != nil {
+		return err
+	}
+	return tx.Commit()
 
 }
 
