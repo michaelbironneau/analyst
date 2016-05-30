@@ -112,8 +112,6 @@ The connection block of the AQL script says what the name of the connection is a
         db2 'connections.toml'
     )
 
-Connections support templating using Go template syntax.
-
 ### Queries
 
 Queries contain SQL and details on where to get the data. A query can either
@@ -160,6 +158,40 @@ The result set will be transposed if necessary to satisfy the range, for example
     ) into spreadsheet "test" range [0,0]:[n,0]
 
 will set A1 to 1, A2 to 2 and A3 to 3.
+
+## Full Example
+
+This example selects some employee and salary data from two separate databases, joins them in an in-memory table, and writes the result to Excel.
+
+	report "Employee Salaries"
+
+    description "Shows the salary of each employee"
+
+    parameter (
+    	Department string
+    )
+
+    connection (
+    	db1 "dbs.conn"
+        db2 "dbs.conn"
+    )
+
+    template "blank.xlsx"
+
+    output "{{.Department}}-salaries.xlsx"
+
+    query "employee" from db1 (
+    	SELECT id, name FROM employee
+    ) into table "emp" columns (id int, name string)
+
+    query "salary" from db2 (
+    	SELECT employee_id, salary FROM salary
+    ) into table "sal" column (e_id int, value float64)
+
+    query "join" from tempdb(emp, sal) (
+    	SELECT emp.name, sal.value FROM emp
+        	LEFT JOIN sal ON sal.e_id = emp.id
+    ) into spreadsheet "Salaries" range [0,0]:[n,1]
 
 ## Scaling and Reliability
 
