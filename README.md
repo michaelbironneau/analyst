@@ -189,8 +189,8 @@ This example selects some employee and salary data from two separate databases, 
     ) into table "sal" column (e_id int, value float64)
 
     query "join" from tempdb(emp, sal) (
-    	SELECT emp.name, sal.value FROM emp
-        	LEFT JOIN sal ON sal.e_id = emp.id
+    	SELECT emp.name, sal.value FROM emp, sal
+        WHERE sal.e_id = emp.id
     ) into spreadsheet "Salaries" range [0,0]:[n,1]
 
 ## Scaling and Reliability
