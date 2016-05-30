@@ -10,7 +10,9 @@ If you try and to the same thing in Excel using PowerQuery or a macro, you'll us
 
 It crashes.
 
-It requires installing database clients on users' machines and updating credentials when they inevitably change. 
+It is painful to provide PowerQuery with user-defined parameters and even more painful to validate them sensibly.
+
+It requires installing database clients on users' machines and updating credentials when they inevitably change.
 
 Even though you can merge multiple queries, it's not as easy to operate on them as it would be using SQL.
 
@@ -35,9 +37,9 @@ You can find complete examples in the `testing` folder.
 It looks like SQL, and like SQL is whitespace insensitive. Keywords are 
 case-insensitive.
 
-### Metadata
+**Blocks**
 
-Metadata blocks look like one of the following:
+An Analyst script is made of one or more blocks. Blocks mostly look like this:
 
 	BLOCK_NAME "BLOCK_VALUE"
 
@@ -48,6 +50,14 @@ or
         KEY_2 "VALUE_2"
         ...
     )
+
+Query blocks are a bit different in that they contain SQL and instructions on what to do with the result of the query.
+
+### Metadata
+
+Metadata is mandatory. It is not strictly speaking necessary to generate the report but when you come back to the script a year later, you'll thank me for it.
+
+Some of this information (such as providing a name for each query) is used to provide error messages that are easier to read. Other information is used to enforce compile-time checks.
 
 #### Report Name
 
@@ -125,15 +135,15 @@ Queries contain SQL and details on where to get the data. A query can either
 The first line says where to fetch the data; the last line says where to put it.
 
 	query "query1" from db1 (
-    	SELECT TOP 10 * FROM TABLE
-    ) into spreadsheet "Sheet1" range [0,0]:[10,0]
+    	select top 10 * from table
+    ) into spreadsheet "Sheet1" range [0,0]:[9,0]
 
 #### Select from External source into Temporary Table
 
 The first line says where to fetch the data; the last line says which table to put it in and how its columns are defined.
 
 	query "query2" from db1 (
-    	SELECT 1
+    	select 1
     ) into table "table1" columns (col1 int)
 
 #### Select from Temporary Table into Excel
@@ -141,7 +151,7 @@ The first line says where to fetch the data; the last line says which table to p
 The first line says where to fetch the data; the last line says which spreadsheet to put it in.
 
 	query "query3" from tempdb(table1) (
-    	SELECT * FROM table1
+    	select * from table1
     ) into spreadsheet "Sheet1" range [0,0]:[0,n]
 
 #### Destination Excel Ranges
@@ -155,7 +165,7 @@ Ranges are specified as `[x1,y1]:[x2,y2]`, where coordinates are specified as ze
 The result set will be transposed if necessary to satisfy the range, for example:
 
 	query "WillBeTransposed" from db (
-    	SELECT 1, 2, 3
+    	select 1, 2, 3
     ) into spreadsheet "test" range [0,0]:[n,0]
 
 will set A1 to 1, A2 to 2 and A3 to 3.
@@ -182,14 +192,14 @@ This example selects some employee and salary data from two separate databases, 
     output "{{.Department}}-salaries.xlsx"
 
     query "employee" from db1 (
-    	SELECT id, name FROM employee
+    	select id, name from employee
     ) into table "emp" columns (id int, name string)
 
     query "salary" from db2 (
-    	SELECT employee_id, salary FROM salary
+    	select employee_id, salary from salary
     ) into table "sal" column (e_id int, value float64)
 
     query "join" from tempdb(emp, sal) (
-    	SELECT emp.name, sal.value FROM emp, sal
-        WHERE sal.e_id = emp.id
+    	select emp.name, sal.value from emp, sal
+        where sal.e_id = emp.id
     ) into spreadsheet "Salaries" range [0,0]:[n,1]
