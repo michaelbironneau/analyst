@@ -21,7 +21,11 @@ Even though you can merge multiple queries, it's not as easy to operate on them 
 
 Developers and analysts should not have to spend large amounts of time providing IT support or teaching people how to use Excel.
 
-## Installing
+## Installing from binary 
+
+Download the correct binary for your platform from the latest [release](https://github.com/michaelbironneau/analyst/releases). Put it on your PATH. 
+
+## Installing from source
 
 Install go. Add $GOPATH/bin to your $PATH. Run `go install github.com/michaelbironneau/analyst`. 
 
