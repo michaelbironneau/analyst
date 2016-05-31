@@ -40,7 +40,7 @@ func rowsToInterface(rows *sql.Rows) ([][]interface{}, error) {
 		row := make([]interface{}, len(cols))
 		rowPointers := makeRowPointers(row)
 		if err := rows.Scan(rowPointers...); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Error running query: %v", err)
 		}
 		ret = append(ret, row)
 	}

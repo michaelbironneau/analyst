@@ -2,7 +2,7 @@
 
 Analyst is an automated data analyst (to some extent). It provides a facility to create Excel reports driven by arbitrarily complex or long-running SQL queries.
 
-The queries can even be combined and manipulated in-memory using SQL (so you can query different sources and join the results). 
+The queries can even be combined and manipulated in-memory using a SQL-like language called [QL](https://godoc.org/github.com/cznic/ql) (so you can query different sources and join the results). 
 
 If you try and to the same thing in Excel using PowerQuery or a macro, you'll usually crash Excel.
 
@@ -159,7 +159,7 @@ The first line says where to fetch the data; the last line says which table to p
 
 #### Select from Temporary Table into Excel
 
-The first line says where to fetch the data; the last line says which spreadsheet to put it in.
+The first line says where to fetch the data; the last line says which spreadsheet to put it in. Please note that the query language, which may look like SQL is **not** SQL. It is called QL and there are important syntactic differences. More documentation on this language can be found [here](https://godoc.org/github.com/cznic/ql).
 
 	query 'query3' from tempdb(table1) (
     	select * from table1
@@ -212,5 +212,5 @@ This example selects some employee and salary data from two separate databases, 
 
     query 'join' from tempdb(emp, sal) (
     	select emp.name, sal.value from emp, sal
-        where sal.e_id = emp.id
+        where sal.e_id == emp.id
     ) into spreadsheet 'Salaries' range [0,0]:[n,1]
