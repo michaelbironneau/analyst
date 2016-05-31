@@ -1,7 +1,7 @@
 # Analyst
 
-[![Go Report Card](http://goreportcard.com/badge/github.com/michaelbironneau/go-agree)](https://goreportcard.com/report/github.com/michaelbironneau/go-agree)
-[![Build Status](https://travis-ci.org/michaelbironneau/go-agree.svg?branch=master)](https://travis-ci.org/michaelbironneau/go-agree/)
+[![Go Report Card](http://goreportcard.com/badge/github.com/michaelbironneau/analyst)](https://goreportcard.com/report/github.com/michaelbironneau/analyst)
+[![Build Status](https://travis-ci.org/michaelbironneau/analyst.svg?branch=master)](https://travis-ci.org/michaelbironneau/analyst/)
 
 Analyst is an automated data analyst (to some extent). It provides a facility to create Excel reports driven by arbitrarily complex or long-running SQL queries.
 
