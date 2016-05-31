@@ -78,7 +78,7 @@ This example selects some employee and salary data from two separate databases, 
 
     template 'blank.xlsx'
 
-    output '{{.Department}}-salaries-{{.Now.Format "2016-01"}}.xlsx'
+    output '{{.Department}}-salaries-{{.Now.Format "2006-01"}}.xlsx'
 
     query 'employee' from db1 (
     	select id, name from employee
@@ -101,8 +101,7 @@ An AQL script contains metadata describing the script (mandatory), a reference t
 
 You can find complete examples in the `testing` folder.
 
-It looks like SQL, and like SQL is whitespace insensitive. Keywords are 
-case-insensitive.
+It looks like SQL, and like SQL is (mostly) whitespace insensitive. Keywords are case-insensitive.
 
 **Blocks**
 
