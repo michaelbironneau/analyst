@@ -15,7 +15,7 @@ type Report struct {
 	Name         string
 	Description  string
 	TemplateFile string
-	TempTables map[string]bool
+	TempTables   map[string]bool
 	OutputFile   string
 	Parameters   map[string]Parameter
 	Connections  map[string]string
@@ -54,7 +54,7 @@ func concatenateErrors(errs []error) error {
 	return fmt.Errorf(s)
 }
 
-//processTempTables generates a map of temp tables so they can be used to match 
+//processTempTables generates a map of temp tables so they can be used to match
 //later on.
 func processTempTables(source *report, dest *Report) error {
 	dest.TempTables = make(map[string]bool)
@@ -63,7 +63,7 @@ func processTempTables(source *report, dest *Report) error {
 			dest.TempTables[source.queries[i].Range.TempTable.Name] = true
 		}
 	}
-	return nil	
+	return nil
 }
 
 //processQueries performs compile-time validation of queries. The requirements are:
@@ -77,16 +77,16 @@ func processQueries(source *report, dest *Report) error {
 			return fmt.Errorf("Query '%s is not unique", q.Name)
 		}
 		switch q.SourceType {
-			case FromConnection:
-				if _, ok := dest.Connections[q.Source]; !ok {
-					return fmt.Errorf("Connection '%s' for query '%s' not found", q.Source, q.Name)
+		case FromConnection:
+			if _, ok := dest.Connections[q.Source]; !ok {
+				return fmt.Errorf("Connection '%s' for query '%s' not found", q.Source, q.Name)
+			}
+		case FromTempTable:
+			for i := range q.TempDBSourceTables {
+				if _, ok := dest.TempTables[q.TempDBSourceTables[i]]; !ok {
+					return fmt.Errorf("TempDB source table '%s' not found for query '%s'", q.TempDBSourceTables[i], q.Name)
 				}
-			case FromTempTable:
-				for i := range q.TempDBSourceTables {
-					if _, ok := dest.TempTables[q.TempDBSourceTables[i]]; !ok {
-						return fmt.Errorf("TempDB source table '%s' not found for query '%s'", q.TempDBSourceTables[i], q.Name)
-					}
-				}
+			}
 		}
 
 		dest.Queries[q.Name] = q

@@ -60,11 +60,11 @@ func (r *Report) ExecuteTemplates() (*Report, error) {
 		}
 
 		ret.Queries[k] = Query{
-			Name:      k,
-			Source:    q.Source,
-			Range:     q.Range,
-			Statement: b.String(),
-			SourceType: q.SourceType,
+			Name:               k,
+			Source:             q.Source,
+			Range:              q.Range,
+			Statement:          b.String(),
+			SourceType:         q.SourceType,
 			TempDBSourceTables: q.TempDBSourceTables,
 		}
 	}

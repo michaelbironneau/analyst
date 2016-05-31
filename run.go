@@ -7,6 +7,7 @@ import (
 	"github.com/urfave/cli"
 	"gopkg.in/cheggaaa/pb.v1"
 	"io/ioutil"
+	"time"
 )
 
 //Run creates an Excel spreadsheet based on the script
@@ -72,7 +73,6 @@ func Run(c *cli.Context) error {
 	progress := make(chan int)
 	done := make(chan bool, 1)
 	bar := pb.StartNew(100)
-	fmt.Println("Executing task...")
 	var totalProgress int
 	go func() {
 		for {
@@ -97,5 +97,8 @@ func Run(c *cli.Context) error {
 	if err := report.Save(task.OutputFile); err != nil {
 		fmt.Printf("[ERROR] %v\n", err)
 	}
+	bar.Add(100 - totalProgress)
+	time.Sleep(time.Millisecond * 100) //otherwise the progress bar may not finish rendering
+	fmt.Println("\n[SUCCESS] Spreadsheet written to file\n")
 	return nil
 }

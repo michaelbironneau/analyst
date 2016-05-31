@@ -38,12 +38,23 @@ func rowsToInterface(rows *sql.Rows) ([][]interface{}, error) {
 	var ret result
 	for rows.Next() {
 		row := make([]interface{}, len(cols))
-		if err := rows.Scan(row...); err != nil {
+		rowPointers := makeRowPointers(row)
+		if err := rows.Scan(rowPointers...); err != nil {
 			return nil, err
 		}
 		ret = append(ret, row)
 	}
 	return ret, nil
+}
+
+//makeRowPointers creates a slice that points to elements of another slice. The point is that rows.Scan() requires
+//the destination types to be pointers but we want interface{} types
+func makeRowPointers(row []interface{}) []interface{} {
+	ret := make([]interface{}, len(row), len(row))
+	for i := range row {
+		ret[i] = &row[i]
+	}
+	return ret
 }
 
 //Write writes the (i,j)th entry of the result into the given cell.

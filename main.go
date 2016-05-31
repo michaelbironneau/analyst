@@ -5,8 +5,6 @@ import (
 	"os"
 )
 
-
-
 func main() {
 	app := cli.NewApp()
 	app.Name = "analyst"
@@ -28,7 +26,7 @@ func main() {
 					Usage: "script parameters, written as \"name:value;name_2:value_2;...\"",
 				},
 				cli.BoolFlag{
-					Name: "i",
+					Name:  "i",
 					Usage: "interactive mode (enter parameters on STDIN)",
 				},
 			},
