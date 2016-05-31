@@ -46,6 +46,40 @@ runs in interactive mode, that is, prompting the user for parameters on STDIN.
 
 runs the provided script, using the provided parameters.
 
+## Example Script
+
+This example selects some employee and salary data from two separate databases, joins them in an in-memory table, and writes the result to Excel.
+
+	report 'Employee Salaries'
+
+    description 'Shows the salary of each employee'
+
+    parameter (
+    	Department string
+    )
+
+    connection (
+    	db1 'dbs.conn'
+        db2 'dbs.conn'
+    )
+
+    template 'blank.xlsx'
+
+    output '{{.Department}}-salaries-{{.Now.Format "2016-01"}}.xlsx'
+
+    query 'employee' from db1 (
+    	select id, name from employee
+    ) into table emp (id int, name string)
+
+    query 'salary' from db2 (
+    	select employee_id, salary from salary
+    ) into table sal (e_id int, value float64)
+
+    query 'join' from tempdb(emp, sal) (
+    	select emp.name, sal.value from emp, sal
+        where sal.e_id == emp.id
+    ) into sheet 'Salaries' range [0,0]:[n,1]
+
 ## Analyst Query Language (AQL)
 
 An AQL script contains metadata describing the script (mandatory), a reference to some data connections, and queries.
@@ -154,7 +188,7 @@ The first line says where to fetch the data; the last line says where to put it.
 
 	query 'query1' from db1 (
     	select top 10 * from table
-    ) into spreadsheet 'Sheet1' range [0,0]:[9,0]
+    ) into sheet 'Sheet1' range [0,0]:[9,0]
 
 #### Select from External source into Temporary Table
 
@@ -170,7 +204,7 @@ The first line says where to fetch the data; the last line says which spreadshee
 
 	query 'query3' from tempdb(table1) (
     	select * from table1
-    ) into spreadsheet 'Sheet1' range [0,0]:[0,n]
+    ) into sheet 'Sheet1' range [0,0]:[0,n]
 
 #### Destination Excel Ranges
 
@@ -184,40 +218,7 @@ The result set will be transposed if necessary to satisfy the range, for example
 
 	query 'WillBeTransposed' from db (
     	select 1, 2, 3
-    ) into spreadsheet 'test' range [0,0]:[n,0]
+    ) into sheet 'test' range [0,0]:[n,0]
 
 will set A1 to 1, A2 to 2 and A3 to 3.
 
-## Full Example
-
-This example selects some employee and salary data from two separate databases, joins them in an in-memory table, and writes the result to Excel.
-
-	report 'Employee Salaries'
-
-    description 'Shows the salary of each employee'
-
-    parameter (
-    	Department string
-    )
-
-    connection (
-    	db1 'dbs.conn'
-        db2 'dbs.conn'
-    )
-
-    template 'blank.xlsx'
-
-    output '{{.Department}}-salaries.xlsx'
-
-    query 'employee' from db1 (
-    	select id, name from employee
-    ) into table emp (id int, name string)
-
-    query 'salary' from db2 (
-    	select employee_id, salary from salary
-    ) into table sal (e_id int, value float64)
-
-    query 'join' from tempdb(emp, sal) (
-    	select emp.name, sal.value from emp, sal
-        where sal.e_id == emp.id
-    ) into spreadsheet 'Salaries' range [0,0]:[n,1]
