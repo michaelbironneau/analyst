@@ -45,12 +45,12 @@ type connection struct {
 }
 
 type Query struct {
-	Name       string
-	Source     string
+	Name               string
+	Source             string
 	TempDBSourceTables []string
-	SourceType SourceType
-	Statement  string
-	Range      QueryRange
+	SourceType         SourceType
+	Statement          string
+	Range              QueryRange
 }
 
 type report struct {
@@ -76,12 +76,12 @@ func parseQuery(block []string, keyword string, keywordEnd int) (*Query, error) 
 	}
 
 	var (
-		ret            Query
-		retRange       QueryRange
-		validConnFirstLine = regexp.MustCompile("(?i)^[[:space:]]*query[[:space:]]*'([[:alnum:]]+)'[[:space:]]+from[[:space:]]([[:alnum:]]+)[[:space:]]*\\($")
+		ret                  Query
+		retRange             QueryRange
+		validConnFirstLine   = regexp.MustCompile("(?i)^[[:space:]]*query[[:space:]]*'([[:alnum:]]+)'[[:space:]]+from[[:space:]]([[:alnum:]]+)[[:space:]]*\\($")
 		validTempDbFirstLine = regexp.MustCompile("(?i)^[[:space:]]*query[[:space:]]*'([[:alnum:]]+)'[[:space:]]+from[[:space:]]+tempdb[[:space:]]*\\(([^\\)]+)\\)[[:space:]]*\\($")
-		excelLastLine  = regexp.MustCompile("^(?i)[[:space:]]*\\)[[:space:]]+into[[:space:]]+sheet[[:space:]]+'([[:ascii:]]*)'[[:space:]]+range[[:space:]]*\\[([0-9]+)\\,[[:space:]]*([0-9]+)\\]\\:\\[([0-9n]+)\\,[[:space:]]*([0-9n]+)\\][[:space:]]*$")
-		tempDBLastLine = regexp.MustCompile("^(?i)[[:space:]]*\\)[[:space:]]+into[[:space:]]+table[[:space:]]+([[:alnum:]]+)[[:space:]]+(\\(.*\\))[[:space:]]*$")
+		excelLastLine        = regexp.MustCompile("^(?i)[[:space:]]*\\)[[:space:]]+into[[:space:]]+sheet[[:space:]]+'([[:ascii:]]*)'[[:space:]]+range[[:space:]]*\\[([0-9]+)\\,[[:space:]]*([0-9]+)\\]\\:\\[([0-9n]+)\\,[[:space:]]*([0-9n]+)\\][[:space:]]*$")
+		tempDBLastLine       = regexp.MustCompile("^(?i)[[:space:]]*\\)[[:space:]]+into[[:space:]]+table[[:space:]]+([[:alnum:]]+)[[:space:]]+(\\(.*\\))[[:space:]]*$")
 	)
 
 	firstConn := validConnFirstLine.FindAllStringSubmatch(block[0], -1)
@@ -90,13 +90,13 @@ func parseQuery(block []string, keyword string, keywordEnd int) (*Query, error) 
 	if len(firstConn) != 1 && len(firstTempDb) != 1 {
 		return nil, fmt.Errorf("Syntax error in first line of block")
 	}
-	
+
 	if len(firstConn) == 1 {
 		ret.Name = firstConn[0][1]
 		ret.Source = firstConn[0][2]
 		ret.SourceType = FromConnection
 	}
-	
+
 	if len(firstTempDb) == 1 {
 		ret.Name = firstTempDb[0][1]
 		s := strings.ToLower(firstTempDb[0][2])
@@ -106,18 +106,16 @@ func parseQuery(block []string, keyword string, keywordEnd int) (*Query, error) 
 		}
 		ret.SourceType = FromTempTable
 	}
-	
 
 	last := excelLastLine.FindAllStringSubmatch(block[len(block)-1], -1)
 	last2 := tempDBLastLine.FindAllStringSubmatch(block[len(block)-1], -1)
 	if len(last) != 1 && len(last2) != 1 {
 		return nil, fmt.Errorf("Syntax error in last line of block")
 	}
-	
-	
+
 	//at most one of last and last2 can be matched so only one of the bodies of
 	//the following blocks will be reached
-	
+
 	if len(last2) == 1 {
 		ret.Range.TempTable = &TempTableDeclaration{
 			Name:    last2[0][1],
@@ -157,7 +155,7 @@ func parseQuery(block []string, keyword string, keywordEnd int) (*Query, error) 
 	if _, err := template.New("t").Parse(ret.Statement); err != nil {
 		return nil, fmt.Errorf("Error parsing template in query: %v", err)
 	}
-	
+
 	return &ret, nil
 }
 
@@ -169,13 +167,13 @@ func parseMetadataBlock(block []string, keyword string, keywordEnd int) (*metada
 		return nil, fmt.Errorf("Metadata block should be on a single line")
 	}
 
-	var validContent = regexp.MustCompile("'.*'[[:space:]]*$")
+	var validContent = regexp.MustCompile("'([^\\']+)'[[:space:]]*$")
 
-	contentMatch := validContent.FindAllString(block[0], 1)
+	contentMatch := validContent.FindAllStringSubmatch(block[0], 1)
 
 	switch len(contentMatch) {
 	case 1:
-		d := contentMatch[0][1 : len(contentMatch[0])-1]
+		d := contentMatch[0][1]
 		if _, err := template.New("m").Parse(d); err != nil {
 			return nil, fmt.Errorf("Error parsing template in metadata content: %v", err)
 		}
