@@ -1,5 +1,8 @@
 # Analyst
 
+[![Go Report Card](http://goreportcard.com/badge/github.com/michaelbironneau/go-agree)](https://goreportcard.com/report/github.com/michaelbironneau/go-agree)
+[![Build Status](https://travis-ci.org/michaelbironneau/go-agree.svg?branch=master)](https://travis-ci.org/michaelbironneau/go-agree/)
+
 Analyst is an automated data analyst (to some extent). It provides a facility to create Excel reports driven by arbitrarily complex or long-running SQL queries.
 
 The queries can even be combined and manipulated in-memory using a SQL-like language called [QL](https://godoc.org/github.com/cznic/ql) (so you can query different sources and join the results). 
