@@ -1,11 +1,11 @@
 package main
 
 import (
-	"fmt"
-	"strings"
-	"github.com/michaelbironneau/analyst/aql"
 	"bufio"
+	"fmt"
+	"github.com/michaelbironneau/analyst/aql"
 	"os"
+	"strings"
 )
 
 //parseParameters parses a list of parameters "param_name:val;param_name2:param_val2..."
@@ -27,7 +27,7 @@ func parseParameters(params string) (map[string]string, error) {
 }
 
 //promptParameters prompts the user to enter parameters on STDIN.
-func promptParameters(report *aql.Report) (map[string]string, error){
+func promptParameters(report *aql.Report) (map[string]string, error) {
 	ret := make(map[string]string)
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("Please enter each parameter when prompted, followed by the [enter] key")
@@ -37,7 +37,7 @@ func promptParameters(report *aql.Report) (map[string]string, error){
 		if err != nil {
 			return nil, err
 		}
-		ret[k] = v		
+		ret[k] = strings.TrimSpace(v)
 	}
 	return ret, nil
 }

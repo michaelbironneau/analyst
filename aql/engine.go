@@ -108,6 +108,9 @@ func (e *executionPlan) ExecuteStep(i int) error {
 	results := drainResult(rs)
 	for i := range results {
 		if results[i].Destination.TempTable == nil {
+			if len(results[i].Result) == 0 {
+				continue
+			}
 			if err := writeToSheet(e.Template, results[i], results[i].Destination.Sheet); err != nil {
 				return err
 			}
@@ -272,16 +275,16 @@ func (r Report) Execute(qf QueryFunc, template *xlsx.File, connections map[strin
 
 func writeToSheet(f *xlsx.File, res queryResult, sheet string) error {
 	var (
-		s *xlsx.Sheet 
-		ok bool
+		s   *xlsx.Sheet
+		ok  bool
 		err error
 	)
 	s, ok = f.Sheet[sheet]
 	if !ok {
-		//create sheet 
+		//create sheet
 		if s, err = f.AddSheet(sheet); err != nil {
 			return err
-		}		
+		}
 	}
 	x1, x2, y1, y2, tr, err := res.Result.Map(&res.Destination)
 	if err != nil {

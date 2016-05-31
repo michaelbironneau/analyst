@@ -27,13 +27,13 @@ func Run(c *cli.Context) error {
 		return nil
 	}
 	//Parse and set parameters
-	var params map[string]string 
+	var params map[string]string
 	if c.Bool("i") {
 		params, err = promptParameters(script)
 	} else {
 		params, err = parseParameters(c.String("params"))
 	}
-	
+
 	if err != nil {
 		fmt.Println(err)
 		return nil
@@ -70,7 +70,7 @@ func Run(c *cli.Context) error {
 	}
 	//Run script
 	progress := make(chan int)
-	done := make(chan bool)
+	done := make(chan bool, 1)
 	bar := pb.StartNew(100)
 	fmt.Println("Executing task...")
 	var totalProgress int
@@ -91,8 +91,11 @@ func Run(c *cli.Context) error {
 	report, err := task.Execute(aql.DBQuery, templateFile, connections, progress)
 	done <- true
 	if err != nil {
-		fmt.Printf("[ERROR] %v", err)
+		fmt.Printf("[ERROR] %v\n", err)
 		return nil
 	}
-	return report.Save(task.OutputFile)
+	if err := report.Save(task.OutputFile); err != nil {
+		fmt.Printf("[ERROR] %v\n", err)
+	}
+	return nil
 }
