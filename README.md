@@ -5,7 +5,7 @@
 
 Analyst is a command-line tool to validate and run Analyst Query Language (AQL) scripts. AQL scripts allow you to populate .xlsx spreadsheet templates created in Excel or LibreOffice with the results of one or more SQL queries.
 
-The queries can even be combined and manipulated in-memory using a SQL-like language called [QL](https://godoc.org/github.com/cznic/ql) (so you can query different sources and join the results).
+The results of the queries can even be combined and manipulated in-memory using a SQL-like language called [QL](https://godoc.org/github.com/cznic/ql) (so you can query different sources and join the results).
 
 If you try and do the same thing in Excel using PowerQuery or a macro, you'll usually crash Excel. LibreOffice offers a querying feature but it is not as powerful and lacks the ability to transform query results before they populate the spreadsheet.
 
