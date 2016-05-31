@@ -99,6 +99,6 @@ func Run(c *cli.Context) error {
 	}
 	bar.Add(100 - totalProgress)
 	time.Sleep(time.Millisecond * 500) //otherwise the progress bar may not finish rendering
-	fmt.Println("\n[SUCCESS] Spreadsheet written to file\n")
+	fmt.Println("\n[SUCCESS] Spreadsheet written to file")
 	return nil
 }
