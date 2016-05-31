@@ -7,7 +7,11 @@ import (
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "analyst"
+	app.Name = "Analyst"
+	app.Author = "Michael Bironneau"
+	app.Copyright = "(c) 2016 Michael Bironneau"
+	app.Version = "0.1.0"
+	app.Usage = "populate Excel templates using the result one or more SQL queries."
 	app.Commands = []cli.Command{
 		{
 			Name:    "run",

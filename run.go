@@ -98,7 +98,7 @@ func Run(c *cli.Context) error {
 		fmt.Printf("[ERROR] %v\n", err)
 	}
 	bar.Add(100 - totalProgress)
-	time.Sleep(time.Millisecond * 100) //otherwise the progress bar may not finish rendering
+	time.Sleep(time.Millisecond * 500) //otherwise the progress bar may not finish rendering
 	fmt.Println("\n[SUCCESS] Spreadsheet written to file\n")
 	return nil
 }

@@ -360,11 +360,12 @@ func splitBlocks(script string) ([][]string, error) {
 		case line[len(line)-1] == '(':
 			//both classic and range blocks are opened in same way
 			if inOpenBlock {
+				fmt.Println(currentBlock)
 				return nil, fmt.Errorf("Line %d: Unclosed block, expecting )", i)
 			}
 			inOpenBlock = true
 			currentBlock = []string{line}
-		case line[len(line)-1] == ')' || line[0] == ')':
+		case strings.TrimSpace(line)[0] == ')':
 			//range block closed at start of line; classic at end of line
 			if !inOpenBlock {
 				return nil, fmt.Errorf("Line %d: Unexpected character ')' - there is no block to close.", i)
