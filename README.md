@@ -52,13 +52,13 @@ case-insensitive.
 
 An Analyst script is made of one or more blocks. Blocks mostly look like this:
 
-	BLOCK_NAME "BLOCK_VALUE"
+	BLOCK_NAME 'BLOCK_VALUE'
 
 or
 
 	BLOCK_NAME (
-    	KEY_1 "VALUE_1"
-        KEY_2 "VALUE_2"
+    	KEY_1 'VALUE_1'
+        KEY_2 'VALUE_2'
         ...
     )
 
@@ -145,25 +145,25 @@ Queries contain SQL and details on where to get the data. A query can either
 #### Select from External source into Excel
 The first line says where to fetch the data; the last line says where to put it.
 
-	query "query1" from db1 (
+	query 'query1' from db1 (
     	select top 10 * from table
-    ) into spreadsheet "Sheet1" range [0,0]:[9,0]
+    ) into spreadsheet 'Sheet1' range [0,0]:[9,0]
 
 #### Select from External source into Temporary Table
 
 The first line says where to fetch the data; the last line says which table to put it in and how its columns are defined.
 
-	query "query2" from db1 (
+	query 'query2' from db1 (
     	select 1
-    ) into table "table1" columns (col1 int)
+    ) into table table1 (col1 int)
 
 #### Select from Temporary Table into Excel
 
 The first line says where to fetch the data; the last line says which spreadsheet to put it in.
 
-	query "query3" from tempdb(table1) (
+	query 'query3' from tempdb(table1) (
     	select * from table1
-    ) into spreadsheet "Sheet1" range [0,0]:[0,n]
+    ) into spreadsheet 'Sheet1' range [0,0]:[0,n]
 
 #### Destination Excel Ranges
 
@@ -175,9 +175,9 @@ Ranges are specified as `[x1,y1]:[x2,y2]`, where coordinates are specified as ze
 
 The result set will be transposed if necessary to satisfy the range, for example:
 
-	query "WillBeTransposed" from db (
+	query 'WillBeTransposed' from db (
     	select 1, 2, 3
-    ) into spreadsheet "test" range [0,0]:[n,0]
+    ) into spreadsheet 'test' range [0,0]:[n,0]
 
 will set A1 to 1, A2 to 2 and A3 to 3.
 
@@ -185,32 +185,32 @@ will set A1 to 1, A2 to 2 and A3 to 3.
 
 This example selects some employee and salary data from two separate databases, joins them in an in-memory table, and writes the result to Excel.
 
-	report "Employee Salaries"
+	report 'Employee Salaries'
 
-    description "Shows the salary of each employee"
+    description 'Shows the salary of each employee'
 
     parameter (
     	Department string
     )
 
     connection (
-    	db1 "dbs.conn"
-        db2 "dbs.conn"
+    	db1 'dbs.conn'
+        db2 'dbs.conn'
     )
 
-    template "blank.xlsx"
+    template 'blank.xlsx'
 
-    output "{{.Department}}-salaries.xlsx"
+    output '{{.Department}}-salaries.xlsx'
 
-    query "employee" from db1 (
+    query 'employee' from db1 (
     	select id, name from employee
-    ) into table "emp" columns (id int, name string)
+    ) into table emp (id int, name string)
 
-    query "salary" from db2 (
+    query 'salary' from db2 (
     	select employee_id, salary from salary
-    ) into table "sal" column (e_id int, value float64)
+    ) into table sal (e_id int, value float64)
 
-    query "join" from tempdb(emp, sal) (
+    query 'join' from tempdb(emp, sal) (
     	select emp.name, sal.value from emp, sal
         where sal.e_id = emp.id
-    ) into spreadsheet "Salaries" range [0,0]:[n,1]
+    ) into spreadsheet 'Salaries' range [0,0]:[n,1]
