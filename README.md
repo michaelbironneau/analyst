@@ -3,13 +3,15 @@
 [![Go Report Card](http://goreportcard.com/badge/github.com/michaelbironneau/analyst)](https://goreportcard.com/report/github.com/michaelbironneau/analyst)
 [![Build Status](https://travis-ci.org/michaelbironneau/analyst.svg?branch=master)](https://travis-ci.org/michaelbironneau/analyst/)
 
+**Warning: work-in-progress, undergoing heavy development. Download binaries from the releases page rather than pulling from master if you don't want any surprises.**
+
 Analyst is a command-line tool to validate and run Analyst Query Language (AQL) scripts. AQL scripts allow you to populate .xlsx spreadsheet templates created in Excel or LibreOffice with the results of one or more SQL queries.
 
-The results of the queries can even be combined and manipulated in-memory using a SQL-like language called [QL](https://godoc.org/github.com/cznic/ql) (so you can query different sources and join the results).
+The results of the queries can even be combined and manipulated in-memory using a SQL-like language called [QL](https://godoc.org/github.com/cznic/ql) (so you can query different sources and join or transform the results).
 
-If you try and do the same thing in Excel using PowerQuery or a macro, you'll usually crash Excel. LibreOffice offers a querying feature but it is not as powerful and lacks the ability to transform query results before they populate the spreadsheet.
+AQL scripts can contain typed parameters that are evaluated at run-time.
 
-It would also be nice to be able to let users define parameters for their reports without having to go through the lengthy process of creating a [parameter table](https://blog.oraylis.de/2013/05/using-dynamic-parameter-values-in-power-query-queries/).
+If you try and do the same thing in Excel using PowerQuery or a macro, you'll usually crash Excel. LibreOffice offers a querying feature but it is not as powerful and lacks the ability to transform query results before they populate the spreadsheet. Both struggle when it comes to adding parameters (parameter tables in Excel are far too fiddly).
 
 ## Why not do all this in Excel?
 
