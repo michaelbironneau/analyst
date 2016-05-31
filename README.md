@@ -3,11 +3,13 @@
 [![Go Report Card](http://goreportcard.com/badge/github.com/michaelbironneau/analyst)](https://goreportcard.com/report/github.com/michaelbironneau/analyst)
 [![Build Status](https://travis-ci.org/michaelbironneau/analyst.svg?branch=master)](https://travis-ci.org/michaelbironneau/analyst/)
 
-Analyst is an automated data analyst (to some extent). It provides a facility to create Excel reports driven by arbitrarily complex or long-running SQL queries.
+Analyst is a command-line tool to validate and run Analyst Query Language (AQL) scripts. AQL scripts allow you to populate .xlsx spreadsheet templates created in Excel or LibreOffice with the results of one or more SQL queries.
 
-The queries can even be combined and manipulated in-memory using a SQL-like language called [QL](https://godoc.org/github.com/cznic/ql) (so you can query different sources and join the results). 
+The queries can even be combined and manipulated in-memory using a SQL-like language called [QL](https://godoc.org/github.com/cznic/ql) (so you can query different sources and join the results).
 
-If you try and to the same thing in Excel using PowerQuery or a macro, you'll usually crash Excel.
+If you try and do the same thing in Excel using PowerQuery or a macro, you'll usually crash Excel. LibreOffice offers a querying feature but it is not as powerful and lacks the ability to transform query results before they populate the spreadsheet.
+
+It would also be nice to be able to let users define parameters for their reports without having to go through the lengthy process of creating a [parameter table](https://blog.oraylis.de/2013/05/using-dynamic-parameter-values-in-power-query-queries/).
 
 ## Why not do all this in Excel?
 
@@ -27,9 +29,16 @@ Download the correct binary for your platform from the latest [release](https://
 
 ## Installing from source
 
-Install go. Add $GOPATH/bin to your $PATH. Run `go install github.com/michaelbironneau/analyst`. 
+Install go. Add $GOPATH/bin to your $PATH. Run `go install github.com/michaelbironneau/analyst`.
 
 ## Usage
+
+Here are the steps you should follow:
+
+1. If you haven't already, create a template spreadsheet for your report. Save it as an XLSX file.
+2. If you haven't already, create a connection file (see below). This tells Analyst how to connect to data sources
+3. Create your AQL script (see below)
+4. Run the `analyst` command (instructions below)
 
 There are two subcommands: `run` and `validate`. The second is essentially a dry run of the first:
 
@@ -47,6 +56,8 @@ runs in interactive mode, that is, prompting the user for parameters on STDIN.
 runs the provided script, using the provided parameters.
 
 ## Example Script
+
+Before diving into AQL, here is an example script to give you an idea of what it looks like.
 
 This example selects some employee and salary data from two separate databases, joins them in an in-memory table, and writes the result to Excel.
 
@@ -69,10 +80,12 @@ This example selects some employee and salary data from two separate databases, 
 
     query 'employee' from db1 (
     	select id, name from employee
+        where department like '{{.Department}}'
     ) into table emp (id int, name string)
 
     query 'salary' from db2 (
     	select employee_id, salary from salary
+        where department like '{{.Department}}'
     ) into table sal (e_id int, value float64)
 
     query 'join' from tempdb(emp, sal) (
@@ -109,7 +122,7 @@ Query blocks are a bit different in that they contain SQL and instructions on wh
 
 Metadata is mandatory. It is not strictly speaking necessary to generate the report but when you come back to the script a year later, you'll thank me for it.
 
-Some of this information (such as providing a name for each query) is used to provide error messages that are easier to read. Other information is used to enforce compile-time checks.
+Some of this information (such as providing a name for each query) is used to provide error messages that are easier to read.
 
 #### Report Name
 
@@ -137,7 +150,9 @@ This is the Excel file that contains the generated report. Admits templating usi
 
 ### Parameters
 
-Several blocks admit templating using Go templating syntax. To set the template parameters, you need to declare them beforehand. Each parameter has a `name` and a `type`. The type is either `string`, `number`, or `date`.
+Several blocks admit templating using Go templating syntax. To set the template parameters, you need to declare them beforehand. Each parameter has a `name` and a `type`. The type is either `string`, `number`, or `date`. 
+
+Date parameters must be entered according to RFC3339 standard with nanoseconds, for example `2006-02-29T23:59:01.000Z`.
 
 	parameter (
     	Param1 string
