@@ -91,11 +91,11 @@ func Run(c *cli.Context) error {
 	report, err := task.Execute(aql.DBQuery, templateFile, connections, progress)
 	done <- true
 	if err != nil {
-		fmt.Printf("[ERROR] %v\n", err)
+		fmt.Printf("\n[ERROR] %v\n", err)
 		return nil
 	}
 	if err := report.Save(task.OutputFile); err != nil {
-		fmt.Printf("[ERROR] %v\n", err)
+		fmt.Printf("\n[ERROR] %v\n", err)
 	}
 	bar.Add(100 - totalProgress)
 	time.Sleep(time.Millisecond * 500) //otherwise the progress bar may not finish rendering

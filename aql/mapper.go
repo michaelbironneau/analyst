@@ -143,6 +143,9 @@ func (r result) Map(qr *QueryRange) (x1 int, x2 int, y1 int, y2 int, transpose b
 		x2 = len(r) + x1 - 1
 	}
 	transpose, err = r.needsTranspose(x1, x2, y1, y2)
+	if err != nil {
+		err = fmt.Errorf("Error with range [%v,%v]:[%v,%v]: %v", qr.X1, qr.Y1, qr.X2, qr.Y2, err)
+	}
 	return
 
 }

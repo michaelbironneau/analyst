@@ -110,7 +110,7 @@ func parseQuery(block []string, keyword string, keywordEnd int) (*Query, error) 
 	last := excelLastLine.FindAllStringSubmatch(block[len(block)-1], -1)
 	last2 := tempDBLastLine.FindAllStringSubmatch(block[len(block)-1], -1)
 	if len(last) != 1 && len(last2) != 1 {
-		return nil, fmt.Errorf("Syntax error in last line of block")
+		return nil, fmt.Errorf("Syntax error in last line of block '%s'", block[len(block)-1])
 	}
 
 	//at most one of last and last2 can be matched so only one of the bodies of
@@ -360,7 +360,6 @@ func splitBlocks(script string) ([][]string, error) {
 		case line[len(line)-1] == '(':
 			//both classic and range blocks are opened in same way
 			if inOpenBlock {
-				fmt.Println(currentBlock)
 				return nil, fmt.Errorf("Line %d: Unclosed block, expecting )", i)
 			}
 			inOpenBlock = true
