@@ -1,4 +1,4 @@
-Analyst is a web server to produce SQL-driven templated Excel spreadsheet on demand.
+Analyst is a CLI that runs AQL scripts. AQL scripts populate XLSX spreadsheets with the result(s) of one or more SQL queries, possibly transforming the results in memory.
 
 Copyright (C) 2016  Michael Bironneau
 
