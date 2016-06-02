@@ -105,6 +105,7 @@ func (e *executionPlan) ExecuteStep(i int) error {
 	if err != nil {
 		return err
 	}
+	var allErrors []error
 	results := drainResult(rs)
 	for i := range results {
 		if results[i].Destination.TempTable == nil {
@@ -112,7 +113,8 @@ func (e *executionPlan) ExecuteStep(i int) error {
 				continue
 			}
 			if err := writeToSheet(e.Template, results[i], results[i].Destination.Sheet); err != nil {
-				return err
+				allErrors = append(allErrors, err)
+				continue
 			}
 		} else {
 			db, err := NewTempDb(e.Session)
@@ -128,7 +130,7 @@ func (e *executionPlan) ExecuteStep(i int) error {
 		}
 
 	}
-	return nil
+	return concatenateErrors(allErrors)
 }
 
 //plan determines dependency between queries

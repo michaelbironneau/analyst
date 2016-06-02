@@ -2,6 +2,7 @@ package aql
 
 import (
 	"database/sql"
+	"database/sql/driver"
 	"fmt"
 	"github.com/tealeg/xlsx"
 	"reflect"
@@ -11,15 +12,38 @@ import (
 type result [][]interface{}
 
 //DBQuery is a factory of QueryFunc for SQL database
-func DBQuery(driver, connection, statement string) (result, error) {
-	db, err := sql.Open(driver, connection)
-	if err != nil {
-		return nil, err
+func DBQuery(driverName, connection, statement string) (result, error) {
+	var (
+		db    *sql.DB
+		err   error
+		retry time.Duration
+		rows  *sql.Rows
+	)
+	retry = time.Second
+	for {
+		if retry > time.Minute {
+			return nil, fmt.Errorf("Gave up retrying following bad connection errors for driver %s", driverName)
+		}
+		time.Sleep(retry)
+		db, err = sql.Open(driverName, connection)
+		if err == driver.ErrBadConn {
+			retry = 2 * retry
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		rows, err = db.Query(statement)
+		if err == driver.ErrBadConn {
+			retry = 2 * retry
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		break
 	}
-	rows, err := db.Query(statement)
-	if err != nil {
-		return nil, err
-	}
+
 	return rowsToInterface(rows)
 }
 
@@ -155,7 +179,7 @@ func (r result) needsTranspose(x1, x2, y1, y2 int) (bool, error) {
 	width := 1 + x2 - x1
 	height := 1 + y2 - y1
 	if width <= 0 || height <= 0 {
-		return false, fmt.Errorf("Invalid query range: both height and width must be strictly positive")
+		return false, fmt.Errorf("Both height and width must be strictly positive")
 	}
 	switch {
 	case height <= len(r) && width == len(r[0]):
@@ -163,6 +187,6 @@ func (r result) needsTranspose(x1, x2, y1, y2 int) (bool, error) {
 	case height == len(r[0]) && width <= len(r):
 		return true, nil
 	default:
-		return false, fmt.Errorf("Invalid query range: Incorrect number of columns, expected range to have width/height of %d or %d but it had width: %d, height: %d", width, height, len(r[0]), len(r))
+		return false, fmt.Errorf("Incorrect number of columns, expected range to have width/height of %d/%d but it had width: %d, height: %d", width, height, len(r[0]), len(r))
 	}
 }
