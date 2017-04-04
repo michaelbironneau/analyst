@@ -77,7 +77,8 @@ func TestPipeline(t *testing.T) {
 		So(err, ShouldBeNil)
 		Convey("It should write the correct output to the target spreadsheet", func() {
 			progress := make(chan int, 2)
-			res, err := task.Execute(testQueryFn, f, testConns, progress)
+			logs := make(chan string, 100)
+			res, err := task.Execute(testQueryFn, f, testConns, progress, logs)
 			close(progress)
 			So(err, ShouldBeNil)
 			a, b, c, err := getTestResult(res)

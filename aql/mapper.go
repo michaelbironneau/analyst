@@ -14,28 +14,30 @@ type result [][]interface{}
 //DBQuery is a factory of QueryFunc for SQL database
 func DBQuery(driverName, connection, statement string) (result, error) {
 	var (
-		db    *sql.DB
-		err   error
-		retry time.Duration
-		rows  *sql.Rows
+		db      *sql.DB
+		err     error
+		retry   time.Duration
+		retries int
+		rows    *sql.Rows
 	)
 	retry = time.Second
 	for {
-		if retry > time.Minute {
+		if retries > 8 {
 			return nil, fmt.Errorf("Gave up retrying following bad connection errors for driver %s", driverName)
 		}
 		time.Sleep(retry)
 		db, err = sql.Open(driverName, connection)
 		if err == driver.ErrBadConn {
-			retry = 2 * retry
+			retries++
 			continue
 		}
 		if err != nil {
 			return nil, err
 		}
+		defer db.Close()
 		rows, err = db.Query(statement)
 		if err == driver.ErrBadConn {
-			retry = 2 * retry
+			retries++
 			continue
 		}
 		if err != nil {
@@ -43,7 +45,6 @@ func DBQuery(driverName, connection, statement string) (result, error) {
 		}
 		break
 	}
-
 	return rowsToInterface(rows)
 }
 
@@ -54,11 +55,14 @@ type QueryFunc func(driver, connection, statement string) (result, error)
 //rowsToInterface scans some sql.Rows into an interface{} matrix. The sql.Driver
 //that is used for the scanning should preserve type information and not just return []byte.
 func rowsToInterface(rows *sql.Rows) ([][]interface{}, error) {
+	if rows.Err() != nil {
+		return nil, rows.Err()
+	}
+	defer rows.Close()
 	cols, err := rows.Columns()
 	if err != nil {
 		return nil, err
 	}
-
 	var ret result
 	for rows.Next() {
 		row := make([]interface{}, len(cols))

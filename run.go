@@ -71,6 +71,7 @@ func Run(c *cli.Context) error {
 	}
 	//Run script
 	progress := make(chan int)
+	logs := make(chan string)
 	done := make(chan bool, 1)
 	bar := pb.StartNew(100)
 	var totalProgress int
@@ -79,16 +80,22 @@ func Run(c *cli.Context) error {
 			select {
 			case p := <-progress:
 				totalProgress += p
-				bar.Add(p)
+				if !c.Bool("v"){
+					bar.Add(p)
+				}
 				if totalProgress >= 100 {
 					return
+				}
+			case s := <-logs:
+				if c.Bool("v") {
+					fmt.Println(s)
 				}
 			case <-done:
 				return
 			}
 		}
 	}()
-	report, err := task.Execute(aql.DBQuery, templateFile, connections, progress)
+	report, err := task.Execute(aql.DBQuery, templateFile, connections, progress, logs)
 	done <- true
 	if err != nil {
 		fmt.Printf("\n[ERROR] %v\n", err)

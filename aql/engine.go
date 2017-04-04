@@ -51,6 +51,7 @@ type executionPlan struct {
 	Template    *xlsx.File
 	Connections map[string]Connection
 	TempTables  map[string]bool
+	LogChan     chan<- string
 	Progress    chan<- int
 	Steps       []executionStep
 }
@@ -70,10 +71,12 @@ func (e *executionPlan) ExecuteStep(i int) error {
 	wg.Add(len(e.Steps[i].Queries))
 	for _, k := range e.Steps[i].Queries {
 		go func(qn string) {
+			e.LogChan <- fmt.Sprintf("\nRunning query <%s>", qn)
 			connection, ok := e.Connections[r.Queries[qn].Source]
+			t := time.Now()
 			_, ok2 := e.TempTables[r.Queries[qn].Source]
 			if !(ok || ok2) {
-				errs <- fmt.Errorf("Could not find connection (or temp table) %s", r.Queries[qn].Source)
+				errs <- fmt.Errorf("Could not find connection (or temp table) for query <%s>", r.Queries[qn].Source)
 				wg.Done()
 				return
 			}
@@ -88,10 +91,11 @@ func (e *executionPlan) ExecuteStep(i int) error {
 			}
 
 			if err != nil {
-				errs <- err
+				errs <- fmt.Errorf("\nQuery <%s> Error: \n %s", qn, err)
 				wg.Done()
 				return
 			}
+			e.LogChan <- fmt.Sprintf("\nQuery <%s> took %d seconds", qn, int(time.Now().Sub(t).Seconds()))
 			rs <- queryResult{
 				Result:      res,
 				Destination: r.Queries[qn].Range,
@@ -134,7 +138,7 @@ func (e *executionPlan) ExecuteStep(i int) error {
 }
 
 //plan determines dependency between queries
-func (r Report) plan(qf QueryFunc, template *xlsx.File, connections map[string]Connection, progress chan<- int) (*executionPlan, error) {
+func (r Report) plan(qf QueryFunc, template *xlsx.File, connections map[string]Connection, progress chan<- int, logs chan<- string) (*executionPlan, error) {
 	//first, do a quick pass and determine if we need multiple steps
 	var usesTempTable bool
 	var queries []string
@@ -162,7 +166,8 @@ func (r Report) plan(qf QueryFunc, template *xlsx.File, connections map[string]C
 			Template:    template,
 			Connections: connections,
 			Progress:    progress,
-			Steps: []executionStep{executionStep{
+			LogChan: logs,
+			Steps: []executionStep{{
 				Queries: queries,
 			},
 			},
@@ -262,8 +267,8 @@ func (r Report) tempTableMapping() (map[string]sourceSink, error) {
 }
 
 //Execute executes a report that already has parameters populated and whose templates have been executed.
-func (r Report) Execute(qf QueryFunc, template *xlsx.File, connections map[string]Connection, progress chan<- int) (*xlsx.File, error) {
-	plan, err := r.plan(qf, template, connections, progress)
+func (r Report) Execute(qf QueryFunc, template *xlsx.File, connections map[string]Connection, progress chan<- int, logs chan<-string) (*xlsx.File, error) {
+	plan, err := r.plan(qf, template, connections, progress, logs)
 	if err != nil {
 		return nil, err
 	}

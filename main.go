@@ -33,6 +33,10 @@ func main() {
 					Name:  "i",
 					Usage: "interactive mode (enter parameters on STDIN)",
 				},
+				cli.BoolFlag{
+					Name: "v",
+					Usage: "verbose mode (display running time of queries)",
+				},
 			},
 		},
 		{
