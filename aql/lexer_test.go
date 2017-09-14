@@ -65,5 +65,24 @@ func TestInnerContent(t *testing.T){
 			So(tt[2].ID, ShouldEqual, PAREN_BODY)
 			So(tt[3].ID, ShouldEqual, RPAREN)
 		})
+		Convey("It should correctly parse nested () or ''", func(){
+			s = "QUERY (content(a)')"
+			tt, err := Lex(s)
+			So(err, ShouldBeNil)
+			So(tt, ShouldHaveLength, 4)
+			So(tt[0].ID, ShouldEqual, QUERY)
+			So(tt[1].ID, ShouldEqual, LPAREN)
+			So(tt[2].ID, ShouldEqual, PAREN_BODY)
+			So(tt[2].Content, ShouldEqual, "content(a)'")
+			So(tt[3].ID, ShouldEqual, RPAREN)
+		})
+		Convey("It should report an error when an unclosed ( is detected", func(){
+			s = "QUERY ("
+			_, err := Lex(s)
+			So(err, ShouldNotBeNil)
+			s = "QUERY )"
+			_, err = Lex(s)
+			So(err, ShouldNotBeNil)
+		})
 	})
 }

@@ -8,7 +8,7 @@ import (
 
 type Token int
 
-type LexedToken struct {
+type Item struct {
 	ID Token
 	LineNumber int
 	Content string
@@ -45,11 +45,11 @@ var (
 )
 
 //Lex lexes an AQL script to produce a slice of tokens. If it encounters an error, it will complain (loudly).
-func Lex(s string) ([]LexedToken, error) {
+func Lex(s string) ([]Item, error) {
 	var (
 		index int
 		lineNumber int
-		ret []LexedToken
+		ret []Item
 		inQuot bool
 		parenDepth int
 		inParen bool
@@ -64,11 +64,11 @@ func Lex(s string) ([]LexedToken, error) {
 
 
 
-		if s[index] == '(' {
+		if s[index] == '(' && !inQuot {
 			//start ( could mean nested parenthesis or start of block
 			parenDepth++
 			if !inParen {
-				ret = append(ret, LexedToken{LPAREN, lineNumber,"("}) //we only care about outermost parenthesis - AQL never nests but the queries or scripts could.
+				ret = append(ret, Item{LPAREN, lineNumber,"("}) //we only care about outermost parenthesis - AQL never nests but the queries or scripts could.
 				inParen = true
 				innerContent = "" //clear it out
 			} else {
@@ -77,38 +77,38 @@ func Lex(s string) ([]LexedToken, error) {
 			index++
 			continue
 		}
-		if s[index] == ')' {
+		if s[index] == ')' && !inQuot {
 			//end ) could mean nested parenthesis or end of block
 			if !inParen {
 				return nil, formatErr("Unexpected ')'", lineNumber)
 			}
+			if parenDepth > 1 {
+				innerContent += ")"
+			}
 			if parenDepth == 1 {
-				ret = append(ret, LexedToken{PAREN_BODY, lineNumber,innerContent})
-				ret = append(ret, LexedToken{RPAREN, lineNumber,")"}) //we only care about outermost parenthesis - AQL never nests but the queries or scripts could.
+				ret = append(ret, Item{PAREN_BODY, lineNumber,innerContent})
+				ret = append(ret, Item{RPAREN, lineNumber,")"}) //we only care about outermost parenthesis - AQL never nests but the queries or scripts could.
 			}
 			parenDepth--
 			if parenDepth == 0 {
 				inParen = false
 				innerContent = "" //for good measure; not strictly speaking necessary as it's already done above
 			}
-			if parenDepth > 1 {
-				innerContent += ")"
-			}
 			index++
 			continue
 		}
 
 
-		if s[index:index+1] == "'" {
+		if s[index:index+1] == "'" && !inParen {
 			if inQuot {
-				ret = append(ret, LexedToken{STRING, lineNumber,innerContent})
-				ret = append(ret, LexedToken{QUOTE, lineNumber,"'"})
+				ret = append(ret, Item{STRING, lineNumber,innerContent})
+				ret = append(ret, Item{QUOTE, lineNumber,"'"})
 				inQuot = false
 				innerContent = ""
 			} else {
 				inQuot = true
 				innerContent = "" //for good measure
-				ret = append(ret, LexedToken{QUOTE, lineNumber,"'"})
+				ret = append(ret, Item{QUOTE, lineNumber,"'"})
 			}
 			index++
 			continue
@@ -122,13 +122,13 @@ func Lex(s string) ([]LexedToken, error) {
 		}
 
 		if s[index] == ',' {
-			ret = append(ret, LexedToken{COMMA,  lineNumber,","})
+			ret = append(ret, Item{COMMA,  lineNumber,","})
 			index++
 			continue
 		}
 
 		if s[index] == '=' {
-			ret = append(ret, LexedToken{EQUALS, lineNumber,"="})
+			ret = append(ret, Item{EQUALS, lineNumber,"="})
 			index++
 			continue
 		}
@@ -145,12 +145,18 @@ func Lex(s string) ([]LexedToken, error) {
 		}
 
 		if t, ss, ok := getKeyword(s, index); ok {
-			ret = append(ret, LexedToken{t, lineNumber,ss })
+			ret = append(ret, Item{t, lineNumber,ss })
 			index = index + len(ss)
 			continue
 		}
 
 		return nil, formatErr("Invalid syntax", lineNumber)
+	}
+	if inParen {
+		return nil, formatErr("Unclosed (", lineNumber)
+	}
+	if inQuot {
+		return nil, formatErr("Unclosed '", lineNumber)
 	}
 	return ret, nil
 }
