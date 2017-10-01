@@ -179,5 +179,5 @@ func getKeyword(s string, i int) (Token, string, bool){
 }
 
 func formatErr(msg string, line int) error {
-	return fmt.Errorf("syntax error line %v: %s", line, msg)
+	return fmt.Errorf("compilation error line %v: %s", line, msg)
 }

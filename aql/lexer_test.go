@@ -75,13 +75,28 @@ func TestInnerContent(t *testing.T){
 			So(tt[2].ID, ShouldEqual, PAREN_BODY)
 			So(tt[2].Content, ShouldEqual, "content(a)'")
 			So(tt[3].ID, ShouldEqual, RPAREN)
+			s = "QUERY 'content(a)('"
+			tt, err = Lex(s)
+			So(err, ShouldBeNil)
+			So(tt, ShouldHaveLength, 4)
+			So(tt[0].ID, ShouldEqual, QUERY)
+			So(tt[1].ID, ShouldEqual, QUOTE)
+			So(tt[2].ID, ShouldEqual, STRING)
+			So(tt[2].Content, ShouldEqual, "content(a)(")
+			So(tt[3].ID, ShouldEqual, QUOTE)
 		})
+
 		Convey("It should report an error when an unclosed ( is detected", func(){
 			s = "QUERY ("
 			_, err := Lex(s)
 			So(err, ShouldNotBeNil)
 			s = "QUERY )"
 			_, err = Lex(s)
+			So(err, ShouldNotBeNil)
+		})
+		Convey("It should report an error when an unclosed ' is detected", func(){
+			s = "QUERY '"
+			_, err := Lex(s)
 			So(err, ShouldNotBeNil)
 		})
 	})
