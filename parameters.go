@@ -27,7 +27,7 @@ func parseParameters(params string) (map[string]string, error) {
 }
 
 //promptParameters prompts the user to enter parameters on STDIN.
-func promptParameters(report *aql.Report) (map[string]string, error) {
+func promptParameters(report *aql_old.Report) (map[string]string, error) {
 	ret := make(map[string]string)
 	reader := bufio.NewReader(os.Stdin)
 	fmt.Println("Please enter each parameter when prompted, followed by the [enter] key")

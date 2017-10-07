@@ -18,7 +18,7 @@ func Validate(c *cli.Context) error {
 		fmt.Println(err)
 		return nil
 	}
-	_, err = aql.Load(string(b))
+	_, err = aql_old.Load(string(b))
 	if err == nil {
 		fmt.Println("[OK] Script is valid")
 		return nil

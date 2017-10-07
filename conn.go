@@ -15,14 +15,14 @@ type ConnectionConfig struct {
 	Connections []Connection `toml:"connection"`
 }
 
-func parseConn(file string) (map[string]aql.Connection, error) {
+func parseConn(file string) (map[string]aql_old.Connection, error) {
 	var config ConnectionConfig
 	if _, err := toml.DecodeFile(file, &config); err != nil {
 		return nil, err
 	}
-	ret := make(map[string]aql.Connection)
+	ret := make(map[string]aql_old.Connection)
 	for i := range config.Connections {
-		ret[config.Connections[i].Name] = aql.Connection{
+		ret[config.Connections[i].Name] = aql_old.Connection{
 			Driver:           config.Connections[i].Driver,
 			ConnectionString: config.Connections[i].ConnectionString,
 		}

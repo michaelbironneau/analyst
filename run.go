@@ -22,7 +22,7 @@ func Run(c *cli.Context) error {
 		fmt.Println(err)
 		return nil
 	}
-	script, err := aql.Load(string(b))
+	script, err := aql_old.Load(string(b))
 	if err != nil {
 		fmt.Println(err)
 		return nil
@@ -46,13 +46,13 @@ func Run(c *cli.Context) error {
 		}
 	}
 	//Compile script
-	var task *aql.Report
+	var task *aql_old.Report
 	if task, err = script.ExecuteTemplates(); err != nil {
 		fmt.Println(err)
 		return nil
 	}
 	//Get connections
-	connections := make(map[string]aql.Connection)
+	connections := make(map[string]aql_old.Connection)
 	for _, connection := range task.Connections {
 		c, err := parseConn(connection)
 		if err != nil {
@@ -95,7 +95,7 @@ func Run(c *cli.Context) error {
 			}
 		}
 	}()
-	report, err := task.Execute(aql.DBQuery, templateFile, connections, progress, logs)
+	report, err := task.Execute(aql_old.DBQuery, templateFile, connections, progress, logs)
 	done <- true
 	if err != nil {
 		fmt.Printf("\n[ERROR] %v\n", err)

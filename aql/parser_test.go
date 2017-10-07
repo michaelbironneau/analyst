@@ -3,40 +3,62 @@ package aql
 import (
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+	"github.com/alecthomas/participle"
+	"strings"
 )
 
-func TestParseOptions(t *testing.T) {
-	Convey("When parsing a single option", t, func() {
-		s := " KEY   = \"asdf\" "
-		Convey("It should get the key and value correctly, without error", func(){
-			o, err := parseOptions(s, 1)
-			So(err, ShouldBeNil)
-			So(o["KEY"], ShouldResemble, "asdf")
-		})
+func TestQuery(t *testing.T) {
+	parser, err := participle.Build(&Query{}, &definition{})
+	if err != nil {
+		panic(err)
+	}
+	Convey("It should parse query blocks successfully", t, func() {
+		//1
+		s1 := `QUERY 'name' FROM source (
+			query_source()
+		) INTO destination
+		`
+		b := &Query{}
+		err = parser.ParseString(s1, b)
+		So(err, ShouldBeNil)
+		So(b.Name, ShouldEqual, "name")
+		So(strings.TrimSpace(b.Content), ShouldEqual, "query_source()")
+		So(b.Source, ShouldEqual, "source")
+		So(b.Destination, ShouldEqual, "destination")
 
-		Convey("It should return errors, if there are any", func(){
-			s = "KEY \"asdf\""
-			_, err := parseOptions(s, 1)
-			So(err, ShouldNotBeNil)
-			s = "KEY = \"asdf"
-			_, err = parseOptions(s, 1)
-			So(err, ShouldNotBeNil)
-		})
-	})
-	Convey("When parsing multiple options", t, func(){
-		s := " KEY = \"asdf\",   KEY2 = 123, KEY3 = true, KEY4 = 1.234"
-		Convey("It should get keys and values correctly, without errors", func(){
-			o, err := parseOptions(s, 1)
-			So(err, ShouldBeNil)
-			So(o["KEY"], ShouldResemble, "asdf")
-			So(o["KEY2"], ShouldResemble, 123.00)
-			So(o["KEY3"], ShouldResemble, true)
-			So(o["KEY4"], ShouldResemble, 1.234)
-		})
-		Convey("It should return errors, if there are any", func(){
-			s = "KEY = 123, KEY2 = "
-			_, err := parseOptions(s, 1)
-			So(err, ShouldNotBeNil)
-		})
+		//2
+		s1 = `QUERY 'name' EXTERN 'sourcee'
+		FROM source (
+			thing''
+		) INTO    destination
+		`
+		b = &Query{}
+		err = parser.ParseString(s1, b)
+		So(err, ShouldBeNil)
+		So(b.Name, ShouldEqual, "name")
+		So(b.Extern, ShouldEqual, "sourcee")
+		So(strings.TrimSpace(b.Content), ShouldEqual, "thing''")
+		So(b.Source, ShouldEqual, "source")
+		So(b.Destination, ShouldEqual, "destination")
+
+		//3
+		s1 = `QUERY 'name' EXTERN 'sourcee'
+		FROM source (
+			thing''
+		) INTO    destination
+		WITH (opt1 = 'val', opt2 = 1234)
+		`
+		b = &Query{}
+		err = parser.ParseString(s1, b)
+		So(err, ShouldBeNil)
+		So(b.Name, ShouldEqual, "name")
+		So(b.Extern, ShouldEqual, "sourcee")
+		So(strings.TrimSpace(b.Content), ShouldEqual, "thing''")
+		So(b.Source, ShouldEqual, "source")
+		So(b.Destination, ShouldEqual, "destination")
+		So(b.Options, ShouldHaveLength, 2)
+		So(b.Options[0].Key, ShouldEqual, "opt1")
+		So(b.Options[1].Value.Number, ShouldResemble, 1234)
+
 	})
 }
