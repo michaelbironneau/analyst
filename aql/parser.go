@@ -10,11 +10,18 @@ type Option struct {
 	Value *OptionValue `@@`
 }
 
+type Source struct {
+	Script *string `SCRIPT @QUOTED_STRING`
+	Database *string `| CONNECTION @IDENT`
+	Block *string `| BLOCK @IDENT`
+	Global bool `| @GLOBAL`
+}
+
 //QUERY 'name' [EXTERN 'source'] FROM source (body) INTO destination WITH (k=v, k2=v2, ...)
 type Query struct {
 	Name        string    `QUERY @QUOTED_STRING`
 	Extern      string    `[EXTERN @QUOTED_STRING]`
-	Source      string    `FROM @IDENT`
+	Sources     []*Source    `FROM @@ {"," @@}`
 	Content     string    `'(' @PAREN_BODY ')'`
 	Destination string    `INTO @IDENT`
 	Options     []*Option `[WITH '(' @@ {"," @@ } ')' ]`
