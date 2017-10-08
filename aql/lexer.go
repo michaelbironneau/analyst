@@ -6,8 +6,8 @@ import (
 	"io"
 	"io/ioutil"
 	"regexp"
-	"strings"
 	"strconv"
+	"strings"
 )
 
 type tokenType rune
@@ -148,7 +148,17 @@ func Lex(s string) ([]Item, error) {
 				innerContent += ")"
 			}
 			if parenDepth == 1 {
-				ret = append(ret, Item{PAREN_BODY, lineNumber, innerContent})
+				if len(ret) > 2 && ret[len(ret)-2].ID == WITH {
+					//special case - if we are in WITH block, lex the options
+					opts, err := Lex(innerContent)
+					if err != nil {
+						return nil, err
+					}
+					ret = append(ret, opts...)
+				} else {
+					//not in WITH block - could be eg. QUERY or SCRIPT
+					ret = append(ret, Item{PAREN_BODY, lineNumber, innerContent})
+				}
 				ret = append(ret, Item{RPAREN, lineNumber, ")"}) //we only care about outermost parenthesis - AQL never nests but the queries or scripts could.
 			}
 			parenDepth--
@@ -242,7 +252,12 @@ func Lex(s string) ([]Item, error) {
 	}
 	if len(identifier) > 0 {
 		//closing identifier
-		ret = append(ret, Item{IDENTIFIER, lineNumber, identifier})
+		_, err := strconv.ParseFloat(identifier, 64)
+		if err == nil {
+			ret = append(ret, Item{NUMBER, lineNumber, identifier})
+		} else {
+			ret = append(ret, Item{IDENTIFIER, lineNumber, identifier})
+		}
 	}
 	return ret, nil
 }

@@ -68,7 +68,7 @@ func TestIdentifiers(t *testing.T) {
 			So(tt[3].Content, ShouldEqual, "bsdf")
 			So(tt[8].Content, ShouldEqual, "esdf")
 		})
-		Convey("It should identify numbers separately", func(){
+		Convey("It should identify numbers separately", func() {
 			s = "QUERY asdf FROM 1.234 (csdf)"
 			tt, err := Lex(s)
 			So(err, ShouldBeNil)

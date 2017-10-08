@@ -1,10 +1,10 @@
 package aql
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 	"github.com/alecthomas/participle"
+	. "github.com/smartystreets/goconvey/convey"
 	"strings"
+	"testing"
 )
 
 func TestQuery(t *testing.T) {
@@ -58,7 +58,8 @@ func TestQuery(t *testing.T) {
 		So(b.Destination, ShouldEqual, "destination")
 		So(b.Options, ShouldHaveLength, 2)
 		So(b.Options[0].Key, ShouldEqual, "opt1")
-		So(b.Options[1].Value.Number, ShouldResemble, 1234)
+		f := 1234.0
+		So(b.Options[1].Value.Number, ShouldResemble, &f)
 
 	})
 }
