@@ -16,7 +16,7 @@ func TestQuery(t *testing.T) {
 		//1
 		s1 := `QUERY 'name' FROM CONNECTION source (
 			query_source()
-		) INTO destination
+		) INTO CONNECTION destination
 		`
 		b := &Query{}
 		err = parser.ParseString(s1, b)
@@ -26,46 +26,86 @@ func TestQuery(t *testing.T) {
 		So(b.Sources, ShouldHaveLength, 1)
 		s := "source"
 		So(b.Sources[0].Database, ShouldResemble, &s)
-		So(b.Destination, ShouldEqual, "destination")
+		So(*b.Destination.Database, ShouldEqual, "destination")
 
 		//2
 		s1 = `QUERY 'name' EXTERN 'sourcee'
 		FROM GLOBAL, SCRIPT 'asdf.py' (
 			thing''
-		) INTO    destination
+		) INTO GLOBAL
 		`
 		b = &Query{}
 		err = parser.ParseString(s1, b)
 		So(err, ShouldBeNil)
 		So(b.Name, ShouldEqual, "name")
-		So(b.Extern, ShouldEqual, "sourcee")
+		ss := "sourcee"
+		So(b.Extern, ShouldResemble, &ss)
 		So(strings.TrimSpace(b.Content), ShouldEqual, "thing''")
 		So(b.Sources, ShouldHaveLength, 2)
 		So(b.Sources[0].Global, ShouldBeTrue)
-		ss := "asdf.py"
+		ss = "asdf.py"
 		So(b.Sources[1].Script, ShouldResemble, &ss)
-		So(b.Destination, ShouldEqual, "destination")
+		So(b.Destination.Global, ShouldBeTrue)
 
 		//3
 		s1 = `QUERY 'name' EXTERN 'sourcee'
 		FROM GLOBAL (
 			thing''
-		) INTO    destination
+		) INTO CONNECTION destination
 		WITH (opt1 = 'val', opt2 = 1234)
 		`
 		b = &Query{}
 		err = parser.ParseString(s1, b)
 		So(err, ShouldBeNil)
 		So(b.Name, ShouldEqual, "name")
-		So(b.Extern, ShouldEqual, "sourcee")
+		ss = "sourcee"
+		So(b.Extern, ShouldResemble, &ss)
 		So(strings.TrimSpace(b.Content), ShouldEqual, "thing''")
 		So(b.Sources, ShouldHaveLength, 1)
 		So(b.Sources[0].Global, ShouldBeTrue)
-		So(b.Destination, ShouldEqual, "destination")
+		So(*b.Destination.Database, ShouldEqual, "destination")
 		So(b.Options, ShouldHaveLength, 2)
 		So(b.Options[0].Key, ShouldEqual, "opt1")
 		f := 1234.0
 		So(b.Options[1].Value.Number, ShouldResemble, &f)
 
+	})
+}
+
+func TestInclude(t *testing.T) {
+	parser, err := participle.Build(&Include{}, &definition{})
+	if err != nil {
+		panic(err)
+	}
+	Convey("It should parse Include blocks successfully", t, func() {
+		s1 := `INCLUDE 'name' FROM 'source.txt'`
+		b := &Include{}
+		err = parser.ParseString(s1, b)
+		So(b.Source, ShouldEqual, "source.txt")
+		So(b.Name, ShouldEqual, "name")
+
+	})
+}
+
+func TestScript(t *testing.T) {
+	parser, err := participle.Build(&Script{}, &definition{})
+	if err != nil {
+		panic(err)
+	}
+	Convey("It should parse script blocks successfully", t, func() {
+		//1
+		s1 := `SCRIPT 'name' FROM CONNECTION source (
+			query_source()
+		) INTO CONNECTION destination
+		`
+		b := &Script{}
+		err = parser.ParseString(s1, b)
+		So(err, ShouldBeNil)
+		So(b.Name, ShouldEqual, "name")
+		So(strings.TrimSpace(b.Content), ShouldEqual, "query_source()")
+		So(b.Sources, ShouldHaveLength, 1)
+		s := "source"
+		So(b.Sources[0].Database, ShouldResemble, &s)
+		So(*b.Destination.Database, ShouldEqual, "destination")
 	})
 }

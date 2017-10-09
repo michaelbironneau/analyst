@@ -10,19 +10,38 @@ type Option struct {
 	Value *OptionValue `@@`
 }
 
-type Source struct {
-	Script *string `SCRIPT @QUOTED_STRING`
+type SourceSink struct {
+	Script   *string `SCRIPT @QUOTED_STRING`
 	Database *string `| CONNECTION @IDENT`
-	Block *string `| BLOCK @IDENT`
-	Global bool `| @GLOBAL`
+	Block    *string `| BLOCK @IDENT`
+	Global   bool    `| @GLOBAL`
 }
 
-//QUERY 'name' [EXTERN 'source'] FROM source (body) INTO destination WITH (k=v, k2=v2, ...)
 type Query struct {
-	Name        string    `QUERY @QUOTED_STRING`
-	Extern      string    `[EXTERN @QUOTED_STRING]`
-	Sources     []*Source    `FROM @@ {"," @@}`
-	Content     string    `'(' @PAREN_BODY ')'`
-	Destination string    `INTO @IDENT`
-	Options     []*Option `[WITH '(' @@ {"," @@ } ')' ]`
+	Name        string        `QUERY @QUOTED_STRING`
+	Extern      *string       `[EXTERN @QUOTED_STRING]`
+	Sources     []*SourceSink `FROM @@ {"," @@}`
+	Content     string        `'(' @PAREN_BODY ')'`
+	Destination *SourceSink   `INTO @@`
+	Options     []*Option     `[WITH '(' @@ {"," @@ } ')' ]`
+}
+
+type Script struct {
+	Name        string        `SCRIPT @QUOTED_STRING`
+	Extern      *string       `[EXTERN @QUOTED_STRING]`
+	Sources     []*SourceSink `FROM @@ {"," @@}`
+	Content     string        `'(' @PAREN_BODY ')'`
+	Destination *SourceSink   `INTO @@`
+	Options     []*Option     `[WITH '(' @@ {"," @@ } ')' ]`
+}
+
+type Include struct {
+	Name   string `INCLUDE @QUOTED_STRING`
+	Source string `FROM @QUOTED_STRING`
+}
+
+type Blocks struct {
+	Queries  []*Query   `{ @@`
+	Includes []*Include `| @@ `
+	Scripts  []*Script  ` | @@ }`
 }
