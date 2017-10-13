@@ -35,13 +35,36 @@ type Script struct {
 	Options     []*Option     `[WITH '(' @@ {"," @@ } ')' ]`
 }
 
+type Test struct {
+	Query   bool          `TEST [@QUERY `
+	Script  bool          `|@SCRIPT ]`
+	Name    string        `@QUOTED_STRING`
+	Extern  *string       `[EXTERN @QUOTED_STRING]`
+	Sources []*SourceSink `FROM @@ {"," @@}`
+	Content string        `'(' @PAREN_BODY ')'`
+	Options []*Option     `[WITH '(' @@ {"," @@ } ')' ]`
+}
+
+type Global struct {
+	Name    string    `GLOBAL @QUOTED_STRING`
+	Content string    `'(' @PAREN_BODY ')'`
+	Options []*Option `[WITH '(' @@ {"," @@ } ')' ]`
+}
+
 type Include struct {
 	Name   string `INCLUDE @QUOTED_STRING`
 	Source string `FROM @QUOTED_STRING`
 }
 
+type Description struct {
+	Content string `DESCRIPTION @QUOTED_STRING`
+}
+
 type Blocks struct {
+	Description *Description `[@@]`
 	Queries  []*Query   `{ @@`
 	Includes []*Include `| @@ `
+	Tests    []*Test    `| @@ `
+	Globals []*Global   `| @@ `
 	Scripts  []*Script  ` | @@ }`
 }

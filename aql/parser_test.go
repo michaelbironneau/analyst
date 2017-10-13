@@ -109,3 +109,65 @@ func TestScript(t *testing.T) {
 		So(*b.Destination.Database, ShouldEqual, "destination")
 	})
 }
+
+func TestTest(t *testing.T) {
+	parser, err := participle.Build(&Test{}, &definition{})
+	if err != nil {
+		panic(err)
+	}
+	Convey("It should parse test blocks successfully", t, func() {
+		//1
+		s1 := `TEST SCRIPT 'name' FROM CONNECTION source (
+			query_source()
+		)
+		`
+		b := &Test{}
+		err = parser.ParseString(s1, b)
+		So(err, ShouldBeNil)
+		So(b.Name, ShouldEqual, "name")
+		So(strings.TrimSpace(b.Content), ShouldEqual, "query_source()")
+		So(b.Sources, ShouldHaveLength, 1)
+		s := "source"
+		So(b.Sources[0].Database, ShouldResemble, &s)
+		So(b.Script, ShouldBeTrue)
+		So(b.Query, ShouldBeFalse)
+	})
+}
+
+func TestGlobal(t *testing.T) {
+	parser, err := participle.Build(&Global{}, &definition{})
+	if err != nil {
+		panic(err)
+	}
+	Convey("It should parse global blocks successfully", t, func() {
+		//1
+		s1 := `GLOBAL 'name' (
+			query_source()
+		)
+		`
+		b := &Global{}
+		err = parser.ParseString(s1, b)
+		So(err, ShouldBeNil)
+		So(b.Name, ShouldEqual, "name")
+		So(strings.TrimSpace(b.Content), ShouldEqual, "query_source()")
+	})
+}
+
+func TestDescription(t *testing.T) {
+	parser, err := participle.Build(&Description{}, &definition{})
+	if err != nil {
+		panic(err)
+	}
+	Convey("It should parse description blocks successfully", t, func() {
+		//1
+		s1 := `DESCRIPTION 'This is a
+		description'
+		`
+		b := &Description{}
+		err = parser.ParseString(s1, b)
+		So(err, ShouldBeNil)
+		So(b.Content, ShouldEqual, `This is a
+		description`)
+	})
+}
+
