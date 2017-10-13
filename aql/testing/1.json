@@ -1,0 +1,27 @@
+{
+  "Description": {
+    "Content": "Test"
+  },
+  "Queries": [{
+    "Name": "q1",
+    "Extern": null,
+    "Sources": [{
+      "Script": null,
+      "Database": null,
+      "Block": null,
+      "Global": true
+    }],
+    "Content": "\n    SELECT * FROM Something\n",
+    "Destination": {
+      "Script": null,
+      "Database": "d1",
+      "Block": null,
+      "Global": false
+    },
+    "Options": null
+  }],
+  "Includes": null,
+  "Tests": null,
+  "Globals": null,
+  "Scripts": null
+}

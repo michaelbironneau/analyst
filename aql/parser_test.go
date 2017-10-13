@@ -5,7 +5,51 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"strings"
 	"testing"
+	"path/filepath"
+	"io/ioutil"
+	"encoding/json"
+	"fmt"
 )
+
+func getExpectedResult(scriptPath string) (*Blocks, error){
+	jsonPath := strings.Replace(scriptPath, ".txt", ".json", 1)
+	var bb Blocks
+	b, err := ioutil.ReadFile(jsonPath)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(b, &bb)
+	return &bb, err
+}
+
+func saveExpectedResult(scriptPath string, b Blocks) error {
+	bb, err := json.Marshal(b)
+	if err != nil {
+		return err
+	}
+	jsonPath := strings.Replace(scriptPath, ".txt", ".json", 1)
+	err = ioutil.WriteFile(jsonPath, bb, 666)
+	return err
+}
+
+func TestCompareOutput(t *testing.T){
+	Convey("Given the scripts in the testing folder", t, func(){
+		Convey("It should parse each without error and the output should be as expected", func(){
+			s, err := filepath.Glob("./testing/*.txt")
+			if err != nil {
+				panic(err)
+			}
+			for _, ss := range s {
+				bs, err := ParseFile(ss)
+				sss, err := json.Marshal(bs)
+				So(err, ShouldBeNil)
+				js, err := getExpectedResult(ss)
+				So(err, ShouldBeNil)
+				So(bs, ShouldResemble, js)
+			}
+		})
+	})
+}
 
 func TestQuery(t *testing.T) {
 	parser, err := participle.Build(&Query{}, &definition{})

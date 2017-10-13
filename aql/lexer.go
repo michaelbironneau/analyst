@@ -75,7 +75,7 @@ func (d *definition) Lex(r io.Reader) lexer.Lexer {
 	if err != nil {
 		panic(err)
 	}
-	fmt.Println(i)
+	//fmt.Println(i)
 	l.items = i
 	return l
 }
@@ -97,7 +97,7 @@ func (f *ForwardLexer) Peek() lexer.Token {
 
 func (f *ForwardLexer) Next() lexer.Token {
 	t := f.Peek()
-	fmt.Println(t)
+	//fmt.Println(t)
 	if !t.EOF() {
 		f.pos++
 	}
