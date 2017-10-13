@@ -269,3 +269,23 @@ func TestResolveIncludes(t *testing.T){
 		})
 	})
 }
+
+func TestParameterEvaluation(t *testing.T){
+	Convey("Given a script with parameters", t, func(){
+		q := `QUERY 'a' FROM GLOBAL (
+			SELECT * FROM {{ .Table }}
+		) INTO GLOBAL
+		WITH (Table = 'Something')`
+		b, err := ParseString(q)
+		So(err, ShouldBeNil)
+		Convey("It should correctly evaluate the content", func(){
+			err = b.EvaluateParametrizedContent(nil)
+			So(err, ShouldBeNil)
+			So(b.Queries, ShouldHaveLength, 1)
+			So(b.Queries[0].Options, ShouldHaveLength, 1)
+			So(b.Queries[0].Content, ShouldEqual, `
+			SELECT * FROM Something
+		`)
+		})
+	})
+}

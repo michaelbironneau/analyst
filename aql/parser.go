@@ -7,6 +7,8 @@ import (
 	"strings"
 	"path/filepath"
 	"io/ioutil"
+	"text/template"
+	"bytes"
 )
 
 //MaxIncludeDepth is the maximum depth of includes that will be processed before an error is returned.
@@ -92,6 +94,60 @@ type Blocks struct {
 	Tests       []Test               `| @@ `
 	Globals     []Global             `| @@ `
 	Scripts     []Script             ` | @@ }`
+}
+
+func (b *Blocks) EvaluateParametrizedContent(globals []Option) error {
+	var err error
+	for i := range b.Queries {
+		b.Queries[i].Content, err = evaluateContent(b.Queries[i].Content, b.Queries[i].Options, globals)
+		if err != nil {
+			return err
+		}
+	}
+
+	for i := range b.Scripts {
+		b.Scripts[i].Content, err = evaluateContent(b.Scripts[i].Content, b.Scripts[i].Options, globals)
+		if err != nil {
+			return err
+		}
+	}
+
+	for i := range b.Tests {
+		b.Tests[i].Content, err = evaluateContent(b.Tests[i].Content, b.Tests[i].Options, globals)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func evaluateContent(content string, locals []Option, globals []Option) (string, error){
+	opts := make(map[string]interface{})
+	for _, v := range globals {
+		//v.Value cannot be nil
+		if v.Value.Str != nil {
+			opts[v.Key] = v.Value.Str
+		} else {
+			opts[v.Key] = v.Value.Number
+		}
+	}
+	//override with locals
+	for _, v := range locals {
+		//v.Value cannot be nil
+		if v.Value.Str != nil {
+			opts[v.Key] = v.Value.Str
+		} else {
+			opts[v.Key] = v.Value.Number
+		}
+	}
+	t := template.Must(template.New("").Parse(content))
+	var b bytes.Buffer
+	err := t.Execute(&b, opts)
+	if err != nil {
+		return "", err
+	}
+	return b.String(), nil
 }
 
 func (b *Blocks) ResolveExternalContent() error {
