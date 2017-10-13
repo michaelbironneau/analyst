@@ -69,7 +69,7 @@ func (d *definition) Lex(r io.Reader) lexer.Lexer {
 	l := &ForwardLexer{}
 	b, err := ioutil.ReadAll(r)
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("error reading from file: %v", err))
 	}
 	i, err := Lex(string(b))
 	if err != nil {
@@ -269,6 +269,15 @@ func Lex(s string) ([]Item, error) {
 func isWhitespace(s string, i int) bool {
 	return whitespace.Match([]byte(s[i : i+1]))
 }
+func isDelimiter(s string, i int) bool {
+	if isWhitespace(s, i){
+		return true
+	}
+	if s[i] == '\'' || s[i] == ',' || s[i] == '(' || s[i] == ')' || s[i] == '=' {
+		return true
+	}
+	return false
+}
 
 func getKeyword(s string, i int) (tokenType, string, bool) {
 	l := len(s)
@@ -277,6 +286,9 @@ func getKeyword(s string, i int) (tokenType, string, bool) {
 			continue
 		}
 		if strings.ToUpper(s[i:i+len(k)]) == k {
+			if l > len(k)+i && !isDelimiter(s, i+len(k)){
+				continue //this is an identifier that begins with a keyword, e.g. connectionString
+			}
 			return v, k, true
 		}
 	}

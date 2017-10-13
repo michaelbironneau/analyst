@@ -1,0 +1,11 @@
+{
+  "Description": {
+    "Content": "Test 3"
+  },
+  "Includes": [{
+    "Source": "1.txt"
+  }],
+  "Tests": null,
+  "Globals": null,
+  "Scripts": null
+}

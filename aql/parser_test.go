@@ -1,17 +1,16 @@
 package aql
 
 import (
+	"encoding/json"
 	"github.com/alecthomas/participle"
 	. "github.com/smartystreets/goconvey/convey"
+	"io/ioutil"
+	"path/filepath"
 	"strings"
 	"testing"
-	"path/filepath"
-	"io/ioutil"
-	"encoding/json"
-	"fmt"
 )
 
-func getExpectedResult(scriptPath string) (*Blocks, error){
+func getExpectedResult(scriptPath string) (*Blocks, error) {
 	jsonPath := strings.Replace(scriptPath, ".txt", ".json", 1)
 	var bb Blocks
 	b, err := ioutil.ReadFile(jsonPath)
@@ -32,16 +31,16 @@ func saveExpectedResult(scriptPath string, b Blocks) error {
 	return err
 }
 
-func TestCompareOutput(t *testing.T){
-	Convey("Given the scripts in the testing folder", t, func(){
-		Convey("It should parse each without error and the output should be as expected", func(){
+func TestCompareOutput(t *testing.T) {
+	Convey("Given the scripts in the testing folder", t, func() {
+		Convey("It should parse each without error and the output should be as expected", func() {
 			s, err := filepath.Glob("./testing/*.txt")
 			if err != nil {
 				panic(err)
 			}
 			for _, ss := range s {
 				bs, err := ParseFile(ss)
-				sss, err := json.Marshal(bs)
+				//sss, err := json.Marshal(bs)
 				So(err, ShouldBeNil)
 				js, err := getExpectedResult(ss)
 				So(err, ShouldBeNil)
@@ -122,11 +121,10 @@ func TestInclude(t *testing.T) {
 		panic(err)
 	}
 	Convey("It should parse Include blocks successfully", t, func() {
-		s1 := `INCLUDE 'name' FROM 'source.txt'`
+		s1 := `INCLUDE 'source.txt'`
 		b := &Include{}
 		err = parser.ParseString(s1, b)
 		So(b.Source, ShouldEqual, "source.txt")
-		So(b.Name, ShouldEqual, "name")
 
 	})
 }
@@ -215,3 +213,55 @@ func TestDescription(t *testing.T) {
 	})
 }
 
+func TestConnection(t *testing.T) {
+	parser, err := participle.Build(&UnparsedConnection{}, &definition{})
+	if err != nil {
+		panic(err)
+	}
+	Convey("It should process connection blocks successfully", t, func() {
+		//1
+		s1 := `CONNECTION 'test' (
+			Driver = 'MSSQL'
+			ConnectionString = 'asdf'
+		)
+		`
+		b := &UnparsedConnection{}
+		err = parser.ParseString(s1, b)
+		So(err, ShouldBeNil)
+		So(b.Name, ShouldEqual, "test")
+		So(b.Content, ShouldEqual, `
+			Driver = 'MSSQL'
+			ConnectionString = 'asdf'
+		`)
+	})
+	Convey("It should parse connection block contents successfully", t, func(){
+		b := UnparsedConnection{
+			Name: "Test",
+			Content: `
+			Driver = 'MSSQL',
+			ConnectionString = 'asdf'
+		`,
+		}
+		bb, err := parseConnections([]UnparsedConnection{b})
+		So(err, ShouldBeNil)
+		So(bb, ShouldHaveLength, 1)
+		So(bb[0].Driver, ShouldEqual, "MSSQL")
+		So(bb[0].Name, ShouldEqual, "Test")
+		So(bb[0].ConnectionString, ShouldEqual, "asdf")
+	})
+}
+
+func TestResolveIncludes(t *testing.T){
+	Convey("Given a script with an INCLUDE statement", t, func(){
+		q := `INCLUDE 'testing/2.txt'`
+		b, err := ParseString(q)
+		So(err, ShouldBeNil)
+		Convey("It should correctly resolve the included resources", func(){
+			err = b.ResolveExternalContent()
+			So(err, ShouldBeNil)
+			So(b.Queries, ShouldHaveLength, 1)
+			So(b.Description, ShouldNotBeNil)
+			So(b.Queries[0].Name, ShouldEqual, "q1")
+		})
+	})
+}
