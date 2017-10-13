@@ -41,6 +41,7 @@ func TestCompareOutput(t *testing.T) {
 			for _, ss := range s {
 				bs, err := ParseFile(ss)
 				//sss, err := json.Marshal(bs)
+				//fmt.Println(string(sss))
 				So(err, ShouldBeNil)
 				js, err := getExpectedResult(ss)
 				So(err, ShouldBeNil)
@@ -259,9 +260,12 @@ func TestResolveIncludes(t *testing.T){
 		Convey("It should correctly resolve the included resources", func(){
 			err = b.ResolveExternalContent()
 			So(err, ShouldBeNil)
-			So(b.Queries, ShouldHaveLength, 1)
+			So(b.Queries, ShouldHaveLength, 2)
 			So(b.Description, ShouldNotBeNil)
-			So(b.Queries[0].Name, ShouldEqual, "q1")
+			So(b.Queries[0].Name, ShouldEqual, "b")
+			So(b.Queries[0].Content, ShouldEqual, "TEST EXTERNAL CONTENT")
+			So(b.Queries[1].Name, ShouldEqual, "q1")
+			So(*b.Queries[1].Destination.Database, ShouldEqual, "d1")
 		})
 	})
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"path/filepath"
+	"io/ioutil"
 )
 
 //MaxIncludeDepth is the maximum depth of includes that will be processed before an error is returned.
@@ -32,7 +33,7 @@ type Query struct {
 	Name        string       `QUERY @QUOTED_STRING`
 	Extern      *string      `[EXTERN @QUOTED_STRING]`
 	Sources     []SourceSink `FROM @@ {"," @@}`
-	Content     string       `'(' @PAREN_BODY ')'`
+	Content     string       `['(' @PAREN_BODY ')']`
 	Destination *SourceSink  `INTO @@`
 	Options     []Option     `[WITH '(' @@ {"," @@ } ')' ]`
 }
@@ -41,7 +42,7 @@ type Script struct {
 	Name        string        `SCRIPT @QUOTED_STRING`
 	Extern      *string       `[EXTERN @QUOTED_STRING]`
 	Sources     []*SourceSink `FROM @@ {"," @@}`
-	Content     string        `'(' @PAREN_BODY ')'`
+	Content     string        `['(' @PAREN_BODY ')']`
 	Destination *SourceSink   `INTO @@`
 	Options     []Option      `[WITH '(' @@ {"," @@ } ')' ]`
 }
@@ -52,7 +53,7 @@ type Test struct {
 	Name    string       `@QUOTED_STRING`
 	Extern  *string      `[EXTERN @QUOTED_STRING]`
 	Sources []SourceSink `FROM @@ {"," @@}`
-	Content string       `'(' @PAREN_BODY ')'`
+	Content string       `['(' @PAREN_BODY ')']`
 	Options []Option     `[WITH '(' @@ {"," @@ } ')' ]`
 }
 
@@ -94,13 +95,57 @@ type Blocks struct {
 }
 
 func (b *Blocks) ResolveExternalContent() error {
+	if err := b.resolveExtern(""); err != nil {
+		return err
+	}
 	for i := range b.Includes {
 		if err := b.resolveInclude(i,0, ""); err != nil {
 			return err
 		}
 	}
-	//TODO: Resolve EXTERN
 	return nil
+}
+
+func (b *Blocks) resolveExtern(cwd string) error{
+	for i, query := range b.Queries {
+		if query.Extern != nil {
+			s, err := getContent(cwd, *query.Extern)
+			if err != nil {
+				return err
+			}
+			b.Queries[i].Content = s
+			b.Queries[i].Extern = nil
+		}
+	}
+
+	for i, script := range b.Scripts {
+		if script.Extern != nil {
+			s, err := getContent(cwd, *script.Extern)
+			if err != nil {
+				return err
+			}
+			b.Scripts[i].Content = s
+			b.Scripts[i].Extern = nil
+		}
+	}
+
+	for i, test := range b.Tests {
+		if test.Extern != nil {
+			s, err := getContent(cwd, *test.Extern)
+			if err != nil {
+				return err
+			}
+			b.Tests[i].Content = s
+			b.Tests[i].Extern = nil
+		}
+	}
+
+	return nil
+}
+
+func getContent(cwd, path string) (string, error){
+	b, err := ioutil.ReadFile(filepath.Join(cwd, path))
+	return string(b), err
 }
 
 //resolve the given include, recursively if need be. Doesn't do bound checks on index.
@@ -121,6 +166,7 @@ func (b *Blocks) resolveInclude(index, depth int, cwd string) error {
 			return err
 		}
 	}
+	bb.resolveExtern(filepath.Dir(filepath.Join(cwd, path)))
 	b.union(bb)
 	b.Includes = nil
 	return nil
