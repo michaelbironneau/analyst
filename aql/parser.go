@@ -29,6 +29,7 @@ type SourceSink struct {
 	Database *string `| CONNECTION @IDENT`
 	Block    *string `| BLOCK @IDENT`
 	Global   bool    `| @GLOBAL`
+	Alias   *string  `[AS @QUOTED_STRING]`
 }
 
 type Query struct {

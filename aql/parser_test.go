@@ -93,7 +93,7 @@ func TestQuery(t *testing.T) {
 
 		//3
 		s1 = `QUERY 'name' EXTERN 'sourcee'
-		FROM GLOBAL (
+		FROM GLOBAL AS 'source' (
 			thing''
 		) INTO CONNECTION destination
 		WITH (opt1 = 'val', opt2 = 1234)
@@ -107,6 +107,7 @@ func TestQuery(t *testing.T) {
 		So(strings.TrimSpace(b.Content), ShouldEqual, "thing''")
 		So(b.Sources, ShouldHaveLength, 1)
 		So(b.Sources[0].Global, ShouldBeTrue)
+		So(*b.Sources[0].Alias, ShouldEqual, "source")
 		So(*b.Destination.Database, ShouldEqual, "destination")
 		So(b.Options, ShouldHaveLength, 2)
 		So(b.Options[0].Key, ShouldEqual, "opt1")
