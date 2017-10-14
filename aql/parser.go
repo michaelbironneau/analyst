@@ -25,10 +25,10 @@ type Option struct {
 }
 
 type SourceSink struct {
-	Script   *string `SCRIPT @QUOTED_STRING`
+	Script   *string `(SCRIPT @QUOTED_STRING`
 	Database *string `| CONNECTION @IDENT`
-	Block    *string `| BLOCK @IDENT`
 	Global   bool    `| @GLOBAL`
+	Block    *string `| BLOCK @IDENT)`
 	Alias   *string  `[AS @QUOTED_STRING]`
 }
 
