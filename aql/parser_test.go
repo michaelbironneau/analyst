@@ -10,9 +10,9 @@ import (
 	"testing"
 )
 
-func getExpectedResult(scriptPath string) (*Blocks, error) {
+func getExpectedResult(scriptPath string) (*JobScript, error) {
 	jsonPath := strings.Replace(scriptPath, ".txt", ".json", 1)
-	var bb Blocks
+	var bb JobScript
 	b, err := ioutil.ReadFile(jsonPath)
 	if err != nil {
 		return nil, err
@@ -21,7 +21,7 @@ func getExpectedResult(scriptPath string) (*Blocks, error) {
 	return &bb, err
 }
 
-func saveExpectedResult(scriptPath string, b Blocks) error {
+func saveExpectedResult(scriptPath string, b JobScript) error {
 	bb, err := json.Marshal(b)
 	if err != nil {
 		return err
@@ -236,7 +236,7 @@ func TestConnection(t *testing.T) {
 			ConnectionString = 'asdf'
 		`)
 	})
-	Convey("It should parse connection block contents successfully", t, func(){
+	Convey("It should parse connection block contents successfully", t, func() {
 		b := UnparsedConnection{
 			Name: "Test",
 			Content: `
@@ -253,12 +253,12 @@ func TestConnection(t *testing.T) {
 	})
 }
 
-func TestResolveIncludes(t *testing.T){
-	Convey("Given a script with an INCLUDE statement", t, func(){
+func TestResolveIncludes(t *testing.T) {
+	Convey("Given a script with an INCLUDE statement", t, func() {
 		q := `INCLUDE 'testing/2.txt'`
 		b, err := ParseString(q)
 		So(err, ShouldBeNil)
-		Convey("It should correctly resolve the included resources", func(){
+		Convey("It should correctly resolve the included resources", func() {
 			err = b.ResolveExternalContent()
 			So(err, ShouldBeNil)
 			So(b.Queries, ShouldHaveLength, 2)
@@ -271,15 +271,15 @@ func TestResolveIncludes(t *testing.T){
 	})
 }
 
-func TestParameterEvaluation(t *testing.T){
-	Convey("Given a script with parameters", t, func(){
+func TestParameterEvaluation(t *testing.T) {
+	Convey("Given a script with parameters", t, func() {
 		q := `QUERY 'a' FROM GLOBAL (
 			SELECT * FROM {{ .Table }}
 		) INTO GLOBAL
 		WITH (Table = 'Something')`
 		b, err := ParseString(q)
 		So(err, ShouldBeNil)
-		Convey("It should correctly evaluate the content", func(){
+		Convey("It should correctly evaluate the content", func() {
 			err = b.EvaluateParametrizedContent(nil)
 			So(err, ShouldBeNil)
 			So(b.Queries, ShouldHaveLength, 1)

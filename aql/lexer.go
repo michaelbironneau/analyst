@@ -271,7 +271,7 @@ func isWhitespace(s string, i int) bool {
 	return whitespace.Match([]byte(s[i : i+1]))
 }
 func isDelimiter(s string, i int) bool {
-	if isWhitespace(s, i){
+	if isWhitespace(s, i) {
 		return true
 	}
 	if s[i] == '\'' || s[i] == ',' || s[i] == '(' || s[i] == ')' || s[i] == '=' {
@@ -287,7 +287,7 @@ func getKeyword(s string, i int) (tokenType, string, bool) {
 			continue
 		}
 		if strings.ToUpper(s[i:i+len(k)]) == k {
-			if l > len(k)+i && !isDelimiter(s, i+len(k)){
+			if l > len(k)+i && !isDelimiter(s, i+len(k)) {
 				continue //this is an identifier that begins with a keyword, e.g. connectionString
 			}
 			return v, k, true

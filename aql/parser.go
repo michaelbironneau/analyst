@@ -1,14 +1,14 @@
 package aql
 
 import (
+	"bytes"
 	"fmt"
 	"github.com/alecthomas/participle"
-	"os"
-	"strings"
-	"path/filepath"
 	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
 	"text/template"
-	"bytes"
 )
 
 //MaxIncludeDepth is the maximum depth of includes that will be processed before an error is returned.
@@ -29,7 +29,7 @@ type SourceSink struct {
 	Database *string `| CONNECTION @IDENT`
 	Global   bool    `| @GLOBAL`
 	Block    *string `| BLOCK @IDENT)`
-	Alias   *string  `[AS @QUOTED_STRING]`
+	Alias    *string `[AS @QUOTED_STRING]`
 }
 
 type Query struct {
@@ -51,13 +51,14 @@ type Script struct {
 }
 
 type Test struct {
-	Query   bool         `TEST [@QUERY `
-	Script  bool         `|@SCRIPT ]`
-	Name    string       `@QUOTED_STRING`
-	Extern  *string      `[EXTERN @QUOTED_STRING]`
-	Sources []SourceSink `FROM @@ {"," @@}`
-	Content string       `['(' @PAREN_BODY ')']`
-	Options []Option     `[WITH '(' @@ {"," @@ } ')' ]`
+	Query       bool         `TEST [@QUERY `
+	Script      bool         `|@SCRIPT ]`
+	Name        string       `@QUOTED_STRING`
+	Extern      *string      `[EXTERN @QUOTED_STRING]`
+	Sources     []SourceSink `FROM @@ {"," @@}`
+	Content     string       `['(' @PAREN_BODY ')']`
+	Destination *SourceSink  `[INTO @@]`
+	Options     []Option     `[WITH '(' @@ {"," @@ } ')' ]`
 }
 
 type Global struct {
@@ -67,7 +68,7 @@ type Global struct {
 }
 
 type Include struct {
-	Source   string `INCLUDE @QUOTED_STRING`
+	Source string `INCLUDE @QUOTED_STRING`
 }
 
 type Description struct {
@@ -81,13 +82,13 @@ type UnparsedConnection struct {
 }
 
 type Connection struct {
-	Name string
-	Driver string
+	Name             string
+	Driver           string
 	ConnectionString string
-	Options []Option
+	Options          []Option
 }
 
-type Blocks struct {
+type JobScript struct {
 	Description *Description         `[@@]`
 	Queries     []Query              `{ @@`
 	Connections []UnparsedConnection `| @@`
@@ -97,7 +98,7 @@ type Blocks struct {
 	Scripts     []Script             ` | @@ }`
 }
 
-func (b *Blocks) EvaluateParametrizedContent(globals []Option) error {
+func (b *JobScript) EvaluateParametrizedContent(globals []Option) error {
 	var err error
 	for i := range b.Queries {
 		b.Queries[i].Content, err = evaluateContent(b.Queries[i].Content, b.Queries[i].Options, globals)
@@ -123,7 +124,7 @@ func (b *Blocks) EvaluateParametrizedContent(globals []Option) error {
 	return nil
 }
 
-func evaluateContent(content string, locals []Option, globals []Option) (string, error){
+func evaluateContent(content string, locals []Option, globals []Option) (string, error) {
 	opts := make(map[string]interface{})
 	for _, v := range globals {
 		//v.Value cannot be nil
@@ -151,19 +152,19 @@ func evaluateContent(content string, locals []Option, globals []Option) (string,
 	return b.String(), nil
 }
 
-func (b *Blocks) ResolveExternalContent() error {
+func (b *JobScript) ResolveExternalContent() error {
 	if err := b.resolveExtern(""); err != nil {
 		return err
 	}
 	for i := range b.Includes {
-		if err := b.resolveInclude(i,0, ""); err != nil {
+		if err := b.resolveInclude(i, 0, ""); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (b *Blocks) resolveExtern(cwd string) error{
+func (b *JobScript) resolveExtern(cwd string) error {
 	for i, query := range b.Queries {
 		if query.Extern != nil {
 			s, err := getContent(cwd, *query.Extern)
@@ -200,13 +201,13 @@ func (b *Blocks) resolveExtern(cwd string) error{
 	return nil
 }
 
-func getContent(cwd, path string) (string, error){
+func getContent(cwd, path string) (string, error) {
 	b, err := ioutil.ReadFile(filepath.Join(cwd, path))
 	return string(b), err
 }
 
 //resolve the given include, recursively if need be. Doesn't do bound checks on index.
-func (b *Blocks) resolveInclude(index, depth int, cwd string) error {
+func (b *JobScript) resolveInclude(index, depth int, cwd string) error {
 	if depth > MaxIncludeDepth {
 		return fmt.Errorf("maximum INCLUDE depth %v reached", MaxIncludeDepth)
 	}
@@ -231,7 +232,7 @@ func (b *Blocks) resolveInclude(index, depth int, cwd string) error {
 
 //Union merges two sets of blocks EXCLUDING includes. It is not commutative - the blocks of the first blocks will go first,
 //and the description of the second set of blocks will be ignored unless the first block has an empty description.
-func (b *Blocks) union(other *Blocks) {
+func (b *JobScript) union(other *JobScript) {
 	if b.Description == nil && other.Description != nil {
 		b.Description = other.Description
 	}
@@ -243,7 +244,7 @@ func (b *Blocks) union(other *Blocks) {
 	b.Scripts = append(b.Scripts, other.Scripts...)
 }
 
-func parseConnections(conns []UnparsedConnection) ([]Connection, error){
+func parseConnections(conns []UnparsedConnection) ([]Connection, error) {
 	if len(conns) == 0 {
 		return nil, nil
 	}
@@ -271,7 +272,7 @@ func parseConnections(conns []UnparsedConnection) ([]Connection, error){
 	return cs, nil
 }
 
-func optsToConn(opts []Option, conn *Connection) error{
+func optsToConn(opts []Option, conn *Connection) error {
 	for _, o := range opts {
 		if strings.ToUpper(o.Key) == "DRIVER" && o.Value.Str != nil {
 			conn.Driver = *(o.Value.Str)
@@ -287,8 +288,8 @@ func optsToConn(opts []Option, conn *Connection) error{
 	return nil
 }
 
-//ParseString parses an AQL string into a Blocks struct.
-func ParseString(s string) (b *Blocks, err error) {
+//ParseString parses an AQL string into a JobScript struct.
+func ParseString(s string) (b *JobScript, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = fmt.Errorf("parser error: %v", r)
@@ -296,18 +297,18 @@ func ParseString(s string) (b *Blocks, err error) {
 		}
 	}()
 
-	parser, err := participle.Build(&Blocks{}, &definition{})
+	parser, err := participle.Build(&JobScript{}, &definition{})
 	if err != nil {
 		panic(err)
 	}
 
-	b = &Blocks{}
+	b = &JobScript{}
 	err = parser.ParseString(s, b)
 	return
 }
 
-//ParseFile parses an AQL file into a Blocks struct.
-func ParseFile(path string) (b *Blocks, err error) {
+//ParseFile parses an AQL file into a JobScript struct.
+func ParseFile(path string) (b *JobScript, err error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -320,12 +321,12 @@ func ParseFile(path string) (b *Blocks, err error) {
 		}
 	}()
 
-	parser, err := participle.Build(&Blocks{}, &definition{})
+	parser, err := participle.Build(&JobScript{}, &definition{})
 	if err != nil {
 		panic(err)
 	}
 
-	b = &Blocks{}
+	b = &JobScript{}
 	err = parser.Parse(f, b)
 	return
 }
