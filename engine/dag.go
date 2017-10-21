@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 	"github.com/twmb/algoimpl/go/graph"
+	"sync"
 )
 
 type Coordinator interface {
@@ -72,7 +73,7 @@ func (c *coordinator) Compile() error {
 }
 
 func (c *coordinator) Execute() error {
-	openNodes := make(map[string]bool)
+	var wg sync.WaitGroup
 	executionOrder := c.g.TopologicalSort()
 	for _, node := range executionOrder {
 		var upstream string
@@ -85,32 +86,43 @@ func (c *coordinator) Execute() error {
 			//don't do anything, it should have been invoked by source/transform
 
 		case *sourceNode:
-			n.s.Open(c.streams[n.name])
-			openNodes[n.name] = true
+			wg.Add(1)
+			go func(){
+				n.s.Open(c.streams[n.name])
+				wg.Done()
+			}()
 			upstream = n.name
 		default:
 			panic(fmt.Sprintf("unknown node type %T: %v", nv, nv))
 		}
-
-		for _, dNode := range c.g.Neighbors(node) {
+		neighbors := c.g.Neighbors(node)
+		for _, dNode := range neighbors {
 			dnv := *dNode.Value
+			multiplex := newMultiplexer(len(neighbors), DefaultBufferSize)
+			wg.Add(1)
+			go func(){
+				multiplex.Open(c.streams[upstream])
+				wg.Done()
+			}()
 			switch d := dnv.(type) {
 			case *transformNode:
-				if !openNodes[d.name] {
-					d.t.Open(c.streams[upstream], c.streams[d.name])
-					openNodes[d.name] = true
-				}
-
+				wg.Add(1)
+				go func(){
+					d.t.Open(multiplex, c.streams[d.name])
+					wg.Done()
+				}()
 			case *destinationNode:
-				if !openNodes[d.name] {
-					d.d.Open(c.streams[upstream], c.streams[d.name])
-					openNodes[d.name] = true
-				}
+				wg.Add(1)
+				go func(){
+					d.d.Open(multiplex, c.streams[d.name])
+					wg.Done()
+				}()
 			default:
 				panic(fmt.Sprintf("unknown node type %T: %v", dnv, dnv))
 			}
 		}
 	}
+	wg.Wait()
 	return nil
 }
 

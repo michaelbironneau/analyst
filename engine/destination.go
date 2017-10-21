@@ -17,9 +17,6 @@ type SliceDestination struct {
 func (sd *SliceDestination) Ping() error { return nil }
 
 func (sd *SliceDestination) Open(s Stream, e Stream) {
-	if s == nil || e == nil {
-		panic("NIL STREAMS")
-	}
 	for msg := range s.Chan() {
 		sd.res = append(sd.res, msg)
 	}
