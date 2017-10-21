@@ -124,5 +124,15 @@ func TestInnerContent(t *testing.T) {
 			_, err := Lex(s)
 			So(err, ShouldNotBeNil)
 		})
+		Convey("It should lex multiple identifiers separated by comma correctly", func() {
+			s = "CONNECTION asdf, GLOBAL"
+			tt, err := Lex(s)
+			So(err, ShouldBeNil)
+			So(tt, ShouldHaveLength, 4)
+			So(tt[0].ID, ShouldEqual, CONNECTION)
+			So(tt[1].ID, ShouldEqual, IDENTIFIER)
+			So(tt[2].ID, ShouldEqual, COMMA)
+			So(tt[3].ID, ShouldEqual, GLOBAL)
+		})
 	})
 }

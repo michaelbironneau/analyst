@@ -33,32 +33,32 @@ type SourceSink struct {
 }
 
 type Query struct {
-	Name        string       `QUERY @QUOTED_STRING`
-	Extern      *string      `[EXTERN @QUOTED_STRING]`
-	Sources     []SourceSink `FROM @@ {"," @@}`
-	Content     string       `['(' @PAREN_BODY ')']`
-	Destination *SourceSink  `INTO @@`
-	Options     []Option     `[WITH '(' @@ {"," @@ } ')' ]`
+	Name         string       `QUERY @QUOTED_STRING`
+	Extern       *string      `[EXTERN @QUOTED_STRING]`
+	Sources      []SourceSink `FROM @@ { "," @@ }`
+	Content      string       `['(' @PAREN_BODY ')' ]`
+	Destinations []SourceSink `[INTO @@ { "," @@ } ]`
+	Options      []Option     `[WITH '(' @@ {"," @@ } ')' ]`
 }
 
 type Script struct {
-	Name        string        `SCRIPT @QUOTED_STRING`
-	Extern      *string       `[EXTERN @QUOTED_STRING]`
-	Sources     []*SourceSink `FROM @@ {"," @@}`
-	Content     string        `['(' @PAREN_BODY ')']`
-	Destination *SourceSink   `INTO @@`
-	Options     []Option      `[WITH '(' @@ {"," @@ } ')' ]`
+	Name         string        `SCRIPT @QUOTED_STRING`
+	Extern       *string       `[EXTERN @QUOTED_STRING]`
+	Sources      []*SourceSink `FROM @@ {"," @@}`
+	Content      string        `['(' @PAREN_BODY ')']`
+	Destinations []SourceSink  `[INTO @@ {"," @@}]`
+	Options      []Option      `[WITH '(' @@ {"," @@ } ')' ]`
 }
 
 type Test struct {
-	Query       bool         `TEST [@QUERY `
-	Script      bool         `|@SCRIPT ]`
-	Name        string       `@QUOTED_STRING`
-	Extern      *string      `[EXTERN @QUOTED_STRING]`
-	Sources     []SourceSink `FROM @@ {"," @@}`
-	Content     string       `['(' @PAREN_BODY ')']`
-	Destination *SourceSink  `[INTO @@]`
-	Options     []Option     `[WITH '(' @@ {"," @@ } ')' ]`
+	Query        bool         `TEST [@QUERY `
+	Script       bool         `|@SCRIPT ]`
+	Name         string       `@QUOTED_STRING`
+	Extern       *string      `[EXTERN @QUOTED_STRING]`
+	Sources      []SourceSink `FROM @@ {"," @@}`
+	Content      string       `['(' @PAREN_BODY ')']`
+	Destinations []SourceSink `[INTO @@ {"," @@}]`
+	Options      []Option     `[WITH '(' @@ {"," @@ } ')' ]`
 }
 
 type Global struct {

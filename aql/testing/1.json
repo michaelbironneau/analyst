@@ -12,12 +12,12 @@
       "Global": true
     }],
     "Content": "\n    SELECT * FROM Something\n",
-    "Destination": {
+    "Destinations": [{
       "Script": null,
       "Database": "d1",
       "Block": null,
       "Global": false
-    },
+    }],
     "Options": null
   }],
   "Includes": null,

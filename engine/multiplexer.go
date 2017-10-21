@@ -2,20 +2,6 @@ package engine
 
 import "sync"
 
-//Multiplexer is a middleware that multiplexes the output
-type Multiplexer interface{
-	//Columns returns a slice of column names
-	Columns() []string
-
-	//SetColumns
-	SetColumns(cols []string)
-
-	//Chan returns a new multiplexed channel. If the requested number is greater
-	// than the multiplex order, the multiplexer should panic.
-	Chan() chan []interface{}
-}
-
-
 type multiplexer struct {
 	sync.Mutex
 	bufferSize int

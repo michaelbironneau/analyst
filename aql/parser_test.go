@@ -60,7 +60,7 @@ func TestQuery(t *testing.T) {
 		//1
 		s1 := `QUERY 'name' FROM CONNECTION source (
 			query_source()
-		) INTO CONNECTION destination
+		) INTO CONNECTION destination, GLOBAL
 		`
 		b := &Query{}
 		err = parser.ParseString(s1, b)
@@ -70,7 +70,8 @@ func TestQuery(t *testing.T) {
 		So(b.Sources, ShouldHaveLength, 1)
 		s := "source"
 		So(b.Sources[0].Database, ShouldResemble, &s)
-		So(*b.Destination.Database, ShouldEqual, "destination")
+		So(b.Destinations[1].Global, ShouldBeTrue)
+		So(*b.Destinations[0].Database, ShouldEqual, "destination")
 
 		//2
 		s1 = `QUERY 'name' EXTERN 'sourcee'
@@ -89,7 +90,7 @@ func TestQuery(t *testing.T) {
 		So(b.Sources[0].Global, ShouldBeTrue)
 		ss = "asdf.py"
 		So(b.Sources[1].Script, ShouldResemble, &ss)
-		So(b.Destination.Global, ShouldBeTrue)
+		So(b.Destinations[0].Global, ShouldBeTrue)
 
 		//3
 		s1 = `QUERY 'name' EXTERN 'sourcee'
@@ -108,7 +109,7 @@ func TestQuery(t *testing.T) {
 		So(b.Sources, ShouldHaveLength, 1)
 		So(b.Sources[0].Global, ShouldBeTrue)
 		So(*b.Sources[0].Alias, ShouldEqual, "source")
-		So(*b.Destination.Database, ShouldEqual, "destination")
+		So(*b.Destinations[0].Database, ShouldEqual, "destination")
 		So(b.Options, ShouldHaveLength, 2)
 		So(b.Options[0].Key, ShouldEqual, "opt1")
 		f := 1234.0
@@ -150,7 +151,7 @@ func TestScript(t *testing.T) {
 		So(b.Sources, ShouldHaveLength, 1)
 		s := "source"
 		So(b.Sources[0].Database, ShouldResemble, &s)
-		So(*b.Destination.Database, ShouldEqual, "destination")
+		So(*b.Destinations[0].Database, ShouldEqual, "destination")
 	})
 }
 
@@ -266,7 +267,7 @@ func TestResolveIncludes(t *testing.T) {
 			So(b.Queries[0].Name, ShouldEqual, "b")
 			So(b.Queries[0].Content, ShouldEqual, "TEST EXTERNAL CONTENT")
 			So(b.Queries[1].Name, ShouldEqual, "q1")
-			So(*b.Queries[1].Destination.Database, ShouldEqual, "d1")
+			So(*b.Queries[1].Destinations[0].Database, ShouldEqual, "d1")
 		})
 	})
 }

@@ -12,12 +12,12 @@
       "Global": true
     }],
     "Content": "",
-    "Destination": {
+    "Destinations": [{
       "Script": null,
       "Database": null,
       "Block": null,
       "Global": true
-    },
+    }],
     "Options": null
   }],
   "Connections": null,

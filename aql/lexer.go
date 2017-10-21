@@ -198,12 +198,30 @@ func Lex(s string) ([]Item, error) {
 		}
 
 		if s[index] == ',' {
+			if len(identifier) > 0 {
+				_, err := strconv.ParseFloat(identifier, 64)
+				if err == nil {
+					ret = append(ret, Item{NUMBER, lineNumber, identifier})
+				} else {
+					ret = append(ret, Item{IDENTIFIER, lineNumber, identifier})
+				}
+				identifier = ""
+			}
 			ret = append(ret, Item{COMMA, lineNumber, ","})
 			index++
 			continue
 		}
 
 		if s[index] == '=' {
+			if len(identifier) > 0 {
+				_, err := strconv.ParseFloat(identifier, 64)
+				if err == nil {
+					ret = append(ret, Item{NUMBER, lineNumber, identifier})
+				} else {
+					ret = append(ret, Item{IDENTIFIER, lineNumber, identifier})
+				}
+				identifier = ""
+			}
 			ret = append(ret, Item{EQUALS, lineNumber, "="})
 			index++
 			continue
