@@ -9,7 +9,7 @@ import (
 //one or more sources, and one or more sinks.
 type Transform interface {
 	//Open gives the transform a stream to start pulling from
-	Open(source Stream, dest Stream, logger Logger)
+	Open(source Stream, dest Stream, logger Logger, stop Stopper)
 }
 
 type Passthrough struct {
@@ -17,7 +17,9 @@ type Passthrough struct {
 	inputs int
 }
 
-func (p *Passthrough) Open(source Stream, dest Stream, logger Logger) {
+func (p *Passthrough) Stop(){}
+
+func (p *Passthrough) Open(source Stream, dest Stream, logger Logger, stop Stopper) {
 	logger.Chan() <- Event{
 		Level:   Trace,
 		Time:    time.Now(),
@@ -29,6 +31,10 @@ func (p *Passthrough) Open(source Stream, dest Stream, logger Logger) {
 	destChan := dest.Chan()
 	for msg := range source.Chan() {
 		destChan <- msg
+		if stop.Stopped(){
+			close(destChan)
+			return
+		}
 	}
 
 	p.Lock()

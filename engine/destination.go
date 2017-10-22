@@ -12,7 +12,7 @@ type Destination interface {
 	Ping() error
 
 	//Open gives the destination a stream to start pulling from and an error stream
-	Open(input Stream, logger Logger)
+	Open(Stream, Logger, Stopper)
 }
 
 type SliceDestination struct {
@@ -22,13 +22,16 @@ type SliceDestination struct {
 
 func (sd *SliceDestination) Ping() error { return nil }
 
-func (sd *SliceDestination) Open(s Stream, logger Logger) {
+func (sd *SliceDestination) Open(s Stream, logger Logger, stop Stopper) {
 	logger.Chan() <- Event{
 		Level:   Trace,
 		Time:    time.Now(),
 		Message: "Slice destination opened",
 	}
 	for msg := range s.Chan() {
+		if stop.Stopped(){
+			return
+		}
 		sd.Lock()
 		sd.res = append(sd.res, msg)
 		sd.Unlock()

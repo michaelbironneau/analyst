@@ -11,7 +11,7 @@ type Source interface {
 	Ping() error
 
 	//Get connects to the source and returns a stream of data.
-	Open(Stream, Logger)
+	Open(Stream, Logger, Stopper)
 }
 
 type SliceSource struct {
@@ -30,7 +30,7 @@ func (s *SliceSource) Ping() error {
 	return nil
 }
 
-func (s *SliceSource) Open(dest Stream, logger Logger) {
+func (s *SliceSource) Open(dest Stream, logger Logger, stop Stopper) {
 	logger.Chan() <- Event{
 		Level:   Trace,
 		Time:    time.Now(),
@@ -38,9 +38,16 @@ func (s *SliceSource) Open(dest Stream, logger Logger) {
 	}
 	c := dest.Chan()
 	for i := range s.msg {
+		if stop.Stopped() {
+			break
+		}
 		c <- s.msg[i]
 	}
 	close(c)
+}
+
+func (s *SliceSource) Stop(){
+
 }
 
 func (s *SliceSource) Columns() []string {

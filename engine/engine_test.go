@@ -14,13 +14,14 @@ func TestWithoutCoordinator(t *testing.T) {
 			t := Passthrough{}
 			d := SliceDestination{}
 			l := &ConsoleLogger{}
+			st := &stopper{}
 
 			sourceStream := NewStream(s.Columns(), DefaultBufferSize)
 			transformedStream := NewStream(cols, DefaultBufferSize)
 
-			s.Open(sourceStream, l)
-			t.Open(sourceStream, transformedStream, l)
-			d.Open(transformedStream, l)
+			s.Open(sourceStream, l, st)
+			t.Open(sourceStream, transformedStream, l, st)
+			d.Open(transformedStream, l, st)
 
 			So(d.Results(), ShouldResemble, msg)
 		})

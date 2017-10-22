@@ -13,9 +13,11 @@ type Coordinator interface {
 	Connect(from string, to string) error
 	Compile() error
 	Execute() error
+	Stop()
 }
 
 type coordinator struct {
+	s Stopper
 	l               Logger
 	g               *graph.Graph
 	nodes           map[string]graph.Node
@@ -38,6 +40,11 @@ type transformNode struct {
 type destinationNode struct {
 	name string
 	d    Destination
+}
+
+//Stop interrupts the job immediately.
+func (c *coordinator) Stop() {
+	c.s.Stop()
 }
 
 func (c *coordinator) Compile() error {
@@ -89,7 +96,7 @@ func (c *coordinator) Execute() error {
 		case *sourceNode:
 			wg.Add(1)
 			go func(name string) {
-				n.s.Open(c.streams[name], c.l)
+				n.s.Open(c.streams[name], c.l, c.s)
 				wg.Done()
 			}(n.name)
 			upstream = n.name
@@ -113,14 +120,14 @@ func (c *coordinator) Execute() error {
 			case *transformNode:
 				wg.Add(1)
 				go func(name string) {
-					d.t.Open(multiplex, c.streams[name], c.l)
+					d.t.Open(multiplex, c.streams[name], c.l, c.s)
 					wg.Done()
 				}(d.name)
 			case *destinationNode:
 
 				wg.Add(1)
 				go func(name string) {
-					d.d.Open(multiplex, c.l)
+					d.d.Open(multiplex, c.l, c.s)
 					wg.Done()
 				}(d.name)
 			default:
@@ -135,6 +142,7 @@ func (c *coordinator) Execute() error {
 
 func NewCoordinator(logger Logger) Coordinator {
 	return &coordinator{
+		s: &stopper{},
 		l:               logger,
 		g:               graph.New(graph.Directed),
 		nodes:           make(map[string]graph.Node),
