@@ -84,39 +84,44 @@ func (c *coordinator) Execute() error {
 			upstream = n.name
 		case *destinationNode:
 			//don't do anything, it should have been invoked by source/transform
-
+			upstream = n.name
 		case *sourceNode:
 			wg.Add(1)
-			go func(){
-				n.s.Open(c.streams[n.name])
+			go func(name string){
+				n.s.Open(c.streams[name])
 				wg.Done()
-			}()
+			}(n.name)
 			upstream = n.name
 		default:
 			panic(fmt.Sprintf("unknown node type %T: %v", nv, nv))
 		}
 		neighbors := c.g.Neighbors(node)
+		multiplex := newMultiplexer(len(neighbors), DefaultBufferSize)
+		if len(neighbors) > 0 {
+
+			wg.Add(1)
+			go func(parent string){
+				multiplex.Open(c.streams[parent])
+				wg.Done()
+			}(upstream)
+		}
+
 		for _, dNode := range neighbors {
 			dnv := *dNode.Value
-			multiplex := newMultiplexer(len(neighbors), DefaultBufferSize)
-			wg.Add(1)
-			go func(){
-				multiplex.Open(c.streams[upstream])
-				wg.Done()
-			}()
 			switch d := dnv.(type) {
 			case *transformNode:
 				wg.Add(1)
-				go func(){
-					d.t.Open(multiplex, c.streams[d.name])
+				go func(name string){
+					d.t.Open(multiplex, c.streams[name])
 					wg.Done()
-				}()
+				}(d.name)
 			case *destinationNode:
+
 				wg.Add(1)
-				go func(){
-					d.d.Open(multiplex, c.streams[d.name])
+				go func(name string){
+					d.d.Open(multiplex, c.streams[name])
 					wg.Done()
-				}()
+				}(d.name)
 			default:
 				panic(fmt.Sprintf("unknown node type %T: %v", dnv, dnv))
 			}
