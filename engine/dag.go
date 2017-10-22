@@ -16,6 +16,7 @@ type Coordinator interface {
 }
 
 type coordinator struct {
+	l               Logger
 	g               *graph.Graph
 	nodes           map[string]graph.Node
 	streams         map[string]Stream
@@ -87,8 +88,8 @@ func (c *coordinator) Execute() error {
 			upstream = n.name
 		case *sourceNode:
 			wg.Add(1)
-			go func(name string){
-				n.s.Open(c.streams[name])
+			go func(name string) {
+				n.s.Open(c.streams[name], c.l)
 				wg.Done()
 			}(n.name)
 			upstream = n.name
@@ -100,7 +101,7 @@ func (c *coordinator) Execute() error {
 		if len(neighbors) > 0 {
 
 			wg.Add(1)
-			go func(parent string){
+			go func(parent string) {
 				multiplex.Open(c.streams[parent])
 				wg.Done()
 			}(upstream)
@@ -111,15 +112,15 @@ func (c *coordinator) Execute() error {
 			switch d := dnv.(type) {
 			case *transformNode:
 				wg.Add(1)
-				go func(name string){
-					d.t.Open(multiplex, c.streams[name])
+				go func(name string) {
+					d.t.Open(multiplex, c.streams[name], c.l)
 					wg.Done()
 				}(d.name)
 			case *destinationNode:
 
 				wg.Add(1)
-				go func(name string){
-					d.d.Open(multiplex, c.streams[name])
+				go func(name string) {
+					d.d.Open(multiplex, c.l)
 					wg.Done()
 				}(d.name)
 			default:
@@ -128,11 +129,13 @@ func (c *coordinator) Execute() error {
 		}
 	}
 	wg.Wait()
+	close(c.l.Chan())
 	return nil
 }
 
-func NewCoordinator() Coordinator {
+func NewCoordinator(logger Logger) Coordinator {
 	return &coordinator{
+		l:               logger,
 		g:               graph.New(graph.Directed),
 		nodes:           make(map[string]graph.Node),
 		sources:         make(map[string]Source),
@@ -166,7 +169,6 @@ func (c *coordinator) AddDestination(name string, d Destination) error {
 		return err
 	}
 	c.destinations[name] = d
-	c.streams[name] = NewStream([]string{"Error"}, DefaultBufferSize)
 	return nil
 }
 

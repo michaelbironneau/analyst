@@ -1,21 +1,28 @@
 package engine
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 //Transform is a component that is neither a source nor a sink. It is configured with
 //one or more sources, and one or more sinks.
 type Transform interface {
 	//Open gives the transform a stream to start pulling from
-	Open(source, dest Stream)
+	Open(source Stream, dest Stream, logger Logger)
 }
 
-type Passthrough struct{
+type Passthrough struct {
 	sync.Mutex
 	inputs int
 }
 
-
-func (p *Passthrough) Open(source, dest Stream) {
+func (p *Passthrough) Open(source Stream, dest Stream, logger Logger) {
+	logger.Chan() <- Event{
+		Level:   Trace,
+		Time:    time.Now(),
+		Message: "Passthrough transform opened",
+	}
 	p.Lock()
 	p.inputs++
 	p.Unlock()

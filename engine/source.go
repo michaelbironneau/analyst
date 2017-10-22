@@ -1,5 +1,7 @@
 package engine
 
+import "time"
+
 //Source represents data inputs into the system, eg. a database query.
 type Source interface {
 	Columns() []string
@@ -9,7 +11,7 @@ type Source interface {
 	Ping() error
 
 	//Get connects to the source and returns a stream of data.
-	Open(Stream)
+	Open(Stream, Logger)
 }
 
 type SliceSource struct {
@@ -28,7 +30,12 @@ func (s *SliceSource) Ping() error {
 	return nil
 }
 
-func (s *SliceSource) Open(dest Stream) {
+func (s *SliceSource) Open(dest Stream, logger Logger) {
+	logger.Chan() <- Event{
+		Level:   Trace,
+		Time:    time.Now(),
+		Message: "Slice source opened",
+	}
 	c := dest.Chan()
 	for i := range s.msg {
 		c <- s.msg[i]

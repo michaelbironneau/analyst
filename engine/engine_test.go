@@ -13,14 +13,14 @@ func TestWithoutCoordinator(t *testing.T) {
 			s := NewSliceSource(cols, msg)
 			t := Passthrough{}
 			d := SliceDestination{}
+			l := &ConsoleLogger{}
 
-			e := NewStream([]string{"error"}, DefaultBufferSize)
 			sourceStream := NewStream(s.Columns(), DefaultBufferSize)
 			transformedStream := NewStream(cols, DefaultBufferSize)
 
-			s.Open(sourceStream)
-			t.Open(sourceStream, transformedStream)
-			d.Open(transformedStream, e)
+			s.Open(sourceStream, l)
+			t.Open(sourceStream, transformedStream, l)
+			d.Open(transformedStream, l)
 
 			So(d.Results(), ShouldResemble, msg)
 		})
@@ -29,7 +29,7 @@ func TestWithoutCoordinator(t *testing.T) {
 
 func TestCoordinator(t *testing.T) {
 	Convey("Given a coordinator and some data", t, func() {
-		c := NewCoordinator()
+		c := NewCoordinator(&ConsoleLogger{})
 		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
 		cols := []string{"1", "2", "3"}
 		Convey("It should execute a passthrough example correctly", func() {
@@ -55,7 +55,7 @@ func TestCoordinator(t *testing.T) {
 
 	})
 	Convey("Given a coordinator", t, func() {
-		c := NewCoordinator()
+		c := NewCoordinator(&ConsoleLogger{})
 		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
 		cols := []string{"1", "2", "3"}
 		Convey("It should process many sources -> one destination correctly", func() {

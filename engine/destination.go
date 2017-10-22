@@ -1,6 +1,9 @@
 package engine
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
 type Destination interface {
 
@@ -9,7 +12,7 @@ type Destination interface {
 	Ping() error
 
 	//Open gives the destination a stream to start pulling from and an error stream
-	Open(input Stream, err Stream)
+	Open(input Stream, logger Logger)
 }
 
 type SliceDestination struct {
@@ -19,7 +22,12 @@ type SliceDestination struct {
 
 func (sd *SliceDestination) Ping() error { return nil }
 
-func (sd *SliceDestination) Open(s Stream, e Stream) {
+func (sd *SliceDestination) Open(s Stream, logger Logger) {
+	logger.Chan() <- Event{
+		Level:   Trace,
+		Time:    time.Now(),
+		Message: "Slice destination opened",
+	}
 	for msg := range s.Chan() {
 		sd.Lock()
 		sd.res = append(sd.res, msg)
