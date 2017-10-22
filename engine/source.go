@@ -46,10 +46,6 @@ func (s *SliceSource) Open(dest Stream, logger Logger, stop Stopper) {
 	close(c)
 }
 
-func (s *SliceSource) Stop(){
-
-}
-
 func (s *SliceSource) Columns() []string {
 	return s.cols
 }

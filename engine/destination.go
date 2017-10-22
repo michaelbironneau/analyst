@@ -29,7 +29,7 @@ func (sd *SliceDestination) Open(s Stream, logger Logger, stop Stopper) {
 		Message: "Slice destination opened",
 	}
 	for msg := range s.Chan() {
-		if stop.Stopped(){
+		if stop.Stopped() {
 			return
 		}
 		sd.Lock()

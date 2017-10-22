@@ -17,7 +17,7 @@ type Coordinator interface {
 }
 
 type coordinator struct {
-	s Stopper
+	s               Stopper
 	l               Logger
 	g               *graph.Graph
 	nodes           map[string]graph.Node
@@ -142,7 +142,7 @@ func (c *coordinator) Execute() error {
 
 func NewCoordinator(logger Logger) Coordinator {
 	return &coordinator{
-		s: &stopper{},
+		s:               &stopper{},
 		l:               logger,
 		g:               graph.New(graph.Directed),
 		nodes:           make(map[string]graph.Node),

@@ -17,8 +17,6 @@ type Passthrough struct {
 	inputs int
 }
 
-func (p *Passthrough) Stop(){}
-
 func (p *Passthrough) Open(source Stream, dest Stream, logger Logger, stop Stopper) {
 	logger.Chan() <- Event{
 		Level:   Trace,
@@ -31,7 +29,7 @@ func (p *Passthrough) Open(source Stream, dest Stream, logger Logger, stop Stopp
 	destChan := dest.Chan()
 	for msg := range source.Chan() {
 		destChan <- msg
-		if stop.Stopped(){
+		if stop.Stopped() {
 			close(destChan)
 			return
 		}

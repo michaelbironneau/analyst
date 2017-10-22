@@ -14,18 +14,19 @@ type Tester func([]interface{}) bool
 func Test(name string, desc string, l Logger, cond Tester, bufferSize int) Middleware {
 	return func(s Stream) Stream {
 		ret := NewStream(s.Columns(), bufferSize)
-		go func(){
+		go func() {
 			output := ret.Chan()
 			for msg := range s.Chan() {
-				if cond(msg){
+				if cond(msg) {
 					output <- msg
 				} else {
 					l.Chan() <- Event{
-						Source: name,
+						Source:  name,
 						Message: fmt.Sprintf("[FAIL] %s", desc),
-						Time: time.Now(),
-						Level: Error,
+						Time:    time.Now(),
+						Level:   Error,
 					}
+					close(ret.Chan())
 					return //a test should stop the job on first failure
 				}
 			}

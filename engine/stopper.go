@@ -4,7 +4,7 @@ import "sync/atomic"
 
 //Stopper is used as a condition variable stop halt the execution of the program.
 //It is safe for concurrent use by multiple goroutines.
-type Stopper interface{
+type Stopper interface {
 	//Stopped checks if the stopper is stopped
 	Stopped() bool
 
@@ -12,7 +12,7 @@ type Stopper interface{
 	Stop()
 }
 
-type stopper struct{
+type stopper struct {
 	flag int32
 }
 
