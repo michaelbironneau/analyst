@@ -36,6 +36,7 @@ func (s *SliceSource) Open(dest Stream, logger Logger, stop Stopper) {
 		Time:    time.Now(),
 		Message: "Slice source opened",
 	}
+	dest.SetColumns(s.cols)
 	c := dest.Chan()
 	for i := range s.msg {
 		if stop.Stopped() {
