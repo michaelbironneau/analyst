@@ -2,9 +2,9 @@ package engine
 
 import (
 	"database/sql"
-	"time"
 	"fmt"
 	"strings"
+	"time"
 )
 
 type SQLDestination struct {
@@ -61,11 +61,17 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 		sq.fatalerr(err, l)
 		return
 	}
+	l.Chan() <- Event{
+		Source:  sq.Name,
+		Level:   Trace,
+		Time:    time.Now(),
+		Message: "SQL destination opened",
+	}
 	var (
 		stmt *sql.Stmt
 	)
 	for msg := range s.Chan() {
-		if st.Stopped(){
+		if st.Stopped() {
 			tx.Rollback()
 			return
 		}
@@ -101,7 +107,6 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 func (sq *SQLDestination) prepare(s Stream, msg []interface{}) string {
 	cols := strings.Join(s.Columns(), ",")
 	params := strings.Repeat("?,", len(msg))
-	params = params[0:len(params)-1] //remove trailing comma
+	params = params[0 : len(params)-1] //remove trailing comma
 	return fmt.Sprintf(InsertQuery, sq.Table, cols, params)
 }
-

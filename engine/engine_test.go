@@ -79,7 +79,7 @@ func TestCoordinator(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(d.Results(), ShouldResemble, append(msg, msg...))
 		})
-		Convey("It should process one source -> multiple destinations correctly", func() {
+		Convey("It should process one source -> multiple destinations correctly", t, func() {
 			s := NewSliceSource(cols, msg)
 			d1 := SliceDestination{}
 			d2 := SliceDestination{}
@@ -100,7 +100,7 @@ func TestCoordinator(t *testing.T) {
 			So(d1.Results(), ShouldResemble, msg)
 			So(d2.Results(), ShouldResemble, msg)
 		})
-		Convey("It should process one source -> multiple transforms -> one destination correctly", func() {
+		Convey("It should process one source -> multiple transforms -> one destination correctly", t, func() {
 			s := NewSliceSource(cols, msg)
 			p1 := Passthrough{}
 			p2 := Passthrough{}

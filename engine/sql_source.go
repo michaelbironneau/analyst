@@ -70,6 +70,12 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 	}
 	sq.columns = cols
 	s.SetColumns(cols)
+	l.Chan() <- Event{
+		Source:  sq.Name,
+		Level:   Trace,
+		Time:    time.Now(),
+		Message: "SQL source opened",
+	}
 	for r.Next() {
 		if st.Stopped() {
 			close(s.Chan())

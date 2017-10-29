@@ -2,9 +2,9 @@ package engine
 
 import (
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
-	"os"
 	"io"
+	"os"
+	"testing"
 )
 
 func setupInsertTest() error {
@@ -23,7 +23,7 @@ func teardownInsertTest() error {
 	return os.Remove("./testing/test_insert.db.bak")
 }
 
-func copyFile(src, dest string) error{
+func copyFile(src, dest string) error {
 	sFile, err := os.Open(src)
 	if err != nil {
 		return err
