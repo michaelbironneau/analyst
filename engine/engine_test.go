@@ -79,7 +79,7 @@ func TestCoordinator(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(d.Results(), ShouldResemble, append(msg, msg...))
 		})
-		Convey("It should process one source -> multiple destinations correctly", t, func() {
+		Convey("It should process one source -> multiple destinations correctly", func() {
 			s := NewSliceSource(cols, msg)
 			d1 := SliceDestination{}
 			d2 := SliceDestination{}
@@ -100,7 +100,7 @@ func TestCoordinator(t *testing.T) {
 			So(d1.Results(), ShouldResemble, msg)
 			So(d2.Results(), ShouldResemble, msg)
 		})
-		Convey("It should process one source -> multiple transforms -> one destination correctly", t, func() {
+		Convey("It should process one source -> multiple transforms -> one destination correctly", func() {
 			s := NewSliceSource(cols, msg)
 			p1 := Passthrough{}
 			p2 := Passthrough{}
@@ -126,6 +126,48 @@ func TestCoordinator(t *testing.T) {
 			err = c.Execute()
 			So(err, ShouldBeNil)
 			So(d.Results(), ShouldResemble, append(msg, msg...))
+		})
+
+	})
+}
+
+//FIXME: There is a race condition here because the implementation of
+//tests is best effort. IF the failing test receives the message before the other
+//destinations, it will stop everything. In practice, this is only an issue for
+//real edge cases (e.g. the last message of the stream is the faulty one) but
+//we should still consider it. The correct implementation would take a test
+//as a transformation and rewire the graph to "replace" nodes by their test
+//pipelines, so we have
+// N -> [N1, N2, N3]
+// becomes
+//                      -> N1
+// N-> T1 -> T2 -> T3 - |
+//                      -> N2
+//                      ...N3
+
+func TestTester(t *testing.T) {
+	SkipConvey("Given a coordinator and a failing test", t, func() {
+		c := NewCoordinator(&ConsoleLogger{})
+		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
+		cols := []string{"1", "2", "3"}
+		failTester := func(msg []interface{}) bool {
+			return false
+		}
+		Convey("It should stop stream if a test fails", func() {
+			s := NewSliceSource(cols, msg)
+			d := SliceDestination{}
+			err := c.AddSource("source", s)
+			So(err, ShouldBeNil)
+			err = c.AddTest("source", "failed test", "always failing test", failTester)
+			So(err, ShouldBeNil)
+			err = c.AddDestination("destination", &d)
+			err = c.Connect("source", "destination")
+			So(err, ShouldBeNil)
+			err = c.Compile()
+			So(err, ShouldBeNil)
+			err = c.Execute()
+			So(err, ShouldBeNil)
+			So(d.Results(), ShouldHaveLength, 0)
 		})
 
 	})

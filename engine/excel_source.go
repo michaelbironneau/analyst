@@ -136,6 +136,11 @@ func (s *ExcelSource) Open(dest Stream, logger Logger, stop Stopper) {
 	s.posY = s.Range.Y1
 	if s.RangeIncludesColumns {
 		s.Cols = s.scanColumns()
+		logger.Chan() <- Event{
+			Level:   Trace,
+			Time:    time.Now(),
+			Message: "Columns scanned",
+		}
 		//set position to first cell in second row of range
 		s.posY++
 		s.posX = s.Range.X1
@@ -153,7 +158,7 @@ func (s *ExcelSource) Open(dest Stream, logger Logger, stop Stopper) {
 		var msg []interface{}
 		var nonEmptyRow bool
 		for x := s.Range.X1; x <= s.Range.X2.P; x++ {
-			fileManager.Use(s.Filename, func(e *xlsx.File){
+			fileManager.Use(s.Filename, func(e *xlsx.File) {
 				v, empty := s.convertCellValue(e.GetCellValue(s.Sheet, pointToCol(x, s.posY)))
 				nonEmptyRow = nonEmptyRow || empty
 				msg = append(msg, v)
@@ -162,7 +167,7 @@ func (s *ExcelSource) Open(dest Stream, logger Logger, stop Stopper) {
 		c <- msg
 		if s.Range.Y2.N && nonEmptyRow {
 			s.posY++
-		} else if s.posX < s.Range.Y2.P {
+		} else if s.posY < s.Range.Y2.P {
 			s.posY++
 		} else {
 			break //break on first out-of-range row or empty row (if range is dynamic)
@@ -199,11 +204,12 @@ func (s *ExcelSource) convertCellValue(val string) (interface{}, bool) {
 	if val == "" {
 		empty = true
 	}
-	//boolean
-	b, err := strconv.ParseBool(val)
+
+	//int
+	i, err := strconv.Atoi(val)
 
 	if err == nil {
-		return b, empty
+		return i, empty
 	}
 
 	//float64
@@ -213,11 +219,11 @@ func (s *ExcelSource) convertCellValue(val string) (interface{}, bool) {
 		return f, empty
 	}
 
-	//int
-	i, err := strconv.Atoi(val)
+	//boolean
+	b, err := strconv.ParseBool(val)
 
 	if err == nil {
-		return i, empty
+		return b, empty
 	}
 
 	//time.Time
@@ -241,8 +247,7 @@ func (s *ExcelSource) convertCellValue(val string) (interface{}, bool) {
 }
 
 func pointToCol(x, y int) string {
-	col := xlsx.ToAlphaString(x)
-	return col + strconv.Itoa(y)
+	return xlsx.ToAlphaString(x-1) + strconv.Itoa(y)
 }
 
 func (s *ExcelSource) Columns() []string {

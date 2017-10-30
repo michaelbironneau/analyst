@@ -9,6 +9,7 @@ import (
 type Coordinator interface {
 	AddSource(name string, s Source) error
 	AddDestination(name string, d Destination) error
+	AddTest(node string, name string, desc string, c Condition) error
 	AddTransform(name string, t Transform) error
 	Connect(from string, to string) error
 	Compile() error
@@ -187,6 +188,15 @@ func (c *coordinator) AddTransform(name string, t Transform) error {
 	c.transformations[name] = t
 	c.streams[name] = NewStream(nil, DefaultBufferSize)
 	return nil
+}
+
+//AddTest is a shortcut that adds a test destination
+func (c *coordinator) AddTest(node string, name string, desc string, co Condition) error {
+	err := c.AddDestination(name, NewTest(name, desc, co))
+	if err != nil {
+		return err
+	}
+	return c.Connect(node, name)
 }
 
 func (c *coordinator) Connect(from string, to string) error {
