@@ -131,22 +131,8 @@ func TestCoordinator(t *testing.T) {
 	})
 }
 
-//FIXME: There is a race condition here because the implementation of
-//tests is best effort. IF the failing test receives the message before the other
-//destinations, it will stop everything. In practice, this is only an issue for
-//real edge cases (e.g. the last message of the stream is the faulty one) but
-//we should still consider it. The correct implementation would take a test
-//as a transformation and rewire the graph to "replace" nodes by their test
-//pipelines, so we have
-// N -> [N1, N2, N3]
-// becomes
-//                      -> N1
-// N-> T1 -> T2 -> T3 - |
-//                      -> N2
-//                      ...N3
-
 func TestTester(t *testing.T) {
-	SkipConvey("Given a coordinator and a failing test", t, func() {
+	Convey("Given a coordinator and a failing test", t, func() {
 		c := NewCoordinator(&ConsoleLogger{})
 		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
 		cols := []string{"1", "2", "3"}

@@ -26,6 +26,8 @@ type coordinator struct {
 	sources         map[string]Source
 	destinations    map[string]Destination
 	transformations map[string]Transform
+	tests           map[string]*testNode
+	testStreams     map[string]Stream
 }
 
 type sourceNode struct {
@@ -106,13 +108,26 @@ func (c *coordinator) Execute() error {
 		}
 		neighbors := c.g.Neighbors(node)
 		multiplex := newMultiplexer(len(neighbors), DefaultBufferSize)
+		var testedParentStream Stream
+
+		if c.tests[upstream] == nil {
+			testedParentStream = c.streams[upstream]
+		} else {
+			testedParentStream = c.testStreams[upstream]
+			// interpose test node so that
+			// upstream -> downstream(s)
+			// becomes
+			// upstream -> test node -> downstream(s)
+			c.tests[upstream].Open(c.streams[upstream], c.testStreams[upstream], c.l, c.s)
+		}
+
 		if len(neighbors) > 0 {
 
 			wg.Add(1)
-			go func(parent string) {
-				multiplex.Open(c.streams[parent])
+			go func(parentStream Stream) {
+				multiplex.Open(parentStream)
 				wg.Done()
-			}(upstream)
+			}(testedParentStream)
 		}
 
 		for _, dNode := range neighbors {
@@ -151,6 +166,8 @@ func NewCoordinator(logger Logger) Coordinator {
 		destinations:    make(map[string]Destination),
 		transformations: make(map[string]Transform),
 		streams:         make(map[string]Stream),
+		tests:           make(map[string]*testNode),
+		testStreams:     make(map[string]Stream),
 	}
 }
 
@@ -192,11 +209,20 @@ func (c *coordinator) AddTransform(name string, t Transform) error {
 
 //AddTest is a shortcut that adds a test destination
 func (c *coordinator) AddTest(node string, name string, desc string, co Condition) error {
-	err := c.AddDestination(name, NewTest(name, desc, co))
-	if err != nil {
-		return err
+	if tn, ok := c.tests[node]; ok {
+		tn.Add(name, desc, co)
+		return nil
 	}
-	return c.Connect(node, name)
+
+	if _, ok := c.nodes[node]; !ok {
+		return fmt.Errorf("name does not exist %s", node)
+	}
+
+	tn := testNode{}
+	tn.Add(name, desc, co)
+	c.tests[node] = &tn
+	c.testStreams[node] = NewStream(nil, DefaultBufferSize)
+	return nil
 }
 
 func (c *coordinator) Connect(from string, to string) error {
