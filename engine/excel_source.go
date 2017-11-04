@@ -10,7 +10,7 @@ import (
 )
 
 var (
-	ErrExcelTooManyWildcards     = errors.New("the Excel source range can have at most one wildcard")
+	ErrExcelTooManyWildcards     = errors.New("the Excel source/destination range can have at most one wildcard")
 	ErrExcelCannotIncludeColumns = errors.New("the Excel source range cannot be dynamic in X if it includes columns")
 	ErrColumnsNotSpecified       = errors.New("the Excel range should either include columns or they should be specified in the COLUMNS option")
 	fileManager                  *excelFileManager
@@ -45,13 +45,21 @@ func newExcelFileManager() *excelFileManager {
 }
 
 //Register registers the file with the manager. Idempotent.
-func (e *excelFileManager) Register(filename string) error {
+func (e *excelFileManager) Register(filename string, create bool) error {
 	e.Lock()
 	defer e.Unlock()
 	if _, ok := e.files[filename]; ok {
 		return nil
 	}
-	f, err := xlsx.OpenFile(filename)
+	var (
+		f *xlsx.File
+		err error
+	)
+	if create {
+		f = xlsx.NewFile()
+	} else {
+		f, err = xlsx.OpenFile(filename)
+	}
 	if err != nil {
 		return err
 	}
@@ -122,7 +130,7 @@ func (s *ExcelSource) fatalerr(err error, st Stream, l Logger) {
 }
 
 func (s *ExcelSource) Open(dest Stream, logger Logger, stop Stopper) {
-	err := fileManager.Register(s.Filename)
+	err := fileManager.Register(s.Filename, false)
 	if err != nil {
 		s.fatalerr(err, dest, logger)
 		return

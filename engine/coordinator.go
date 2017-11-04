@@ -97,6 +97,9 @@ func (c *coordinator) Execute() error {
 			//don't do anything, it should have been invoked by source/transform
 			upstream = n.name
 		case *sourceNode:
+			if err := n.s.Ping(); err != nil {
+				return err
+			}
 			wg.Add(1)
 			go func(name string) {
 				n.s.Open(c.streams[name], c.l, c.s)
@@ -122,7 +125,6 @@ func (c *coordinator) Execute() error {
 		}
 
 		if len(neighbors) > 0 {
-
 			wg.Add(1)
 			go func(parentStream Stream) {
 				multiplex.Open(parentStream)
@@ -140,7 +142,9 @@ func (c *coordinator) Execute() error {
 					wg.Done()
 				}(d.name)
 			case *destinationNode:
-
+				if err := d.d.Ping(); err != nil {
+					return err
+				}
 				wg.Add(1)
 				go func(name string) {
 					d.d.Open(multiplex, c.l, c.s)

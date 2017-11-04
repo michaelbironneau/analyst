@@ -6,60 +6,56 @@ import (
 	"testing"
 )
 
-func setupInsertTest() error {
-	return copyFile("./testing/test_insert.db", "./testing/test_insert.db.bak")
+func teardownWriteTest() error {
+	return os.Remove("./testing/output.xlsx")
 }
 
-func teardownInsertTest() error {
-	err := os.Remove("./testing/test_insert.db")
-	if err != nil {
-		return err
-	}
-	err = copyFile("./testing/test_insert.db.bak", "./testing/test_insert.db")
-	if err != nil {
-		return err
-	}
-	return os.Remove("./testing/test_insert.db.bak")
-}
-
-func TestSQLite(t *testing.T) {
-
-	Convey("Given a coordinator and a SQLite data destination", t, func() {
+func TestExcel(t *testing.T) {
+	cols := []string{"a", "b", "c"}
+	Convey("Given a coordinator and an Excel data destination", t, func() {
 		err := setupInsertTest()
 		So(err, ShouldBeNil)
 		c := NewCoordinator(&ConsoleLogger{})
-		sq := SQLDestination{
-			Driver:           "sqlite3",
-			ConnectionString: "./testing/test_insert.db",
-			Table:            "test",
+		d := ExcelDestination{
+			Filename: "./testing/output.xlsx",
+			Template: "./testing/template.xlsx",
+			Range: ExcelRange{
+				X1: 1,
+				X2: ExcelRangePoint{
+					N: false,
+					P: 3,
+				},
+				Y1: 2,
+				Y2: ExcelRangePoint{
+					N: true,
+				},
+			},
+			Cols: cols,
 		}
-		sqs := SQLSource{
-			Driver:           "sqlite3",
-			ConnectionString: "./testing/test_insert.db",
-			Query:            "SELECT * FROM test",
+		var e = ExcelSource{
+			Name:     "test",
+			Filename: "./testing/output.xlsx",
+			Sheet:    "Test",
+			Range: ExcelRange{
+				X1: 1,
+				X2: ExcelRangePoint{
+					N: false,
+					P: 3,
+				},
+				Y1: 2,
+				Y2: ExcelRangePoint{
+					N: false,
+					P: 2,
+				},
+			},
+			RangeIncludesColumns: false,
+			Cols: cols,
 		}
 		msg := [][]interface{}{[]interface{}{2, "Bob", 29.4}, []interface{}{4, "Fred", 27}}
-		cols := []string{"ID", "Name", "Age"}
 		Convey("It should retrieve results correctly", func() {
 			//TEST INSERT OCCURS WITH NO ERRORS
 			s := NewSliceSource(cols, msg)
 			err := c.AddSource("source", s)
-			So(err, ShouldBeNil)
-			err = c.AddDestination("destination", &sq)
-			So(err, ShouldBeNil)
-			err = c.Connect("source", "destination")
-			So(err, ShouldBeNil)
-			err = c.Compile()
-			So(err, ShouldBeNil)
-			err = c.Execute()
-			So(err, ShouldBeNil)
-			//fmt.Printf("%T, %T, %T", d.Results()[0][0], d.Results()[0][1], d.Results()[0][2])
-			So(sq.Columns(), ShouldResemble, cols)
-
-			//TEST INSERTED RESULTS AND SQL DESTINATION
-			c = NewCoordinator(&ConsoleLogger{})
-			d := SliceDestination{}
-			err = c.AddSource("source", &sqs)
 			So(err, ShouldBeNil)
 			err = c.AddDestination("destination", &d)
 			So(err, ShouldBeNil)
@@ -69,7 +65,22 @@ func TestSQLite(t *testing.T) {
 			So(err, ShouldBeNil)
 			err = c.Execute()
 			So(err, ShouldBeNil)
-			So(sq.Columns(), ShouldResemble, cols)
+			//fmt.Printf("%T, %T, %T", d.Results()[0][0], d.Results()[0][1], d.Results()[0][2])
+
+			//TEST INSERTED RESULTS AND SQL DESTINATION
+			c = NewCoordinator(&ConsoleLogger{})
+			d := SliceDestination{}
+			err = c.AddSource("source", &e)
+			So(err, ShouldBeNil)
+			err = c.AddDestination("destination", &d)
+			So(err, ShouldBeNil)
+			err = c.Connect("source", "destination")
+			So(err, ShouldBeNil)
+			err = c.Compile()
+			So(err, ShouldBeNil)
+			err = c.Execute()
+			So(err, ShouldBeNil)
+			So(s.Columns(), ShouldResemble, cols)
 			So(d.Results(), ShouldResemble, msg)
 			err = teardownInsertTest()
 			So(err, ShouldBeNil)
