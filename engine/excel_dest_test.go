@@ -19,6 +19,7 @@ func TestExcel(t *testing.T) {
 		d := ExcelDestination{
 			Filename: "./testing/output.xlsx",
 			Template: "./testing/template.xlsx",
+			Sheet: "Test",
 			Range: ExcelRange{
 				X1: 1,
 				X2: ExcelRangePoint{
@@ -31,6 +32,7 @@ func TestExcel(t *testing.T) {
 				},
 			},
 			Cols: cols,
+			Overwrite: true,
 		}
 		var e = ExcelSource{
 			Name:     "test",
@@ -44,8 +46,7 @@ func TestExcel(t *testing.T) {
 				},
 				Y1: 2,
 				Y2: ExcelRangePoint{
-					N: false,
-					P: 2,
+					N: true,
 				},
 			},
 			RangeIncludesColumns: false,
@@ -82,7 +83,7 @@ func TestExcel(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(s.Columns(), ShouldResemble, cols)
 			So(d.Results(), ShouldResemble, msg)
-			err = teardownInsertTest()
+			err = teardownWriteTest()
 			So(err, ShouldBeNil)
 		})
 

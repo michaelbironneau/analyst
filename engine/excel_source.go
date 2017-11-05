@@ -168,11 +168,14 @@ func (s *ExcelSource) Open(dest Stream, logger Logger, stop Stopper) {
 		for x := s.Range.X1; x <= s.Range.X2.P; x++ {
 			fileManager.Use(s.Filename, func(e *xlsx.File) {
 				v, empty := s.convertCellValue(e.GetCellValue(s.Sheet, pointToCol(x, s.posY)))
-				nonEmptyRow = nonEmptyRow || empty
+				nonEmptyRow = nonEmptyRow || (!empty)
 				msg = append(msg, v)
 			})
 		}
-		c <- msg
+		if nonEmptyRow || !s.Range.Y2.N {
+			c <- msg
+		}
+
 		if s.Range.Y2.N && nonEmptyRow {
 			s.posY++
 		} else if s.posY < s.Range.Y2.P {

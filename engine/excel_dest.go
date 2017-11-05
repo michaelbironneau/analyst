@@ -44,7 +44,6 @@ func (ed *ExcelDestination) fatalerr(err error, st Stream, l Logger) {
 		Time:    time.Now(),
 		Message: err.Error(),
 	}
-	close(st.Chan())
 }
 
 func (ed *ExcelDestination) copyTemplateToDestination() error {
@@ -95,8 +94,8 @@ func (ed *ExcelDestination) Open(s Stream, l Logger, st Stopper){
 		} else {
 			colLength = len(msg)
 		}
-		if !ed.Range.X2.N && ed.Range.X2.P - ed.Range.X1 != colLength{
-			ed.fatalerr(fmt.Errorf("wrong number of columns. Expected %v columns, got %v", ed.Range.X2.P - ed.Range.X1, len(msg)), s, l)
+		if !ed.Range.X2.N && ed.Range.X2.P - ed.Range.X1 + 1 != colLength{
+			ed.fatalerr(fmt.Errorf("wrong number of columns. Expected %v columns, got %v", ed.Range.X2.P - ed.Range.X1 + 1, len(msg)), s, l)
 			return
 		}
 		if !ed.Range.Y2.N && ed.posY > ed.Range.Y2.P {
@@ -113,8 +112,10 @@ func (ed *ExcelDestination) Open(s Stream, l Logger, st Stopper){
 				}
 			}
 			if ed.Transpose {
+				ed.posY = ed.Range.Y1
 				ed.posX++
 			} else {
+				ed.posX = ed.Range.X1
 				ed.posY++
 			}
 		})

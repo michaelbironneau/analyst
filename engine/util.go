@@ -43,8 +43,7 @@ func fileExists(name string) bool {
 
 
 // copyFile copies a file from src to dst. If src and dst files exist, and are
-// the same, then return success. Otherwise, attempt to create a hard link
-// between the two files. If that fail, copy the file contents from src to dst.
+// the same, then return success. Copy the file contents from src to dst.
 // Taken from https://stackoverflow.com/questions/21060945/simple-way-to-copy-a-file-in-golang
 func copyFile(src, dst string) (err error) {
 	sfi, err := os.Stat(src)
@@ -68,9 +67,6 @@ func copyFile(src, dst string) (err error) {
 		if os.SameFile(sfi, dfi) {
 			return
 		}
-	}
-	if err = os.Link(src, dst); err == nil {
-		return
 	}
 	err = copyFileContents(src, dst)
 	return
