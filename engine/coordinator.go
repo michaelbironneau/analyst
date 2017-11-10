@@ -39,6 +39,8 @@ type coordinator struct {
 	tests           map[string]*testNode
 	testStreams     map[string]Stream
 	constraints     []constraint
+	constraintMap   map[string][]string //map after -> before
+	constraintMapRev map[string][]string //map before -> after
 }
 
 type sourceNode struct {
@@ -62,10 +64,33 @@ func (c *coordinator) Stop() {
 }
 
 func (c *coordinator) checkConstraints() error {
+	for _, constraint := range c.constraints {
+		fromNode := c.nodeIds[constraint.Before]
+		toNode := c.nodeIds[constraint.After]
+		if c.g.HasEdgeFromTo(toNode, fromNode) {
+			return fmt.Errorf("AFTER constraint conflicts with required execution order for the job: %s cannot be executed after %s", constraint.After, constraint.Before)
+		}
+	}
 	return nil
 }
 
+//makeConstraints returns a configured waitgroup if the node has dependencies,
+//or nil otherwise.
+func (c *coordinator) makeConstraints() map[string]*sync.WaitGroup {
+	ret := make(map[string]*sync.WaitGroup)
+	for after, constraints := range c.constraintMap {
+		var wg sync.WaitGroup
+		wg.Add(len(constraints))
+		ret[after] = &wg
+	}
+	return ret
+}
+
 func (c *coordinator) Compile() error {
+	if err := c.checkConstraints(); err != nil {
+		return err
+	}
+
 	scc := topo.TarjanSCC(c.g)
 
 	if len(scc) > len(c.nodes) {
@@ -103,6 +128,7 @@ func (c *coordinator) Execute() error {
 	if err != nil {
 		panic(err) //this should be unreachable as we checked for cycles in Compile()
 	}
+	constraints := c.makeConstraints()
 	for _, node := range executionOrder {
 		var upstream string
 		nv := c.nodeIdsRev[node.ID()]
@@ -119,7 +145,13 @@ func (c *coordinator) Execute() error {
 			}
 			wg.Add(1)
 			go func(name string) {
+				if constraints[name] != nil {
+					constraints[name].Wait()
+				}
 				n.s.Open(c.streams[name], c.l, c.s)
+				for _, after := range c.constraintMapRev[name]{
+					constraints[after].Done()
+				}
 				wg.Done()
 			}(n.name)
 			upstream = n.name
@@ -155,7 +187,13 @@ func (c *coordinator) Execute() error {
 			case *transformNode:
 				wg.Add(1)
 				go func(name string) {
+					if constraints[name] != nil {
+						constraints[name].Wait()
+					}
 					d.t.Open(multiplex, c.streams[name], c.l, c.s)
+					for _, after := range c.constraintMapRev[name]{
+						constraints[after].Done()
+					}
 					wg.Done()
 				}(d.name)
 			case *destinationNode:
@@ -164,7 +202,13 @@ func (c *coordinator) Execute() error {
 				}
 				wg.Add(1)
 				go func(name string) {
+					if constraints[name] != nil {
+						constraints[name].Wait()
+					}
 					d.d.Open(multiplex, c.l, c.s)
+					for _, after := range c.constraintMapRev[name]{
+						constraints[after].Done()
+					}
 					wg.Done()
 				}(d.name)
 			default:
@@ -191,6 +235,8 @@ func NewCoordinator(logger Logger) Coordinator {
 		streams:         make(map[string]Stream),
 		tests:           make(map[string]*testNode),
 		testStreams:     make(map[string]Stream),
+		constraintMap:   make(map[string][]string),
+		constraintMapRev : make(map[string][]string),
 	}
 }
 
@@ -234,6 +280,8 @@ func (c *coordinator) AddConstraint(before, after string) error {
 		return fmt.Errorf("name does not exist %s", after)
 	}
 	c.constraints = append(c.constraints, constraint{before, after})
+	c.constraintMap[after] = append(c.constraintMap[after], before)
+	c.constraintMapRev[before] = append(c.constraintMapRev[before], after)
 	return nil
 }
 
