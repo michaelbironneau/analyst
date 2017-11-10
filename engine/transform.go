@@ -34,6 +34,7 @@ func (tn *testNode) Ping() error {
 
 func (tn *testNode) Open(s Stream, dest Stream, l Logger, st Stopper) {
 	var firstMessage = true
+	d := dest.Chan()
 	for msg := range s.Chan() {
 		if firstMessage {
 			dest.SetColumns(s.Columns())
@@ -48,11 +49,11 @@ func (tn *testNode) Open(s Stream, dest Stream, l Logger, st Stopper) {
 					Level:   Error,
 				}
 				st.Stop()
-				close(dest.Chan())
+				close(d)
 				return //a test should stop the job on first failure
 			}
 		}
-		dest.Chan() <- msg
+		d <- msg
 	}
 }
 

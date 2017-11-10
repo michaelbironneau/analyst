@@ -61,6 +61,7 @@ func TestQuery(t *testing.T) {
 		s1 := `QUERY 'name' FROM CONNECTION source (
 			query_source()
 		) INTO CONNECTION destination, GLOBAL
+		AFTER dependency
 		`
 		b := &Query{}
 		err = parser.ParseString(s1, b)
@@ -72,6 +73,7 @@ func TestQuery(t *testing.T) {
 		So(b.Sources[0].Database, ShouldResemble, &s)
 		So(b.Destinations[1].Global, ShouldBeTrue)
 		So(*b.Destinations[0].Database, ShouldEqual, "destination")
+		So(b.Dependencies, ShouldResemble, []string{"dependency"})
 
 		//2
 		s1 = `QUERY 'name' EXTERN 'sourcee'

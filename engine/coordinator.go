@@ -2,8 +2,10 @@ package engine
 
 import (
 	"fmt"
-	"github.com/twmb/algoimpl/go/graph"
 	"sync"
+	"github.com/gonum/graph"
+	"github.com/gonum/graph/simple"
+	"github.com/gonum/graph/topo"
 )
 
 type Coordinator interface {
@@ -11,23 +13,32 @@ type Coordinator interface {
 	AddDestination(name string, d Destination) error
 	AddTest(node string, name string, desc string, c Condition) error
 	AddTransform(name string, t Transform) error
+	AddConstraint(before, after string) error
 	Connect(from string, to string) error
 	Compile() error
 	Execute() error
 	Stop()
 }
 
+type constraint struct {
+	Before string
+	After string
+}
+
 type coordinator struct {
 	s               Stopper
 	l               Logger
-	g               *graph.Graph
-	nodes           map[string]graph.Node
+	g               *simple.DirectedGraph
+	nodes           map[string]interface{}
+	nodeIdsRev      map[int]interface{}
+	nodeIds         map[string]graph.Node
 	streams         map[string]Stream
 	sources         map[string]Source
 	destinations    map[string]Destination
 	transformations map[string]Transform
 	tests           map[string]*testNode
 	testStreams     map[string]Stream
+	constraints     []constraint
 }
 
 type sourceNode struct {
@@ -50,27 +61,30 @@ func (c *coordinator) Stop() {
 	c.s.Stop()
 }
 
+func (c *coordinator) checkConstraints() error {
+	return nil
+}
+
 func (c *coordinator) Compile() error {
-	scc := c.g.StronglyConnectedComponents()
-	for i := range scc {
-		if len(scc[i]) > 1 {
-			return fmt.Errorf("cannot compile: the dag for the job has cycles")
-		}
+	scc := topo.TarjanSCC(c.g)
+
+	if len(scc) > len(c.nodes) {
+		return fmt.Errorf("cannot compile: the dag for the job has cycles")
 	}
 
-	for name, node := range c.nodes {
-		nv := *node.Value
+
+	for name, nv := range c.nodes {
 
 		switch nv.(type) {
 		case *sourceNode:
 			//no rules?
 		case *destinationNode:
-			if len(c.g.Neighbors(node)) > 0 {
+			if len(c.g.From(c.nodeIds[name])) > 0 {
 				return fmt.Errorf("a destination is not allowed to have further destinations, but %s does", name)
 			}
 		case *transformNode:
-			for _, dNode := range c.g.Neighbors(node) {
-				dnv := *(dNode.Value)
+			for _, dNode := range c.g.From(c.nodeIds[name]) {
+				dnv := c.nodeIdsRev[dNode.ID()]
 				switch (dnv).(type) {
 				case *sourceNode:
 					return fmt.Errorf("a source cannot be a destination, but %s is", name)
@@ -85,10 +99,13 @@ func (c *coordinator) Compile() error {
 
 func (c *coordinator) Execute() error {
 	var wg sync.WaitGroup
-	executionOrder := c.g.TopologicalSort()
+	executionOrder, err := topo.Sort(c.g)
+	if err != nil {
+		panic(err) //this should be unreachable as we checked for cycles in Compile()
+	}
 	for _, node := range executionOrder {
 		var upstream string
-		nv := *node.Value
+		nv := c.nodeIdsRev[node.ID()]
 		switch n := nv.(type) {
 		case *transformNode:
 			//don't do anything, it should have been invoked by source/transform
@@ -109,7 +126,7 @@ func (c *coordinator) Execute() error {
 		default:
 			panic(fmt.Sprintf("unknown node type %T: %v", nv, nv))
 		}
-		neighbors := c.g.Neighbors(node)
+		neighbors := c.g.From(node)
 		multiplex := newMultiplexer(len(neighbors), DefaultBufferSize)
 		var testedParentStream Stream
 
@@ -133,7 +150,7 @@ func (c *coordinator) Execute() error {
 		}
 
 		for _, dNode := range neighbors {
-			dnv := *dNode.Value
+			dnv := c.nodeIdsRev[dNode.ID()]
 			switch d := dnv.(type) {
 			case *transformNode:
 				wg.Add(1)
@@ -164,8 +181,10 @@ func NewCoordinator(logger Logger) Coordinator {
 	return &coordinator{
 		s:               &stopper{},
 		l:               logger,
-		g:               graph.New(graph.Directed),
-		nodes:           make(map[string]graph.Node),
+		g:               simple.NewDirectedGraph(0,0),
+		nodes:           make(map[string]interface{}),
+		nodeIds:         make(map[string]graph.Node),
+		nodeIdsRev:      make(map[int]interface{}),
 		sources:         make(map[string]Source),
 		destinations:    make(map[string]Destination),
 		transformations: make(map[string]Transform),
@@ -179,9 +198,14 @@ func (c *coordinator) addNode(name string, val interface{}) error {
 	if _, ok := c.nodes[name]; ok {
 		return fmt.Errorf("name already exists %s", name)
 	}
-	n := c.g.MakeNode()
-	*n.Value = val
-	c.nodes[name] = n
+	id := c.g.NewNodeID()
+	node := simple.Node(id)
+
+
+	c.g.AddNode(node)
+	c.nodes[name] = val
+	c.nodeIds[name] = node
+	c.nodeIdsRev[id] = val
 	return nil
 }
 
@@ -199,6 +223,17 @@ func (c *coordinator) AddDestination(name string, d Destination) error {
 		return err
 	}
 	c.destinations[name] = d
+	return nil
+}
+
+func (c *coordinator) AddConstraint(before, after string) error {
+	if _, ok := c.nodes[before]; !ok {
+		return fmt.Errorf("name does not exist %s", before)
+	}
+	if _, ok := c.nodes[after]; !ok {
+		return fmt.Errorf("name does not exist %s", after)
+	}
+	c.constraints = append(c.constraints, constraint{before, after})
 	return nil
 }
 
@@ -242,6 +277,6 @@ func (c *coordinator) Connect(from string, to string) error {
 	if _, ok := c.sources[to]; ok {
 		return fmt.Errorf("cannot use the source %s as a destination", to)
 	}
-	c.g.MakeEdge(c.nodes[from], c.nodes[to]) //discard error return as we have created nodes that belong to graph earlier
+	c.g.SetEdge(simple.Edge{c.nodeIds[from], c.nodeIds[to], 1})
 	return nil
 }

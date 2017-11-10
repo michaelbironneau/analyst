@@ -39,6 +39,7 @@ type Query struct {
 	Content      string       `['(' @PAREN_BODY ')' ]`
 	Destinations []SourceSink `[INTO @@ { "," @@ } ]`
 	Options      []Option     `[WITH '(' @@ {"," @@ } ')' ]`
+	Dependencies []string     `[AFTER @IDENT {"," @IDENT }]`
 }
 
 type Script struct {
@@ -48,6 +49,7 @@ type Script struct {
 	Content      string        `['(' @PAREN_BODY ')']`
 	Destinations []SourceSink  `[INTO @@ {"," @@}]`
 	Options      []Option      `[WITH '(' @@ {"," @@ } ')' ]`
+	Dependencies []string     `[AFTER @IDENT {"," @IDENT }]`
 }
 
 type Test struct {
@@ -242,6 +244,10 @@ func (b *JobScript) union(other *JobScript) {
 	b.Tests = append(b.Tests, other.Tests...)
 	b.Globals = append(b.Globals, other.Globals...)
 	b.Scripts = append(b.Scripts, other.Scripts...)
+}
+
+func (b *JobScript) ParseConnections() ([]Connection, error){
+	return parseConnections(b.Connections)
 }
 
 func parseConnections(conns []UnparsedConnection) ([]Connection, error) {
