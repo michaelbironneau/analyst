@@ -104,7 +104,13 @@ func (ed *ExcelDestination) Open(s Stream, l Logger, st Stopper){
 		}
 		fileManager.Use(ed.Filename, func(f *xlsx.File){
 			for i := range msg {
-				f.SetCellValue(ed.Sheet, pointToCol(ed.posX, ed.posY), colMappers[i](msg))
+				if colMappers != nil {
+					f.SetCellValue(ed.Sheet, pointToCol(ed.posX, ed.posY), colMappers[i](msg))
+				} else {
+					//identity mapping
+					f.SetCellValue(ed.Sheet, pointToCol(ed.posX, ed.posY), msg[i])
+				}
+
 				if ed.Transpose {
 					ed.posY++
 				} else {

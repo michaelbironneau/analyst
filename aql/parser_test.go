@@ -31,6 +31,69 @@ func saveExpectedResult(scriptPath string, b JobScript) error {
 	return err
 }
 
+func TestTruthy(t *testing.T){
+	Convey("Given some options that may or not be truthy", t, func(){
+		v1 := float64(1)
+		s1 := "true"
+		s2 := "false"
+		v2 := float64(0)
+		o1 := Option{
+			Value: &OptionValue{
+				Number: &v1,
+			},
+		}
+		o2 := Option{
+			Value: &OptionValue{
+				Number: &v2,
+			},
+		}
+		o3 := Option{
+			Value: &OptionValue{
+				Str: &s1,
+			},
+		}
+		o4 := Option{
+			Value: &OptionValue{
+				Str: &s2,
+			},
+		}
+		Convey("It should return whether the value is truthy correctly", func(){
+			So(o1.Truthy(), ShouldBeTrue)
+			So(o2.Truthy(), ShouldBeFalse)
+			So(o3.Truthy(), ShouldBeTrue)
+			So(o4.Truthy(), ShouldBeFalse)
+		})
+
+	})
+}
+
+func TestString(t *testing.T){
+	Convey("Given some options", t, func(){
+		Convey("It should successfully return string value of a String option", func(){
+			s := "string"
+			o1 := Option{
+				Value: &OptionValue{
+					Str: &s,
+				},
+			}
+			ss, ok := o1.String()
+			So(ok, ShouldBeTrue)
+			So(ss, ShouldEqual, s)
+		})
+		Convey("It should return false when passed Number option", func(){
+			v := float64(1)
+			o1 := Option{
+				Value: &OptionValue{
+					Number: &v,
+				},
+			}
+			_, ok := o1.String()
+			So(ok, ShouldBeFalse)
+
+		})
+	})
+}
+
 func TestCompareOutput(t *testing.T) {
 	Convey("Given the scripts in the testing folder", t, func() {
 		Convey("It should parse each without error and the output should be as expected", func() {

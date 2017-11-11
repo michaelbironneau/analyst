@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"text/template"
+	"strconv"
 )
 
 //MaxIncludeDepth is the maximum depth of includes that will be processed before an error is returned.
@@ -98,6 +99,160 @@ type JobScript struct {
 	Tests       []Test               `| @@ `
 	Globals     []Global             `| @@ `
 	Scripts     []Script             ` | @@ }`
+}
+
+func (opt Option) String() (string, bool){
+	if opt.Value != nil && opt.Value.Str != nil {
+		return *opt.Value.Str, true
+	}
+	return "", false
+}
+
+//Truthy returns whether an option value is truthy.
+// Non-zero numbers are truthy and case-insensitive variants of 'true' are truthy.
+// All other strings and numbers are falsy.
+func (opt Option) Truthy() bool {
+	if opt.Value == nil {
+		return false
+	}
+	if opt.Value.Str != nil {
+		if strings.ToUpper(*opt.Value.Str) == "TRUE" {
+			return true
+		}
+		return false
+	}
+	if opt.Value.Number != nil {
+		if *opt.Value.Number == 0 {
+			return false
+		}
+		return true
+	}
+	panic("should be unreachable")
+}
+
+//ParseExcelRange parses a range of the form '[x1,x2]:[y1,y2]'
+//TODO: Rewrite this in a more efficient and maintainable way.
+func ParseExcelRange(s string) (x1 int, x2 *int, y1 int, y2 *int, err error){
+	ps := strings.Split(s, ":")
+
+	if len(ps) != 2 {
+		err = fmt.Errorf("expected separator ':' in range '%s'", s)
+		return
+	}
+
+	p1 := strings.Split(ps[0], ",")
+
+	if len(p1) != 2 {
+		err = fmt.Errorf("expected first point of range to be separated by ',': %s", s)
+		return
+	}
+
+	p2 := strings.Split(ps[1], ",")
+
+	if len(p1) != 2 {
+		err = fmt.Errorf("expected second point of range to be separated by ',': %s", s)
+		return
+	}
+
+
+	p1[0] = strings.TrimSpace(p1[0])
+	p1[1] = strings.TrimSpace(p1[1])
+	p2[0] = strings.TrimSpace (p2[0])
+	p2[1] = strings.TrimSpace(p2[1])
+
+	if p1[0][0] != '[' || p2[0][0] != '[' {
+		err = fmt.Errorf("expected '[' in range %s", s)
+		return
+	}
+	if p1[1][len(p1[1])-1] != ']' ||  p2[1][len(p2[1])-1] != ']' {
+		err = fmt.Errorf("expected ']' in range %s", s)
+	}
+
+	//Get rid of [ and ]
+	p1[0] = p1[0][1:]
+	p2[0] = p2[0][1:]
+	p1[1] = p1[1][0:len(p1[1])-1]
+	p2[1] = p2[1][0:len(p2[1])-1]
+
+	x1, err = strconv.Atoi(p1[0])
+
+	if err != nil {
+		return
+	}
+
+	y1, err = strconv.Atoi(p1[1])
+
+	if err != nil {
+		return
+	}
+
+	//not N for x2
+	if len(p2[0]) != 1 || (p2[0][0] != 'N' && p2[0][0] != 'n') {
+		var xx2 int
+		xx2, err = strconv.Atoi(p2[0])
+
+		if err != nil {
+			return
+		}
+		x2 = &xx2
+	}
+
+	//not N for y2
+	if len(p2[1]) != 1 || (p2[1][0] != 'N' && p2[1][0] != 'n') {
+		var yy2 int
+		yy2, err = strconv.Atoi(p2[1])
+
+		if err != nil {
+			return
+		}
+		y2 = &yy2
+	}
+
+	return
+}
+
+//FindOption traverses the slice of options and returns the one whose key matches the needle.
+//The search is case-insensitive.
+//The second argument indicates whether the needle was found or not.
+func FindOption(options []Option, needle string) (*Option, bool){
+	n := strings.ToLower(needle)
+	for _, opt := range options {
+		if strings.ToLower(opt.Key) == n {
+			return &opt, true
+		}
+	}
+	return nil, false
+}
+
+//FindOverridableOption searches for the needle in the option hierarchy, in the
+//order that they are given, first looking for the namespaced option and then
+//the generic. The first found option is returned. For example:
+// Looking for SHEET option given QUERY options and CONN options, connection 'ExcelA',
+// would be accomplished with FindOverridableOption("SHEET", "ExcelA", query.Options, conn.Options)
+func FindOverridableOption(needle string, namespace string, hierarchy ...[]Option) (*Option, bool){
+	for _, opts := range hierarchy {
+		var (
+			opt *Option
+			ok bool
+		)
+		//First, try destination-specific override
+		opt, ok = FindOption(opts, needle + "_" + namespace)
+
+		if ok {
+			return opt, ok
+		}
+
+		//Next, try global override
+		if !ok {
+			opt, ok = FindOption(opts, needle)
+		}
+
+		if ok {
+			return opt, ok
+		}
+	}
+
+	return nil, false
 }
 
 func (b *JobScript) EvaluateParametrizedContent(globals []Option) error {
@@ -285,7 +440,7 @@ func optsToConn(opts []Option, conn *Connection) error {
 		} else if strings.ToUpper(o.Key) == "CONNECTIONSTRING" && o.Value.Str != nil {
 			conn.ConnectionString = *(o.Value.Str)
 		} else {
-			return fmt.Errorf("invalid connection key %s", o.Key)
+			conn.Options = append(conn.Options, o)
 		}
 	}
 	if conn.ConnectionString == "" || conn.Driver == "" {
