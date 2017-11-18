@@ -236,7 +236,7 @@ func FindOverridableOption(needle string, namespace string, hierarchy ...[]Optio
 			ok bool
 		)
 		//First, try destination-specific override
-		opt, ok = FindOption(opts, needle + "_" + namespace)
+		opt, ok = FindOption(opts, namespace + "_" + needle )
 
 		if ok {
 			return opt, ok

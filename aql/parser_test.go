@@ -31,6 +31,94 @@ func saveExpectedResult(scriptPath string, b JobScript) error {
 	return err
 }
 
+func TestParseExcelRange(t *testing.T){
+	Convey("Given a valid Excel range", t, func(){
+		s := "[0, 1]:[N,1]"
+		x1, x2, y1, y2, err := ParseExcelRange(s)
+		So(err, ShouldBeNil)
+		So(x1, ShouldEqual, 0)
+		So(x2, ShouldBeNil)
+		So(y1, ShouldEqual, 1)
+		So(*y2, ShouldEqual, 1)
+	})
+	Convey("Given an invalid Excel range", t, func(){
+		s := "[0,1:[N,2]"
+		_,_,_,_,err := ParseExcelRange(s)
+		So(err, ShouldNotBeNil)
+	})
+}
+
+func TestFindOption(t *testing.T){
+	Convey("Given some options", t, func(){
+		f := 1.0
+		f2 := 2.0
+		opts := []Option{
+			Option{
+				Key: "O1",
+				Value: &OptionValue{
+					Number: &f,
+				},
+			},
+			Option{
+				Key: "O2",
+				Value: &OptionValue{
+					Number : &f2,
+				},
+			},
+		}
+		opt, ok := FindOption(opts, "o2")
+		So(ok, ShouldBeTrue)
+		So(opt.Key, ShouldEqual, "O2")
+		So(*opt.Value.Number, ShouldEqual, f2)
+		_, ok = FindOption(opts, "o3")
+		So(ok, ShouldBeFalse)
+	})
+}
+
+func TestFindOverridableOption(t *testing.T){
+	Convey("Given some options", t, func(){
+		f := 1.0
+		f2 := 2.0
+		f3 := 3.0
+		f4 := 4.0
+		opts := []Option{
+			Option{
+				Key: "asdf_O1",
+				Value: &OptionValue{
+					Number: &f,
+				},
+			},
+			Option{
+				Key: "O2",
+				Value: &OptionValue{
+					Number : &f2,
+				},
+			},
+		}
+		opts2 := []Option{
+			Option{
+				Key: "O1",
+				Value: &OptionValue{
+					Number: &f3,
+				},
+			},
+			Option{
+				Key: "O3",
+				Value: &OptionValue{
+					Number: &f4,
+				},
+			},
+		}
+		opt, ok := FindOverridableOption("O3", "", opts, opts2)
+		So(ok, ShouldBeTrue)
+		So(*opt.Value.Number, ShouldEqual, f4)
+		opt, ok = FindOverridableOption("O1", "ASDF", opts, opts2)
+		So(ok, ShouldBeTrue)
+		So(*opt.Value.Number, ShouldEqual, f)
+
+	})
+}
+
 func TestTruthy(t *testing.T){
 	Convey("Given some options that may or not be truthy", t, func(){
 		v1 := float64(1)
