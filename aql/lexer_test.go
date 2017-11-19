@@ -40,8 +40,8 @@ func TestLiterals(t *testing.T) {
 
 func TestKeywords(t *testing.T) {
 	Convey("When lexing a script with keywords", t, func() {
-		s := "QUERY TEST FROM\n INTO  DESCRIPTION  TRANSFORM EXTERN INCLUDE   \t RANGE WITH"
-		ts := []tokenType{QUERY, TEST, FROM, INTO, DESCRIPTION, TRANSFORM, EXTERN, INCLUDE, RANGE, WITH}
+		s := "QUERY TEST FROM\n INTO  DESCRIPTION  TRANSFORM EXTERN INCLUDE   \t WITH"
+		ts := []tokenType{QUERY, TEST, FROM, INTO, DESCRIPTION, TRANSFORM, EXTERN, INCLUDE, WITH}
 		Convey("It should return the right tokens", func() {
 			tt, err := Lex(s)
 			So(err, ShouldBeNil)

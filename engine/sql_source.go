@@ -7,6 +7,7 @@ import (
 	_ "github.com/lib/pq"                //Postgres
 	_ "github.com/mattn/go-sqlite3"      //SQLite driver
 	"time"
+	"fmt"
 )
 
 type SQLSource struct {
@@ -26,7 +27,10 @@ func (sq *SQLSource) Columns() []string {
 func (sq *SQLSource) connect() error {
 	var err error
 	sq.db, err = sql.Open(sq.Driver, sq.ConnectionString)
-	return err
+	if err != nil {
+		return fmt.Errorf("SQL destination: %s", err.Error())
+	}
+	return nil
 }
 
 func (sq *SQLSource) Ping() error {

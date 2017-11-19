@@ -25,7 +25,10 @@ func (sq *SQLDestination) Columns() []string {
 func (sq *SQLDestination) connect() error {
 	var err error
 	sq.db, err = sql.Open(sq.Driver, sq.ConnectionString)
-	return err
+	if err != nil {
+		return fmt.Errorf("SQL destination: %s", err.Error())
+	}
+	return nil
 }
 
 func (sq *SQLDestination) Ping() error {

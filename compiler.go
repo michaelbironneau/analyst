@@ -10,13 +10,9 @@ import (
 
 const destinationUniquifier = ": "
 
-func Execute(script string, options []aql.Option, logger engine.Logger) error {
-	js, err := aql.ParseFile(script)
+func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger) error {
 	dag := engine.NewCoordinator(logger)
-	if err != nil {
-		return fmt.Errorf("error parsing script: %v", err)
-	}
-	err = js.ResolveExternalContent()
+	err := js.ResolveExternalContent()
 	if err != nil {
 		return fmt.Errorf("error resolving external content: %v", err)
 	}
@@ -56,6 +52,24 @@ func Execute(script string, options []aql.Option, logger engine.Logger) error {
 	return dag.Execute()
 }
 
+func ExecuteString(script string, options []aql.Option, logger engine.Logger) error {
+	js, err := aql.ParseString(script)
+	if err != nil {
+		return err
+	}
+	return execute(js, options, logger)
+}
+
+func ExecuteFile(filename string, options []aql.Option, logger engine.Logger) error {
+	js, err := aql.ParseFile(filename)
+	if err != nil {
+		return err
+	}
+	return execute(js, options, logger)
+}
+
+
+
 //constraints applies AFTER constraints.
 //As of current release:
 //  - Limited to QUERY blocks
@@ -77,7 +91,7 @@ func constraints(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 //	- Queries limited to single source (this will probably remain a limitation for the foreseeable future)
 func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection) error {
 	for _, query := range js.Queries {
-		if len(query.Sources) != 0 {
+		if len(query.Sources) != 1 {
 			return fmt.Errorf("queries must have exactly one source but %s has %v", query.Name, len(query.Sources))
 		}
 		if query.Sources[0].Database == nil {
@@ -235,7 +249,6 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 			columns[i] = strings.TrimSpace(columns[i])
 		}
 	}
-
 	//Make destination name unique
 	dag.AddDestination(strings.ToLower(query.Name + destinationUniquifier + conn.Name), &engine.ExcelDestination{
 		Name: query.Name + destinationUniquifier + conn.Name,
@@ -273,10 +286,10 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 			if dest.Database == nil {
 				return fmt.Errorf("only CONNECTION destinations are currently supported for %s", query.Name)
 			}
-			if connMap[*dest.Database] == nil {
+			if connMap[strings.ToLower(*dest.Database)] == nil {
 				return fmt.Errorf("destination %s not found for query %s", *dest.Database, query.Name)
 			}
-			conn := *connMap[*dest.Database]
+			conn := *connMap[strings.ToLower(*dest.Database)]
 			var err error
 			if strings.ToUpper(conn.Driver) == "EXCEL" {
 				err = excelDest(js, dag, connMap, query, conn)
@@ -298,8 +311,8 @@ func connectionMap(js *aql.JobScript) (map[string]*aql.Connection, error) {
 		return nil, err
 	}
 	ret := make(map[string]*aql.Connection)
-	for _, conn := range conns {
-		ret[strings.ToLower(conn.Name)] = &conn
+	for k, conn := range conns {
+		ret[strings.ToLower(conn.Name)] = &conns[k]
 	}
 	return ret, nil
 }

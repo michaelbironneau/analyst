@@ -64,6 +64,16 @@ func (ed *ExcelDestination) Open(s Stream, l Logger, st Stopper){
 		return
 	}
 
+	if ed.Template == "" {
+		//we may have to create sheet
+
+		fileManager.Use(ed.Filename, func(f *xlsx.File){
+			if _, ok := f.Sheet[ed.Sheet]; !ok {
+				f.NewSheet(ed.Sheet)
+			}
+		})
+	}
+
 	l.Chan() <- Event{
 		Level:   Trace,
 		Time:    time.Now(),

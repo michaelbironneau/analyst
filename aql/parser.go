@@ -10,6 +10,8 @@ import (
 	"strings"
 	"text/template"
 	"strconv"
+	xlsx "github.com/360EntSecGroup-Skylar/excelize"
+	"unicode"
 )
 
 //MaxIncludeDepth is the maximum depth of includes that will be processed before an error is returned.
@@ -130,9 +132,95 @@ func (opt Option) Truthy() bool {
 	panic("should be unreachable")
 }
 
+//ParseExcelRange parses a range of the form 'A1:C4' with possible wildcards
+//such as 'A1:*4'
+func ParseExcelRange(s string) (x1 int, x2 *int, y1 int, y2 *int, err error){
+	ps := strings.Split(s, ":")
+
+	if len(ps) != 2 {
+		err = fmt.Errorf("expected separator ':' in range '%s'", s)
+		return
+	}
+	ps[0] = strings.TrimSpace(ps[0])
+	ps[1] = strings.TrimSpace(ps[1])
+
+	x1, y1, err = parseCell(ps[0])
+
+	if err != nil {
+		return
+	}
+
+	x2, y2, err = parseCellWithWildcards(ps[1])
+
+	return
+
+}
+
+func parseCell(s string) (x, y int, err error){
+	var (
+		col string
+		i int
+		r rune
+	)
+	for i, r = range s {
+		if unicode.IsLetter(r) {
+			col += string(r)
+			break
+		}
+	}
+
+	if i == len(s) -1 {
+		return 0, 0, fmt.Errorf("expected row number in range %s", s)
+	}
+
+	x = xlsx.TitleToNumber(col) + 1
+
+	y, err = strconv.Atoi(s[i+1:])
+
+	return
+}
+
+func parseCellWithWildcards(s string) (x, y *int, err error){
+	var (
+		col string
+		i int
+		r rune
+		wildcardCol bool
+	)
+	for i, r = range s {
+		if r == '*' {
+			wildcardCol = true
+			break //wildcard => x is nil
+		}
+		if unicode.IsLetter(r) {
+			col += string(r)
+			break
+		}
+	}
+
+	if i == len(s) -1 {
+		return nil, nil, fmt.Errorf("expected row number in range %s", s)
+	}
+
+	if !wildcardCol {
+		xx := xlsx.TitleToNumber(col) + 1
+		x = &xx
+	}
+
+	if s[i:] == "*" {
+		return //wildcard row => y also nil
+	}
+
+	yy, errI := strconv.Atoi(s[i+1:])
+
+	y = &yy
+	err = errI
+	return
+}
+
 //ParseExcelRange parses a range of the form '[x1,x2]:[y1,y2]'
 //TODO: Rewrite this in a more efficient and maintainable way.
-func ParseExcelRange(s string) (x1 int, x2 *int, y1 int, y2 *int, err error){
+func parseExcelRange_Old(s string) (x1 int, x2 *int, y1 int, y2 *int, err error){
 	ps := strings.Split(s, ":")
 
 	if len(ps) != 2 {

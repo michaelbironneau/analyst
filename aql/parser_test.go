@@ -33,16 +33,16 @@ func saveExpectedResult(scriptPath string, b JobScript) error {
 
 func TestParseExcelRange(t *testing.T){
 	Convey("Given a valid Excel range", t, func(){
-		s := "[0, 1]:[N,1]"
+		s := "A2:*1"
 		x1, x2, y1, y2, err := ParseExcelRange(s)
 		So(err, ShouldBeNil)
-		So(x1, ShouldEqual, 0)
+		So(x1, ShouldEqual, 1)
 		So(x2, ShouldBeNil)
-		So(y1, ShouldEqual, 1)
+		So(y1, ShouldEqual, 2)
 		So(*y2, ShouldEqual, 1)
 	})
 	Convey("Given an invalid Excel range", t, func(){
-		s := "[0,1:[N,2]"
+		s := "A*:B]"
 		_,_,_,_,err := ParseExcelRange(s)
 		So(err, ShouldNotBeNil)
 	})
