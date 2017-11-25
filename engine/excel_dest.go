@@ -82,14 +82,7 @@ func (ed *ExcelDestination) Open(s Stream, l Logger, st Stopper){
 	var (
 		colMappers []func([]interface{}) interface{}
 	)
-	for i := range ed.Cols {
-		cm, err := getValue(s.Columns(), ed.Cols[i])
-		if err != nil {
-			ed.fatalerr(err, s, l)
-			return
-		}
-		colMappers = append(colMappers, cm)
-	}
+
 
 
 	ed.posX = ed.Range.X1
@@ -97,6 +90,16 @@ func (ed *ExcelDestination) Open(s Stream, l Logger, st Stopper){
 	for msg := range s.Chan() {
 		if st.Stopped() {
 			return
+		}
+		if colMappers == nil {
+			for i := range ed.Cols {
+				cm, err := getValue(s.Columns(), ed.Cols[i])
+				if err != nil {
+					ed.fatalerr(err, s, l)
+					return
+				}
+				colMappers = append(colMappers, cm)
+			}
 		}
 		var colLength int
 		if ed.Transpose {
