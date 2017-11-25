@@ -1,4 +1,4 @@
-package analyst
+package main
 
 import (
 	"github.com/urfave/cli"
@@ -29,6 +29,10 @@ func Validate(c *cli.Context) error {
 
 	l := engine.ConsoleLogger{}
 
-	return ValidateFile(scriptFile, opts, &l)
+	err = ValidateFile(scriptFile, opts, &l)
 
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+	}
+	return err
 }

@@ -1,4 +1,4 @@
-package analyst
+package main
 
 import (
 	"github.com/urfave/cli"
@@ -28,6 +28,9 @@ func Run(c *cli.Context) error {
 	}
 
 	l := engine.ConsoleLogger{}
-
-	return ExecuteFile(scriptFile, opts, &l)
+	err = ExecuteFile(scriptFile, opts, &l)
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+	}
+	return err
 }
