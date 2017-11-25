@@ -1,28 +1,38 @@
 package main
 
 import (
-	"fmt"
-	"github.com/michaelbironneau/analyst/aql"
 	"github.com/urfave/cli"
-	"io/ioutil"
+	"github.com/michaelbironneau/analyst/aql"
+	"fmt"
+	"github.com/michaelbironneau/analyst/engine"
 )
 
-//Validate validates the script
 func Validate(c *cli.Context) error {
-	scriptPath := c.String("script")
-	if len(scriptPath) == 0 {
-		fmt.Println("Script path not set")
+	var (
+		opts []aql.Option
+		err error
+	)
+	oString := c.String("params")
+	if len(opts) > 0 {
+		opts, err = aql.StrToOpts(oString)
 	}
-	b, err := ioutil.ReadFile(scriptPath)
+
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		return err
 	}
-	_, err = aql.Load(string(b))
-	if err == nil {
-		fmt.Println("[OK] Script is valid")
-		return nil
+
+	scriptFile := c.String("script")
+
+	if len(scriptFile) == 0 {
+		return fmt.Errorf("script file not set")
 	}
-	fmt.Printf("[FAIL] %v", err)
-	return nil
+
+	l := engine.ConsoleLogger{}
+
+	err = ValidateFile(scriptFile, opts, &l)
+
+	if err != nil {
+		fmt.Printf("Error: %s\n", err)
+	}
+	return err
 }

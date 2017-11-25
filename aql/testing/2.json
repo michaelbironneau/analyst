@@ -1,0 +1,30 @@
+{
+  "Description": {
+    "Content": "Test 3"
+  },
+  "Queries": [{
+    "Name": "b",
+    "Extern": "extern.test",
+    "Sources": [{
+      "Script": null,
+      "Database": null,
+      "Block": null,
+      "Global": true
+    }],
+    "Content": "",
+    "Destinations": [{
+      "Script": null,
+      "Database": null,
+      "Block": null,
+      "Global": true
+    }],
+    "Options": null
+  }],
+  "Connections": null,
+  "Includes": [{
+    "Source": "1.txt"
+  }],
+  "Tests": null,
+  "Globals": null,
+  "Scripts": null
+}

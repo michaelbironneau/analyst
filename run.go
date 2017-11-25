@@ -1,111 +1,36 @@
 package main
 
 import (
-	"fmt"
-	"github.com/michaelbironneau/analyst/aql"
-	"github.com/tealeg/xlsx"
 	"github.com/urfave/cli"
-	"gopkg.in/cheggaaa/pb.v1"
-	"io/ioutil"
-	"time"
+	"github.com/michaelbironneau/analyst/aql"
+	"fmt"
+	"github.com/michaelbironneau/analyst/engine"
 )
 
-//Run creates an Excel spreadsheet based on the script
 func Run(c *cli.Context) error {
-	scriptPath := c.String("script")
-	if len(scriptPath) == 0 {
-		fmt.Println("Script path not set")
-		return nil
-	}
-	b, err := ioutil.ReadFile(scriptPath)
-	if err != nil {
-		fmt.Println(err)
-		return nil
-	}
-	script, err := aql.Load(string(b))
-	if err != nil {
-		fmt.Println(err)
-		return nil
-	}
-	//Parse and set parameters
-	var params map[string]string
-	if c.Bool("i") {
-		params, err = promptParameters(script)
-	} else {
-		params, err = parseParameters(c.String("params"))
+	var (
+		opts []aql.Option
+		err error
+	)
+	oString := c.String("params")
+	if len(opts) > 0 {
+		opts, err = aql.StrToOpts(oString)
 	}
 
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		return err
 	}
-	for k, v := range params {
-		if err := script.SetParameter(k, v); err != nil {
-			fmt.Println(err)
-			return nil
-		}
+
+	scriptFile := c.String("script")
+
+	if len(scriptFile) == 0 {
+		return fmt.Errorf("script file not set")
 	}
-	//Compile script
-	var task *aql.Report
-	if task, err = script.ExecuteTemplates(); err != nil {
-		fmt.Println(err)
-		return nil
-	}
-	//Get connections
-	connections := make(map[string]aql.Connection)
-	for _, connection := range task.Connections {
-		c, err := parseConn(connection)
-		if err != nil {
-			fmt.Println(err)
-			return nil
-		}
-		for k, v := range c {
-			connections[k] = v
-		}
-	}
-	//Get template
-	templateFile, err := xlsx.OpenFile(task.TemplateFile)
+
+	l := engine.ConsoleLogger{}
+	err = ExecuteFile(scriptFile, opts, &l)
 	if err != nil {
-		fmt.Println(err)
-		return nil
+		fmt.Printf("Error: %s\n", err)
 	}
-	//Run script
-	progress := make(chan int)
-	logs := make(chan string)
-	done := make(chan bool, 1)
-	bar := pb.StartNew(100)
-	var totalProgress int
-	go func() {
-		for {
-			select {
-			case p := <-progress:
-				totalProgress += p
-				if !c.Bool("v"){
-					bar.Add(p)
-				}
-				if totalProgress >= 100 {
-					return
-				}
-			case s := <-logs:
-				if c.Bool("v") {
-					fmt.Println(s)
-				}
-			case <-done:
-				return
-			}
-		}
-	}()
-	report, err := task.Execute(aql.DBQuery, templateFile, connections, progress, logs)
-	done <- true
-	if err != nil {
-		fmt.Printf("\n[ERROR] %v\n", err)
-		return nil
-	}
-	if err := report.Save(task.OutputFile); err != nil {
-		fmt.Printf("\n[ERROR] %v\n", err)
-	}
-	bar.Add(100 - totalProgress)
-	time.Sleep(time.Millisecond * 500) //otherwise the progress bar may not finish rendering
-	fmt.Println("\n[SUCCESS] Spreadsheet written to file")
-	return nil
+	return err
 }

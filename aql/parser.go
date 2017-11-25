@@ -1,448 +1,623 @@
 package aql
 
 import (
+	"bytes"
 	"fmt"
-	"regexp"
-	"strconv"
+	"github.com/alecthomas/participle"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"strings"
 	"text/template"
+	"strconv"
+	xlsx "github.com/360EntSecGroup-Skylar/excelize"
+	"unicode"
+	"encoding/json"
 )
 
-type SourceType int
+//MaxIncludeDepth is the maximum depth of includes that will be processed before an error is returned.
+const MaxIncludeDepth = 8
 
-const (
-	FromConnection SourceType = iota
-	FromTempTable
-)
-
-type metadataBlock struct {
-	Type string
-	Data string
+type OptionValue struct {
+	Str    *string  ` @QUOTED_STRING`
+	Number *float64 `| @NUMBER`
 }
 
-type parameterBlock struct {
-	Name string
-	Type string
+type Option struct {
+	Key   string       `@IDENT '='`
+	Value *OptionValue `@@`
 }
 
-type TempTableDeclaration struct {
-	Name    string
-	Columns string
-}
-
-type QueryRange struct {
-	Sheet     string
-	TempTable *TempTableDeclaration
-	X1        interface{}
-	X2        interface{}
-	Y1        interface{}
-	Y2        interface{}
-}
-
-type connection struct {
-	Name string
-	File string
+type SourceSink struct {
+	Script   *string `(SCRIPT @QUOTED_STRING`
+	Database *string `| CONNECTION @IDENT`
+	Global   bool    `| @GLOBAL`
+	Block    *string `| BLOCK @IDENT)`
+	Alias    *string `[AS @QUOTED_STRING]`
 }
 
 type Query struct {
-	Name               string
-	Source             string
-	TempDBSourceTables []string
-	SourceType         SourceType
-	Statement          string
-	Range              QueryRange
+	Name         string       `QUERY @QUOTED_STRING`
+	Extern       *string      `[EXTERN @QUOTED_STRING]`
+	Sources      []SourceSink `FROM @@ { "," @@ }`
+	Content      string       `['(' @PAREN_BODY ')' ]`
+	Destinations []SourceSink `[INTO @@ { "," @@ } ]`
+	Options      []Option     `[WITH '(' @@ {"," @@ } ')' ]`
+	Dependencies []string     `[AFTER @IDENT {"," @IDENT }]`
 }
 
-type report struct {
-	metadata    []metadataBlock
-	parameters  []parameterBlock
-	connections []connection
-	queries     []Query
+type Script struct {
+	Name         string        `SCRIPT @QUOTED_STRING`
+	Extern       *string       `[EXTERN @QUOTED_STRING]`
+	Sources      []*SourceSink `FROM @@ {"," @@}`
+	Content      string        `['(' @PAREN_BODY ')']`
+	Destinations []SourceSink  `[INTO @@ {"," @@}]`
+	Options      []Option      `[WITH '(' @@ {"," @@ } ')' ]`
+	Dependencies []string     `[AFTER @IDENT {"," @IDENT }]`
 }
 
-//parseQuery parses a query block. Query blocks look like this:
-//
-//  query '{NAME}' from {SOURCE} (
-//          {QUERY CONTENT}
-//          {QUERY CONTENT}
-//  ) into sheet '{SHEET NAME}' range [{X1}, {Y1}]:[{X2},{Y2}]
-//
-// where SOURCE is either a string (connection) or TEMPDB(table_1, table_2,...)
-// where X1,Y1 are integers and X2, Y2 are either integers or 'n'. At most one of X2/Y2 can be 'n'.
-func parseQuery(block []string, keyword string, keywordEnd int) (*Query, error) {
+type Test struct {
+	Query        bool         `TEST [@QUERY `
+	Script       bool         `|@SCRIPT ]`
+	Name         string       `@QUOTED_STRING`
+	Extern       *string      `[EXTERN @QUOTED_STRING]`
+	Sources      []SourceSink `FROM @@ {"," @@}`
+	Content      string       `['(' @PAREN_BODY ')']`
+	Destinations []SourceSink `[INTO @@ {"," @@}]`
+	Options      []Option     `[WITH '(' @@ {"," @@ } ')' ]`
+}
 
-	if len(block) < 3 {
-		return nil, fmt.Errorf("Query block has invalid structure - should have at least 3 lines")
+type Global struct {
+	Name    string   `GLOBAL @QUOTED_STRING`
+	Content string   `'(' @PAREN_BODY ')'`
+	Options []Option `[WITH '(' @@ {"," @@ } ')' ]`
+}
+
+type Include struct {
+	Source string `INCLUDE @QUOTED_STRING`
+}
+
+type Description struct {
+	Content string `DESCRIPTION @QUOTED_STRING`
+}
+
+type UnparsedConnection struct {
+	Name    string   `CONNECTION @QUOTED_STRING`
+	Content string   `'(' @PAREN_BODY ')'`
+	Options []Option `[WITH '(' @@ {"," @@ } ')' ]`
+}
+
+type Connection struct {
+	Name             string
+	Driver           string
+	ConnectionString string
+	Options          []Option
+}
+
+type JobScript struct {
+	Description *Description         `[@@]`
+	Queries     []Query              `{ @@`
+	Connections []UnparsedConnection `| @@`
+	Includes    []Include            `| @@ `
+	Tests       []Test               `| @@ `
+	Globals     []Global             `| @@ `
+	Scripts     []Script             ` | @@ }`
+}
+
+//String returns the option value as a string. The boolean return parameter
+//will be true if the option was a string and false otherwise.
+func (opt Option) String() (string, bool){
+	if opt.Value != nil && opt.Value.Str != nil {
+		return *opt.Value.Str, true
 	}
+	return "", false
+}
 
-	var (
-		ret                  Query
-		retRange             QueryRange
-		validConnFirstLine   = regexp.MustCompile("(?i)^[[:space:]]*query[[:space:]]*'([[:alnum:]]+)'[[:space:]]+from[[:space:]]([[:alnum:]]+)[[:space:]]*\\($")
-		validTempDbFirstLine = regexp.MustCompile("(?i)^[[:space:]]*query[[:space:]]*'([[:alnum:]]+)'[[:space:]]+from[[:space:]]+tempdb[[:space:]]*\\(([^\\)]+)\\)[[:space:]]*\\($")
-		excelLastLine        = regexp.MustCompile("^(?i)[[:space:]]*\\)[[:space:]]+into[[:space:]]+sheet[[:space:]]+'([[:ascii:]]*)'[[:space:]]+range[[:space:]]*\\[([0-9]+)\\,[[:space:]]*([0-9]+)\\]\\:\\[([0-9n]+)\\,[[:space:]]*([0-9n]+)\\][[:space:]]*$")
-		tempDBLastLine       = regexp.MustCompile("^(?i)[[:space:]]*\\)[[:space:]]+into[[:space:]]+table[[:space:]]+([[:alnum:]]+)[[:space:]]+(\\(.*\\))[[:space:]]*$")
-	)
-
-	firstConn := validConnFirstLine.FindAllStringSubmatch(block[0], -1)
-	firstTempDb := validTempDbFirstLine.FindAllStringSubmatch(block[0], -1)
-
-	if len(firstConn) != 1 && len(firstTempDb) != 1 {
-		return nil, fmt.Errorf("Syntax error in first line of block")
-	}
-
-	if len(firstConn) == 1 {
-		ret.Name = firstConn[0][1]
-		ret.Source = firstConn[0][2]
-		ret.SourceType = FromConnection
-	}
-
-	if len(firstTempDb) == 1 {
-		ret.Name = firstTempDb[0][1]
-		s := strings.ToLower(firstTempDb[0][2])
-		tables := strings.Split(s, ",")
-		for i := range tables {
-			ret.TempDBSourceTables = append(ret.TempDBSourceTables, strings.TrimSpace(tables[i]))
+//StrToOpts converts an option string of the form Key1:Val1,Key2:Val2
+//into a slice of Options.
+func StrToOpts(s string) ([]Option, error){
+	var ret []Option
+	ss := strings.Split(s, ",")
+	for _, sss := range ss {
+		var o Option
+		ssss := strings.Split(sss, ":")
+		if len(ssss) != 2 {
+			return nil, fmt.Errorf("expected key-value option pairs to be separated by ':': %s", sss)
 		}
-		ret.SourceType = FromTempTable
-	}
-
-	last := excelLastLine.FindAllStringSubmatch(block[len(block)-1], -1)
-	last2 := tempDBLastLine.FindAllStringSubmatch(block[len(block)-1], -1)
-	if len(last) != 1 && len(last2) != 1 {
-		return nil, fmt.Errorf("Syntax error in last line of block '%s'", block[len(block)-1])
-	}
-
-	//at most one of last and last2 can be matched so only one of the bodies of
-	//the following blocks will be reached
-
-	if len(last2) == 1 {
-		ret.Range.TempTable = &TempTableDeclaration{
-			Name:    last2[0][1],
-			Columns: last2[0][2],
+		o.Key = ssss[0]
+		var i interface{}
+		err := json.Unmarshal([]byte(ssss[1]), &i)
+		if err != nil {
+			return nil, fmt.Errorf("expected key-value option with the value either a JSON number of string type: %s", sss)
 		}
-	}
-
-	if len(last) == 1 {
-		//error return can be discarded in these as regex above has already validated them as digits
-		retRange.Sheet = last[0][1]
-		retRange.X1, _ = strconv.Atoi(last[0][2])
-		retRange.Y1, _ = strconv.Atoi(last[0][3])
-		var haveOne bool
-
-		if last[0][4] == "n" || last[0][4] == "N" {
-			retRange.X2 = "n"
-			haveOne = true
-		} else {
-			retRange.X2, _ = strconv.Atoi(last[0][4])
-		}
-
-		if last[0][5] == "n" || last[0][5] == "N" {
-			retRange.Y2 = "n"
-			if haveOne {
-				return nil, fmt.Errorf("At most one of x3 and x4 can be set to 'n'")
+		switch val := i.(type){
+		case float64:
+			o.Value = &OptionValue{
+				Number: &val,
 			}
-		} else {
-			retRange.Y2, _ = strconv.Atoi(last[0][5])
-		}
-		ret.Range = retRange
-	}
-
-	for i := 1; i < len(block)-1; i++ {
-		ret.Statement += block[i] + "\n"
-	}
-	ret.Statement = ret.Statement[0 : len(ret.Statement)-1] //strip trailing newline character
-	if _, err := template.New("t").Parse(ret.Statement); err != nil {
-		return nil, fmt.Errorf("Error parsing template in query: %v", err)
-	}
-
-	return &ret, nil
-}
-
-//parseMetadataBlock parses a metadata block. Metadata blocks look like this:
-//
-//  KEYWORD '{CONTENT}'
-func parseMetadataBlock(block []string, keyword string, keywordEnd int) (*metadataBlock, error) {
-	if len(block) > 1 {
-		return nil, fmt.Errorf("Metadata block should be on a single line")
-	}
-
-	var validContent = regexp.MustCompile("'([^\\']+)'[[:space:]]*$")
-
-	contentMatch := validContent.FindAllStringSubmatch(block[0], 1)
-
-	switch len(contentMatch) {
-	case 1:
-		d := contentMatch[0][1]
-		if _, err := template.New("m").Parse(d); err != nil {
-			return nil, fmt.Errorf("Error parsing template in metadata content: %v", err)
-		}
-		return &metadataBlock{
-			Type: keyword,
-			Data: d, //exclude leading and trailing '
-		}, nil
-	default:
-		return nil, fmt.Errorf("Invalid block: should have syntax \"KEYWORD\" 'CONTENT'")
-	}
-}
-
-//parseConnectionBlock parses a connection block. Connection blocks look like this:
-//
-// connection {CONNECTION NAME} '{CONNECTION FILE}'
-//
-// or
-//
-// connection (
-//    {CONNECTION NAME} '{CONNECTION FILE}'
-//      ...
-//)
-func parseConnectionBlock(block []string, keyword string, keywordEnd int) ([]connection, error) {
-	validConnBlock := regexp.MustCompile("^[[:space:]]*([[:alnum:]]+)[[:space:]]+'([[:ascii:]]+)'[[:space:]]*\\(*[[:space:]]*$")
-
-	var parsedBlocks []connection
-	for i := range block {
-		var content [][][]byte
-		if i == 0 {
-			b := block[i][keywordEnd:len(block[i])]
-			if strings.TrimSpace(b) == "(" {
-				continue //multi-line block
+		case int:
+			vf := float64(val)
+			o.Value = &OptionValue{
+				Number: &vf,
 			}
-			content = validConnBlock.FindAllSubmatch([]byte(b), -1)
-		} else {
-			content = validConnBlock.FindAllSubmatch([]byte(block[i]), -1)
-		}
-
-		switch {
-		case len(content) == 0 && (i == len(block)-1):
-			//last line in block will just have )
-			if strings.TrimSpace(block[i]) == ")" {
-				break
-			} else {
-				return nil, fmt.Errorf("Invalid block line, expecting ')': '%s'", block[i])
-			}
-		case len(content) == 1:
-			if len(content[0]) == 3 {
-				parsedBlocks = append(parsedBlocks, connection{
-					Name: strings.ToLower(string(content[0][1])),
-					File: string(content[0][2]),
-				})
-			} else {
-				return nil, fmt.Errorf("Syntax error in connection block near '%s'", block[i])
+		case string:
+			o.Value = &OptionValue{
+				Str: &val,
 			}
 		default:
-			return nil, fmt.Errorf("Invalid connection block line '%s'", block[i])
+			return nil, fmt.Errorf("expected key-value option with the value either JSON number of string: %s", sss)
 		}
-
-	}
-	return parsedBlocks, nil
-
-}
-
-//parseParameterBlock parses a parameter block. Parameter blocks look like this:
-//
-// parameter {PARAMETER NAME} {PARAMETER TYPE}
-//
-// or
-//
-// parameter (
-//    {PARAMETER NAME} {PARAMETER TYPE}
-//      ...
-//)
-func parseParameterBlock(block []string, keyword string, keywordEnd int) ([]parameterBlock, error) {
-	validParamBlock := regexp.MustCompile("^[[:space:]]*([[:alnum:]]+)[[:space:]]+([[:alnum:]]+)[[:space:]]*\\(*[[:space:]]*$")
-
-	var parsedBlocks []parameterBlock
-	for i := range block {
-		var content [][][]byte
-		if i == 0 {
-			b := block[i][keywordEnd:len(block[i])]
-			if strings.TrimSpace(b) == "(" {
-				continue //multi-line block
-			}
-			content = validParamBlock.FindAllSubmatch([]byte(b), -1)
-		} else {
-			content = validParamBlock.FindAllSubmatch([]byte(block[i]), -1)
-		}
-
-		switch {
-		case len(content) == 0 && (i == len(block)-1):
-			//last line in block will just have )
-			if strings.TrimSpace(block[i]) == ")" {
-				break
-			} else {
-				return nil, fmt.Errorf("Invalid block line, expecting ')': '%s'", block[i])
-			}
-		case len(content) == 1:
-			if len(content[0]) == 3 {
-				parsedBlocks = append(parsedBlocks, parameterBlock{
-					Name: capitalize(string(content[0][1])),
-					Type: strings.ToLower(string(content[0][2])),
-				})
-			} else {
-				return nil, fmt.Errorf("Syntax error in parameter block near '%s'", block[i])
-			}
-		default:
-			//should never get reached
-			return nil, fmt.Errorf("Invalid parameter block line '%s'", block[i])
-		}
-
-	}
-	return parsedBlocks, nil
-
-}
-
-//capitalize converts the word to Title case (capitalize the first letter, lowercase the rest)
-func capitalize(word string) string {
-	if len(word) == 1 {
-		return strings.ToUpper(word)
-	}
-	return strings.ToUpper(string(word[0])) + strings.ToLower(word[1:len(word)])
-}
-
-//getBlockType gets the block type and start of the block content (after keyword)
-func getBlockType(block []string) (string, int, error) {
-
-	if len(block) == 0 {
-		return "", 0, fmt.Errorf("Empty block")
-	}
-
-	firstLine := block[0]
-
-	//determine block type
-	//the block type is determined by the first word in the line
-	var keywordStart int
-	var i int
-	keywordStart = -1
-	for i = range firstLine {
-		if firstLine[i] == ' ' && keywordStart > -1 {
-			break
-		} else if firstLine[i] != ' ' && keywordStart == -1 {
-			keywordStart = i
-		}
-	}
-
-	if keywordStart == -1 {
-		return "", 0, fmt.Errorf("Failed to get block type")
-	}
-	if keywordStart == len(firstLine) {
-		return "", 0, fmt.Errorf("Expected a space after block type keyword")
-	}
-	blockKeyword := strings.ToLower(firstLine[keywordStart:i])
-	return blockKeyword, i, nil
-}
-
-//splitBlocks splits a script into line-split blocks
-func splitBlocks(script string) ([][]string, error) {
-	lines := strings.Split(script, "\n")
-
-	var (
-		ret          [][]string
-		currentBlock []string
-		inOpenBlock  bool
-	)
-	for i := range lines {
-		line := strings.TrimSpace(lines[i])
-
-		if len(line) == 0 {
-			continue
-		}
-
-		//classic block:
-		//      connections (
-		//          g3 'g3.conn'
-		//      )
-		//
-		//range block:
-		//      query 'name' from azure (
-		//          SELECT 1
-		//      ) into range [0,0]:[0,1]
-		switch {
-		case line[len(line)-1] == '(':
-			//both classic and range blocks are opened in same way
-			if inOpenBlock {
-				return nil, fmt.Errorf("Line %d: Unclosed block, expecting )", i)
-			}
-			inOpenBlock = true
-			currentBlock = []string{line}
-		case strings.TrimSpace(line)[0] == ')':
-			//range block closed at start of line; classic at end of line
-			if !inOpenBlock {
-				return nil, fmt.Errorf("Line %d: Unexpected character ')' - there is no block to close.", i)
-			}
-			currentBlock = append(currentBlock, line)
-			ret = append(ret, currentBlock)
-			inOpenBlock = false
-		default:
-			if inOpenBlock {
-				currentBlock = append(currentBlock, line)
-			} else {
-				//single line block
-				ret = append(ret, []string{lines[i]})
-			}
-		}
+		ret = append(ret, o)
 	}
 	return ret, nil
 }
 
-//Parse parses the script into a report structure
-func Parse(script string) (*report, error) {
-	blocks, err := splitBlocks(script)
+//Truthy returns whether an option value is truthy.
+// Non-zero numbers are truthy and case-insensitive variants of 'true' are truthy.
+// All other strings and numbers are falsy.
+func (opt Option) Truthy() bool {
+	if opt.Value == nil {
+		return false
+	}
+	if opt.Value.Str != nil {
+		if strings.ToUpper(*opt.Value.Str) == "TRUE" {
+			return true
+		}
+		return false
+	}
+	if opt.Value.Number != nil {
+		if *opt.Value.Number == 0 {
+			return false
+		}
+		return true
+	}
+	panic("should be unreachable")
+}
 
+//ParseExcelRange parses a range of the form 'A1:C4' with possible wildcards
+//such as 'A1:*4'
+func ParseExcelRange(s string) (x1 int, x2 *int, y1 int, y2 *int, err error){
+	ps := strings.Split(s, ":")
+
+	if len(ps) != 2 {
+		err = fmt.Errorf("expected separator ':' in range '%s'", s)
+		return
+	}
+	ps[0] = strings.TrimSpace(ps[0])
+	ps[1] = strings.TrimSpace(ps[1])
+
+	x1, y1, err = parseCell(ps[0])
+
+	if err != nil {
+		return
+	}
+
+	x2, y2, err = parseCellWithWildcards(ps[1])
+
+	return
+
+}
+
+func parseCell(s string) (x, y int, err error){
+	var (
+		col string
+		i int
+		r rune
+	)
+	for i, r = range s {
+		if unicode.IsLetter(r) {
+			col += string(r)
+			break
+		}
+	}
+
+	if i == len(s) -1 {
+		return 0, 0, fmt.Errorf("expected row number in range %s", s)
+	}
+
+	x = xlsx.TitleToNumber(col) + 1
+
+	y, err = strconv.Atoi(s[i+1:])
+
+	return
+}
+
+func parseCellWithWildcards(s string) (x, y *int, err error){
+	var (
+		col string
+		i int
+		r rune
+		wildcardCol bool
+	)
+	for i, r = range s {
+		if r == '*' {
+			wildcardCol = true
+			break //wildcard => x is nil
+		}
+		if unicode.IsLetter(r) {
+			col += string(r)
+			break
+		}
+	}
+
+	if i == len(s) -1 {
+		return nil, nil, fmt.Errorf("expected row number in range %s", s)
+	}
+
+	if !wildcardCol {
+		xx := xlsx.TitleToNumber(col) + 1
+		x = &xx
+	}
+
+	if s[i:] == "*" {
+		return //wildcard row => y also nil
+	}
+
+	yy, errI := strconv.Atoi(s[i+1:])
+
+	y = &yy
+	err = errI
+	return
+}
+
+//ParseExcelRange parses a range of the form '[x1,x2]:[y1,y2]'
+//TODO: Rewrite this in a more efficient and maintainable way.
+func parseExcelRange_Old(s string) (x1 int, x2 *int, y1 int, y2 *int, err error){
+	ps := strings.Split(s, ":")
+
+	if len(ps) != 2 {
+		err = fmt.Errorf("expected separator ':' in range '%s'", s)
+		return
+	}
+
+	p1 := strings.Split(ps[0], ",")
+
+	if len(p1) != 2 {
+		err = fmt.Errorf("expected first point of range to be separated by ',': %s", s)
+		return
+	}
+
+	p2 := strings.Split(ps[1], ",")
+
+	if len(p1) != 2 {
+		err = fmt.Errorf("expected second point of range to be separated by ',': %s", s)
+		return
+	}
+
+
+	p1[0] = strings.TrimSpace(p1[0])
+	p1[1] = strings.TrimSpace(p1[1])
+	p2[0] = strings.TrimSpace (p2[0])
+	p2[1] = strings.TrimSpace(p2[1])
+
+	if p1[0][0] != '[' || p2[0][0] != '[' {
+		err = fmt.Errorf("expected '[' in range %s", s)
+		return
+	}
+	if p1[1][len(p1[1])-1] != ']' ||  p2[1][len(p2[1])-1] != ']' {
+		err = fmt.Errorf("expected ']' in range %s", s)
+	}
+
+	//Get rid of [ and ]
+	p1[0] = p1[0][1:]
+	p2[0] = p2[0][1:]
+	p1[1] = p1[1][0:len(p1[1])-1]
+	p2[1] = p2[1][0:len(p2[1])-1]
+
+	x1, err = strconv.Atoi(p1[0])
+
+	if err != nil {
+		return
+	}
+
+	y1, err = strconv.Atoi(p1[1])
+
+	if err != nil {
+		return
+	}
+
+	//not N for x2
+	if len(p2[0]) != 1 || (p2[0][0] != 'N' && p2[0][0] != 'n') {
+		var xx2 int
+		xx2, err = strconv.Atoi(p2[0])
+
+		if err != nil {
+			return
+		}
+		x2 = &xx2
+	}
+
+	//not N for y2
+	if len(p2[1]) != 1 || (p2[1][0] != 'N' && p2[1][0] != 'n') {
+		var yy2 int
+		yy2, err = strconv.Atoi(p2[1])
+
+		if err != nil {
+			return
+		}
+		y2 = &yy2
+	}
+
+	return
+}
+
+//FindOption traverses the slice of options and returns the one whose key matches the needle.
+//The search is case-insensitive.
+//The second argument indicates whether the needle was found or not.
+func FindOption(options []Option, needle string) (*Option, bool){
+	n := strings.ToLower(needle)
+	for _, opt := range options {
+		if strings.ToLower(opt.Key) == n {
+			return &opt, true
+		}
+	}
+	return nil, false
+}
+
+//FindOverridableOption searches for the needle in the option hierarchy, in the
+//order that they are given, first looking for the namespaced option and then
+//the generic. The first found option is returned. For example:
+// Looking for SHEET option given QUERY options and CONN options, connection 'ExcelA',
+// would be accomplished with FindOverridableOption("SHEET", "ExcelA", query.Options, conn.Options)
+func FindOverridableOption(needle string, namespace string, hierarchy ...[]Option) (*Option, bool){
+	for _, opts := range hierarchy {
+		var (
+			opt *Option
+			ok bool
+		)
+		//First, try destination-specific override
+		opt, ok = FindOption(opts, namespace + "_" + needle )
+
+		if ok {
+			return opt, ok
+		}
+
+		//Next, try global override
+		if !ok {
+			opt, ok = FindOption(opts, needle)
+		}
+
+		if ok {
+			return opt, ok
+		}
+	}
+
+	return nil, false
+}
+
+func (b *JobScript) EvaluateParametrizedContent(globals []Option) error {
+	var err error
+	for i := range b.Queries {
+		b.Queries[i].Content, err = evaluateContent(b.Queries[i].Content, b.Queries[i].Options, globals)
+		if err != nil {
+			return err
+		}
+	}
+
+	for i := range b.Scripts {
+		b.Scripts[i].Content, err = evaluateContent(b.Scripts[i].Content, b.Scripts[i].Options, globals)
+		if err != nil {
+			return err
+		}
+	}
+
+	for i := range b.Tests {
+		b.Tests[i].Content, err = evaluateContent(b.Tests[i].Content, b.Tests[i].Options, globals)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func evaluateContent(content string, locals []Option, globals []Option) (string, error) {
+	opts := make(map[string]interface{})
+	for _, v := range globals {
+		//v.Value cannot be nil
+		if v.Value.Str != nil {
+			opts[v.Key] = v.Value.Str
+		} else {
+			opts[v.Key] = v.Value.Number
+		}
+	}
+	//override with locals
+	for _, v := range locals {
+		//v.Value cannot be nil
+		if v.Value.Str != nil {
+			opts[v.Key] = v.Value.Str
+		} else {
+			opts[v.Key] = v.Value.Number
+		}
+	}
+	t := template.Must(template.New("").Parse(content))
+	var b bytes.Buffer
+	err := t.Execute(&b, opts)
+	if err != nil {
+		return "", err
+	}
+	return b.String(), nil
+}
+
+func (b *JobScript) ResolveExternalContent() error {
+	if err := b.resolveExtern(""); err != nil {
+		return err
+	}
+	for i := range b.Includes {
+		if err := b.resolveInclude(i, 0, ""); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (b *JobScript) resolveExtern(cwd string) error {
+	for i, query := range b.Queries {
+		if query.Extern != nil {
+			s, err := getContent(cwd, *query.Extern)
+			if err != nil {
+				return err
+			}
+			b.Queries[i].Content = s
+			b.Queries[i].Extern = nil
+		}
+	}
+
+	for i, script := range b.Scripts {
+		if script.Extern != nil {
+			s, err := getContent(cwd, *script.Extern)
+			if err != nil {
+				return err
+			}
+			b.Scripts[i].Content = s
+			b.Scripts[i].Extern = nil
+		}
+	}
+
+	for i, test := range b.Tests {
+		if test.Extern != nil {
+			s, err := getContent(cwd, *test.Extern)
+			if err != nil {
+				return err
+			}
+			b.Tests[i].Content = s
+			b.Tests[i].Extern = nil
+		}
+	}
+
+	return nil
+}
+
+func getContent(cwd, path string) (string, error) {
+	b, err := ioutil.ReadFile(filepath.Join(cwd, path))
+	return string(b), err
+}
+
+//resolve the given include, recursively if need be. Doesn't do bound checks on index.
+func (b *JobScript) resolveInclude(index, depth int, cwd string) error {
+	if depth > MaxIncludeDepth {
+		return fmt.Errorf("maximum INCLUDE depth %v reached", MaxIncludeDepth)
+	}
+	path := b.Includes[index].Source
+	bb, err := ParseFile(filepath.Join(cwd, path))
+	//bb, err := ParseFile(path)
+	if err != nil {
+		return err
+	}
+
+	for i := range bb.Includes {
+		err = bb.resolveInclude(i, depth+1, filepath.Dir(path))
+		if err != nil {
+			return err
+		}
+	}
+	bb.resolveExtern(filepath.Dir(filepath.Join(cwd, path)))
+	b.union(bb)
+	b.Includes = nil
+	return nil
+}
+
+//Union merges two sets of blocks EXCLUDING includes. It is not commutative - the blocks of the first blocks will go first,
+//and the description of the second set of blocks will be ignored unless the first block has an empty description.
+func (b *JobScript) union(other *JobScript) {
+	if b.Description == nil && other.Description != nil {
+		b.Description = other.Description
+	}
+	b.Queries = append(b.Queries, other.Queries...)
+	b.Connections = append(b.Connections, other.Connections...)
+	//b.Includes = append(b.Includes, other.Includes...)
+	b.Tests = append(b.Tests, other.Tests...)
+	b.Globals = append(b.Globals, other.Globals...)
+	b.Scripts = append(b.Scripts, other.Scripts...)
+}
+
+func (b *JobScript) ParseConnections() ([]Connection, error){
+	return parseConnections(b.Connections)
+}
+
+func parseConnections(conns []UnparsedConnection) ([]Connection, error) {
+	if len(conns) == 0 {
+		return nil, nil
+	}
+	type connOpts struct {
+		Options []Option `@@ {"," @@ }`
+	}
+	parser, err := participle.Build(&connOpts{}, &definition{})
+	if err != nil {
+		panic(err)
+	}
+	cs := make([]Connection, len(conns), len(conns))
+	for i := range conns {
+		cs[i].Name = conns[i].Name
+		cs[i].Options = conns[i].Options
+		var opts connOpts
+		err = parser.ParseString(conns[i].Content, &opts)
+		if err != nil {
+			return nil, fmt.Errorf("invalid connection %s: %v", cs[i].Name, err)
+		}
+		err = optsToConn(opts.Options, &cs[i])
+		if err != nil {
+			return nil, fmt.Errorf("invalid connection %s: %v", cs[i].Name, err)
+		}
+	}
+	return cs, nil
+}
+
+func optsToConn(opts []Option, conn *Connection) error {
+	for _, o := range opts {
+		if strings.ToUpper(o.Key) == "DRIVER" && o.Value.Str != nil {
+			conn.Driver = *(o.Value.Str)
+		} else if strings.ToUpper(o.Key) == "CONNECTIONSTRING" && o.Value.Str != nil {
+			conn.ConnectionString = *(o.Value.Str)
+		} else {
+			conn.Options = append(conn.Options, o)
+		}
+	}
+	if conn.ConnectionString == "" || conn.Driver == "" {
+		return fmt.Errorf("both ConnectionString and Driver are required properties")
+	}
+	return nil
+}
+
+//ParseString parses an AQL string into a JobScript struct.
+func ParseString(s string) (b *JobScript, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("parser error: %v", r)
+			return
+		}
+	}()
+
+	parser, err := participle.Build(&JobScript{}, &definition{})
+	if err != nil {
+		panic(err)
+	}
+
+	b = &JobScript{}
+	err = parser.ParseString(s, b)
+	return
+}
+
+//ParseFile parses an AQL file into a JobScript struct.
+func ParseFile(path string) (b *JobScript, err error) {
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-
-	var ret report
-	for i := range blocks {
-		keyword, keywordStop, err := getBlockType(blocks[i])
-
-		if err != nil {
-			return nil, fmt.Errorf("Error reading block %d: %v", i+1, err.Error())
+	defer f.Close()
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("parser error: %v", r)
+			return
 		}
+	}()
 
-		switch keyword {
-		case "report", "description", "template", "output":
-			//metadata blocks
-			bl, err := parseMetadataBlock(blocks[i], keyword, keywordStop)
-
-			if err != nil {
-				return nil, fmt.Errorf("Error reading metadata block %d: %v", i+1, err.Error())
-			}
-
-			ret.metadata = append(ret.metadata, *bl)
-		case "parameter":
-			//parameter blocks
-			bl, err := parseParameterBlock(blocks[i], keyword, keywordStop)
-
-			if err != nil {
-				return nil, fmt.Errorf("Error reading parameter block %d: %v", i+1, err.Error())
-			}
-
-			ret.parameters = append(ret.parameters, bl...)
-
-		case "connection":
-			//connection block
-			bl, err := parseConnectionBlock(blocks[i], keyword, keywordStop)
-
-			if err != nil {
-				return nil, fmt.Errorf("Error reading connection block %d: %v", i+1, err.Error())
-			}
-
-			ret.connections = append(ret.connections, bl...)
-
-		case "query":
-			//query block
-			bl, err := parseQuery(blocks[i], keyword, keywordStop)
-
-			if err != nil {
-				return nil, fmt.Errorf("Error reading query block %d: %v", i+1, err.Error())
-			}
-
-			ret.queries = append(ret.queries, *bl)
-		default:
-			return nil, fmt.Errorf("Unknown block type '%s'", keyword)
-		}
-
+	parser, err := participle.Build(&JobScript{}, &definition{})
+	if err != nil {
+		panic(err)
 	}
-	return &ret, nil
+
+	b = &JobScript{}
+	err = parser.Parse(f, b)
+	return
 }
