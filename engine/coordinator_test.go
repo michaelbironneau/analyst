@@ -125,7 +125,15 @@ func TestCoordinator(t *testing.T) {
 			So(err, ShouldBeNil)
 			err = c.Execute()
 			So(err, ShouldBeNil)
-			So(d.Results(), ShouldResemble, append(msg, msg...))
+			//So(d.Results(), ShouldResemble, append(msg, msg...))
+			exp := append(msg, msg...)
+			actual := d.Results()
+			for _, e := range exp {
+				So(actual, ShouldContain, e)
+			}
+			for _, a := range actual {
+				So(exp, ShouldContain, a)
+			}
 		})
 
 	})

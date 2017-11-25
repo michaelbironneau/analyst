@@ -3,7 +3,7 @@ package engine
 import (
 	"database/sql"
 	_ "github.com/denisenkom/go-mssqldb" //Microsoft SQL Server driver
-	_ "github.com/go-sql-driver/mysql"   //MySQL (4.1+), MariaDB, Percona Server, Google CloudSQL or Sphinx (2.2.3+)
+	//_ "github.com/go-sql-driver/mysql"   //MySQL (4.1+), MariaDB, Percona Server, Google CloudSQL or Sphinx (2.2.3+)
 	_ "github.com/lib/pq"                //Postgres
 	_ "github.com/mattn/go-sqlite3"      //SQLite driver
 	"time"

@@ -38,7 +38,7 @@ func TestCompiler(t *testing.T) {
 		err := ExecuteString(script, nil, l)
 		So(err, ShouldBeNil)
 		_, err = os.Stat("./output.xlsx")
-		//os.Remove("./output.xlsx") //best effort cleanup attempt
+		os.Remove("./output.xlsx") //best effort cleanup attempt
 		So(err, ShouldBeNil)
 
 	})

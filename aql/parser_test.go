@@ -10,6 +10,7 @@ import (
 	"testing"
 )
 
+
 func getExpectedResult(scriptPath string) (*JobScript, error) {
 	jsonPath := strings.Replace(scriptPath, ".txt", ".json", 1)
 	var bb JobScript
@@ -29,6 +30,32 @@ func saveExpectedResult(scriptPath string, b JobScript) error {
 	jsonPath := strings.Replace(scriptPath, ".txt", ".json", 1)
 	err = ioutil.WriteFile(jsonPath, bb, 666)
 	return err
+}
+
+func TestParseOptions(t *testing.T){
+	Convey("Given some options as a string", t, func(){
+		Convey("It should parse them correctly if they are valid", func(){
+			s := "key1:1.2,key2:1,key3:\"asdf\""
+			opts, err := StrToOpts(s)
+			v1 := 1.2
+			v2 := float64(1)
+			v3 := "asdf"
+			So(err, ShouldBeNil)
+			So(opts, ShouldHaveLength, 3)
+			So(opts[0].Key, ShouldEqual, "key1")
+			So(opts[0].Value, ShouldResemble, &OptionValue{Number: &v1})
+			So(opts[1].Value, ShouldResemble, &OptionValue{Number: &v2})
+			So(opts[2].Value, ShouldResemble, &OptionValue{Str: &v3})
+		})
+		Convey("It should return an error if they are invalid", func(){
+			s := "key1:null,key2:1,key3\"asdf\""
+			_, err := StrToOpts(s)
+
+			So(err, ShouldNotBeNil)
+		})
+
+	})
+
 }
 
 func TestParseExcelRange(t *testing.T){

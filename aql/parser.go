@@ -12,6 +12,7 @@ import (
 	"strconv"
 	xlsx "github.com/360EntSecGroup-Skylar/excelize"
 	"unicode"
+	"encoding/json"
 )
 
 //MaxIncludeDepth is the maximum depth of includes that will be processed before an error is returned.
@@ -103,11 +104,52 @@ type JobScript struct {
 	Scripts     []Script             ` | @@ }`
 }
 
+//String returns the option value as a string. The boolean return parameter
+//will be true if the option was a string and false otherwise.
 func (opt Option) String() (string, bool){
 	if opt.Value != nil && opt.Value.Str != nil {
 		return *opt.Value.Str, true
 	}
 	return "", false
+}
+
+//StrToOpts converts an option string of the form Key1:Val1,Key2:Val2
+//into a slice of Options.
+func StrToOpts(s string) ([]Option, error){
+	var ret []Option
+	ss := strings.Split(s, ",")
+	for _, sss := range ss {
+		var o Option
+		ssss := strings.Split(sss, ":")
+		if len(ssss) != 2 {
+			return nil, fmt.Errorf("expected key-value option pairs to be separated by ':': %s", sss)
+		}
+		o.Key = ssss[0]
+		var i interface{}
+		err := json.Unmarshal([]byte(ssss[1]), &i)
+		if err != nil {
+			return nil, fmt.Errorf("expected key-value option with the value either a JSON number of string type: %s", sss)
+		}
+		switch val := i.(type){
+		case float64:
+			o.Value = &OptionValue{
+				Number: &val,
+			}
+		case int:
+			vf := float64(val)
+			o.Value = &OptionValue{
+				Number: &vf,
+			}
+		case string:
+			o.Value = &OptionValue{
+				Str: &val,
+			}
+		default:
+			return nil, fmt.Errorf("expected key-value option with the value either JSON number of string: %s", sss)
+		}
+		ret = append(ret, o)
+	}
+	return ret, nil
 }
 
 //Truthy returns whether an option value is truthy.

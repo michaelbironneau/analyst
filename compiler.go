@@ -10,7 +10,7 @@ import (
 
 const destinationUniquifier = ": "
 
-func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger) error {
+func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, compileOnly bool) error {
 	dag := engine.NewCoordinator(logger)
 	err := js.ResolveExternalContent()
 	if err != nil {
@@ -49,6 +49,9 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger) erro
 		return err
 	}
 
+	if compileOnly {
+		return nil
+	}
 	return dag.Execute()
 }
 
@@ -57,7 +60,7 @@ func ExecuteString(script string, options []aql.Option, logger engine.Logger) er
 	if err != nil {
 		return err
 	}
-	return execute(js, options, logger)
+	return execute(js, options, logger, false)
 }
 
 func ExecuteFile(filename string, options []aql.Option, logger engine.Logger) error {
@@ -65,7 +68,23 @@ func ExecuteFile(filename string, options []aql.Option, logger engine.Logger) er
 	if err != nil {
 		return err
 	}
-	return execute(js, options, logger)
+	return execute(js, options, logger, false)
+}
+
+func ValidateString(script string, options []aql.Option, logger engine.Logger) error {
+	js, err := aql.ParseString(script)
+	if err != nil {
+		return err
+	}
+	return execute(js, options, logger, true)
+}
+
+func ValidateFile(filename string, options []aql.Option, logger engine.Logger) error {
+	js, err := aql.ParseFile(filename)
+	if err != nil {
+		return err
+	}
+	return execute(js, options, logger, true)
 }
 
 
