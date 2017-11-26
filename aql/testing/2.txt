@@ -1,0 +1,6 @@
+DESCRIPTION 'Test 3'
+
+INCLUDE '1.txt'
+
+QUERY 'b' EXTERN 'extern.test' FROM GLOBAL INTO GLOBAL
+

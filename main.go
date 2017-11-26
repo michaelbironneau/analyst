@@ -9,9 +9,9 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "Analyst"
 	app.Author = "Michael Bironneau"
-	app.Copyright = "(c) 2016 Michael Bironneau"
-	app.Version = "0.1.0"
-	app.Usage = "populate Excel templates using the result one or more SQL queries."
+	app.Copyright = "(c) 2017 Michael Bironneau"
+	app.Version = "0.2.0"
+	app.Usage = "Create ETL pipelines declaratively with a SQL-like language."
 	app.Commands = []cli.Command{
 		{
 			Name:    "run",
