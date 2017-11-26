@@ -92,7 +92,7 @@ TEST SCRIPT 'AllEmployeesReceiveBonus' FROM BonusQuery (
 	from analyst import Script
     
     def check_bonus(input):
-    	if input.get('Value') < 0:
+    	if input.get('Value') <= 0:
         	return input
     
     if __name__ == '__main__':
