@@ -6,12 +6,57 @@ import (
 	"github.com/michaelbironneau/analyst/engine"
 	"os"
 	"github.com/michaelbironneau/analyst/aql"
+	"database/sql"
 )
 
 func cleanup(){
 
 }
 
+
+func TestGlobal(t *testing.T){
+	script := `
+	GLOBAL 'InitializeInputTable' (
+		CREATE TABLE test (
+			ID Number,
+			Name Text
+		);
+
+		INSERT INTO test (ID, Name) VALUES (1, 'Bob');
+    )
+
+	GLOBAL 'InitializeOutputTable' (
+		CREATE TABLE test2 (
+			ID Number,
+			Name Text
+		);
+	)
+
+	QUERY 'Test' FROM GLOBAL (
+		SELECT * FROM test
+	) INTO GLOBAL WITH (TABLE = 'test2')
+
+	`
+	db, err := sql.Open(globalDbDriver, globalDbConnString)
+	defer db.Close()
+	Convey("Given a script making use of GLOBAL", t, func(){
+		Convey("It should be processed correctly and generate the expected results", func(){
+			So(err, ShouldBeNil)
+			err := ExecuteString(script, nil, &engine.ConsoleLogger{})
+			So(err, ShouldBeNil)
+			var row struct {
+				ID int
+				Name string
+			}
+			r := db.QueryRow("SELECT * FROM test2 LIMIT 1")
+			err = r.Scan(&row.ID, &row.Name)
+			So(err, ShouldBeNil)
+			So(row.ID, ShouldEqual, 1)
+			So(row.Name, ShouldEqual, "Bob")
+		})
+	})
+
+}
 
 func TestCompiler(t *testing.T) {
 	script := `
