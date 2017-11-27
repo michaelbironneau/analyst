@@ -6,9 +6,14 @@ import (
 	"github.com/michaelbironneau/analyst/engine"
 	"strings"
 	"fmt"
+	"database/sql"
 )
 
-const destinationUniquifier = ": "
+const (
+	destinationUniquifier = ": "
+	globalDbDriver = "sqlite3"
+	globalDbConnString = "file::memory:?mode=memory&cache=shared"
+)
 
 func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, compileOnly bool) error {
 	dag := engine.NewCoordinator(logger)
@@ -23,6 +28,12 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 	connMap, err := connectionMap(js)
 	if err != nil {
 		return fmt.Errorf("error parsing connections: %v", err)
+	}
+
+	err = globalInit(js)
+
+	if err != nil {
+		return err
 	}
 
 	err = sources(js, dag, connMap)
@@ -87,7 +98,25 @@ func ValidateFile(filename string, options []aql.Option, logger engine.Logger) e
 	return execute(js, options, logger, true)
 }
 
+//globalInit initializes the GLOBAL db based on user-defined queries
+//Any valid SQL can be used to initialize the database.
+//Currently, the GLOBAL database must live in-memory. In future releases
+//the SET [OPTION_NAME] [OPTION_VALUE] syntax will be available to configure this.
+func globalInit(js *aql.JobScript) error {
+	db, err := sql.Open(globalDbDriver, globalDbConnString)
+	if err != nil {
+		return err
+	}
 
+	for _, block := range js.Globals {
+		_, err := db.Exec(block.Content)
+		if err != nil {
+			return fmt.Errorf("error initializing GLOBAL with block %s: %v", block.Name, err)
+		}
+	}
+
+	return nil
+}
 
 //constraints applies AFTER constraints.
 //As of current release:
@@ -113,8 +142,16 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 		if len(query.Sources) != 1 {
 			return fmt.Errorf("queries must have exactly one source but %s has %v", query.Name, len(query.Sources))
 		}
+		if query.Sources[0].Global {
+			dag.AddSource(strings.ToLower(query.Name), &engine.SQLSource{
+				Driver: globalDbDriver ,
+				ConnectionString: globalDbConnString,
+				Query: query.Content,
+			})
+			continue
+		}
 		if query.Sources[0].Database == nil {
-			return fmt.Errorf("at present only database sources are supported for query %s", query.Name)
+			return fmt.Errorf("at present only GLOBAL and CONNECTION sources are supported for query %s", query.Name)
 		}
 		if connMap[strings.ToLower(*query.Sources[0].Database)] == nil {
 			return fmt.Errorf("could not find connection %s for query %s", *query.Sources[0].Database, query.Name)
@@ -155,6 +192,37 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 	})
 
 	dag.Connect(strings.ToLower(query.Name), strings.ToLower(query.Name + destinationUniquifier + conn.Name))
+
+	return nil
+
+}
+
+//TODO: refactor all this option parsing nonsense
+func globalDest(js *aql.JobScript, dag engine.Coordinator, query aql.Query) error {
+	driver := globalDbDriver
+	connString := globalDbConnString
+
+	tableOpt, ok := aql.FindOption(query.Options, "TABLE")
+
+	if !ok {
+		return fmt.Errorf("expected TABLE option for GLOBAL connection in the query %s options", query.Name)
+	}
+
+	table, ok := tableOpt.String()
+
+	if !ok {
+		return fmt.Errorf("expected TABLE option to be a STRING for GLOBAL connection and query %s", query.Name)
+	}
+
+	//Uniquify destination name
+	dag.AddDestination(strings.ToLower(query.Name + destinationUniquifier + "GLOBAL"), &engine.SQLDestination{
+		Name: query.Name + destinationUniquifier + "GLOBAL",
+		Driver: driver,
+		ConnectionString: connString,
+		Table: table,
+	})
+
+	dag.Connect(strings.ToLower(query.Name), strings.ToLower(query.Name + destinationUniquifier + "GLOBAL"))
 
 	return nil
 
@@ -299,13 +367,16 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection) error{
 	for _, query := range js.Queries {
 		for _, dest := range query.Destinations {
-			if dest.Global || dest.Script != nil || dest.Block != nil {
-				return fmt.Errorf("only SQL and Excel destinations are currently supported for query %s", query.Name)
+			if dest.Script != nil || dest.Block != nil {
+				return fmt.Errorf("only GLOBAL, SQL and Excel destinations are currently supported for query %s", query.Name)
 			}
-			if dest.Database == nil {
-				return fmt.Errorf("only CONNECTION destinations are currently supported for %s", query.Name)
+			if dest.Global {
+				if err := globalDest(js, dag, query); err != nil {
+					return err
+				}
+				continue
 			}
-			if connMap[strings.ToLower(*dest.Database)] == nil {
+			if dest.Database != nil && connMap[strings.ToLower(*dest.Database)] == nil {
 				return fmt.Errorf("destination %s not found for query %s", *dest.Database, query.Name)
 			}
 			conn := *connMap[strings.ToLower(*dest.Database)]

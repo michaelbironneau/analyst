@@ -62,11 +62,11 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 		}
 	}
 	r, err := sq.db.Query(sq.Query, sq.QueryParameters...)
-	defer r.Close()
 	if err != nil {
 		sq.fatalerr(err, s, l)
 		return
 	}
+	defer r.Close()
 	cols, err := r.Columns()
 	if err != nil {
 		sq.fatalerr(err, s, l)
