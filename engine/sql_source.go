@@ -18,6 +18,11 @@ type SQLSource struct {
 	QueryParameters  []interface{}
 	columns          []string
 	db               *sql.DB
+	outgoingName     string
+}
+
+func (sq *SQLSource) SetName(name string){
+	sq.outgoingName = name
 }
 
 func (sq *SQLSource) Columns() []string {
@@ -50,7 +55,7 @@ func (sq *SQLSource) fatalerr(err error, s Stream, l Logger) {
 		Time:    time.Now(),
 		Message: err.Error(),
 	}
-	close(s.Chan())
+	close(s.Chan(sq.outgoingName))
 }
 
 func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
@@ -73,7 +78,7 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 		return
 	}
 	sq.columns = cols
-	s.SetColumns(cols)
+	s.SetColumns(sq.outgoingName, cols)
 	l.Chan() <- Event{
 		Source:  sq.Name,
 		Level:   Trace,
@@ -82,7 +87,7 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 	}
 	for r.Next() {
 		if st.Stopped() {
-			close(s.Chan())
+			close(s.Chan(sq.outgoingName))
 			return
 		}
 		rr := make([]interface{}, len(cols))
@@ -93,9 +98,9 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 			sq.fatalerr(err, s, l)
 			return
 		}
-		s.Chan() <- Message{Data:rr}
+		s.Chan(sq.outgoingName) <- Message{Source: sq.outgoingName, Data:rr}
 	}
-	close(s.Chan())
+	close(s.Chan(sq.outgoingName))
 }
 
 //makeRowPointers creates a slice that points to elements of another slice. The point is that rows.Scan() requires

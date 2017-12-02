@@ -14,6 +14,7 @@ type SQLDestination struct {
 	Table            string
 	columns          []string
 	db               *sql.DB
+	Alias            string
 }
 
 const InsertQuery = `INSERT INTO %s (%s) VALUES (%s)`
@@ -73,7 +74,7 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 	var (
 		stmt *sql.Stmt
 	)
-	for msg := range s.Chan() {
+	for msg := range s.Chan(sq.Alias) {
 		if st.Stopped() {
 			tx.Rollback()
 			return

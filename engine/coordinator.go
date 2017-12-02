@@ -9,10 +9,10 @@ import (
 )
 
 type Coordinator interface {
-	AddSource(name string, s Source) error
-	AddDestination(name string, d Destination) error
+	AddSource(name string, alias string, s Source) error
+	AddDestination(name string, alias string, d Destination) error
 	AddTest(node string, name string, desc string, c Condition) error
-	AddTransform(name string, t Transform) error
+	AddTransform(name string, alias string, t Transform) error
 	AddConstraint(before, after string) error
 	Connect(from string, to string) error
 	Compile() error
@@ -45,16 +45,19 @@ type coordinator struct {
 
 type sourceNode struct {
 	name string
+	alias string
 	s    Source
 }
 
 type transformNode struct {
 	name string
+	alias string
 	t    Transform
 }
 
 type destinationNode struct {
 	name string
+	alias string
 	d    Destination
 }
 
@@ -159,7 +162,8 @@ func (c *coordinator) Execute() error {
 			panic(fmt.Sprintf("unknown node type %T: %v", nv, nv))
 		}
 		neighbors := c.g.From(node)
-		multiplex := newMultiplexer(len(neighbors), DefaultBufferSize)
+
+		multiplex := newMultiplexer(c.getNodeName(node), c.getAliases(neighbors), DefaultBufferSize)
 		var testedParentStream Stream
 
 		if c.tests[upstream] == nil {
@@ -176,7 +180,7 @@ func (c *coordinator) Execute() error {
 		if len(neighbors) > 0 {
 			wg.Add(1)
 			go func(parentStream Stream) {
-				multiplex.Open(parentStream)
+				multiplex.Open(parentStream, c.l, c.s)
 				wg.Done()
 			}(testedParentStream)
 		}
@@ -221,6 +225,36 @@ func (c *coordinator) Execute() error {
 	return nil
 }
 
+func (c *coordinator) getNodeName(node graph.Node) string {
+	n := c.nodeIdsRev[node.ID()]
+	switch d := n.(type) {
+	case *sourceNode:
+		return d.name
+	case *transformNode:
+		return d.name
+	case *destinationNode:
+		return d.name
+	default:
+		panic(fmt.Sprintf("unknown node type %T: %v", n, node.ID()))
+	}
+}
+
+func (c *coordinator) getAliases(nodes []graph.Node) []string {
+	var aliases []string
+	for i := range nodes {
+		node := c.nodeIdsRev[nodes[i].ID()]
+		switch d := node.(type) {
+		case *transformNode:
+			aliases = append(aliases, d.alias)
+		case *destinationNode:
+			aliases = append(aliases, d.alias)
+		default:
+			panic(fmt.Sprintf("unknown node type %T: %v", node, node))
+		}
+	}
+	return aliases
+}
+
 func NewCoordinator(logger Logger) Coordinator {
 	return &coordinator{
 		s:               &stopper{},
@@ -255,8 +289,8 @@ func (c *coordinator) addNode(name string, val interface{}) error {
 	return nil
 }
 
-func (c *coordinator) AddSource(name string, s Source) error {
-	if err := c.addNode(name, &sourceNode{name, s}); err != nil {
+func (c *coordinator) AddSource(name string, alias string, s Source) error {
+	if err := c.addNode(name, &sourceNode{name, alias, s}); err != nil {
 		return err
 	}
 	c.sources[name] = s
@@ -264,8 +298,8 @@ func (c *coordinator) AddSource(name string, s Source) error {
 	return nil
 }
 
-func (c *coordinator) AddDestination(name string, d Destination) error {
-	if err := c.addNode(name, &destinationNode{name, d}); err != nil {
+func (c *coordinator) AddDestination(name string, alias string, d Destination) error {
+	if err := c.addNode(name, &destinationNode{name, alias, d}); err != nil {
 		return err
 	}
 	c.destinations[name] = d
@@ -285,8 +319,8 @@ func (c *coordinator) AddConstraint(before, after string) error {
 	return nil
 }
 
-func (c *coordinator) AddTransform(name string, t Transform) error {
-	if err := c.addNode(name, &transformNode{name, t}); err != nil {
+func (c *coordinator) AddTransform(name string, alias string, t Transform) error {
+	if err := c.addNode(name, &transformNode{name, alias, t}); err != nil {
 		return err
 	}
 	c.transformations[name] = t

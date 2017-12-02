@@ -16,6 +16,7 @@ type Destination interface {
 }
 
 type SliceDestination struct {
+	Alias string
 	sync.Mutex
 	res [][]interface{}
 }
@@ -28,7 +29,7 @@ func (sd *SliceDestination) Open(s Stream, logger Logger, stop Stopper) {
 		Time:    time.Now(),
 		Message: "Slice destination opened",
 	}
-	for msg := range s.Chan() {
+	for msg := range s.Chan(sd.Alias) {
 		if stop.Stopped() {
 			return
 		}

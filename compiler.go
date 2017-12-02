@@ -143,11 +143,14 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			return fmt.Errorf("queries must have exactly one source but %s has %v", query.Name, len(query.Sources))
 		}
 		if query.Sources[0].Global {
-			dag.AddSource(strings.ToLower(query.Name), &engine.SQLSource{
+			g := engine.SQLSource{
 				Driver: globalDbDriver ,
 				ConnectionString: globalDbConnString,
 				Query: query.Content,
-			})
+			}
+			alias := alias(query.Sources[0], nil)
+			g.SetName(alias)
+			dag.AddSource(strings.ToLower(query.Name), alias, &g)
 			continue
 		}
 		if query.Sources[0].Database == nil {
@@ -157,17 +160,34 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			return fmt.Errorf("could not find connection %s for query %s", *query.Sources[0].Database, query.Name)
 		}
 		conn := connMap[strings.ToLower(*query.Sources[0].Database)]
-		dag.AddSource(strings.ToLower(query.Name), &engine.SQLSource{
+		s := engine.SQLSource{
 			Driver: conn.Driver,
 			ConnectionString: conn.ConnectionString,
 			Query: query.Content,
-		})
+		}
+		alias := alias(query.Sources[0], conn)
+		s.SetName(alias)
+		dag.AddSource(strings.ToLower(query.Name), alias, &s)
 	}
 	return nil
 }
 
+func alias(ss aql.SourceSink, conn *aql.Connection) string {
+	if ss.Alias != nil {
+		return *ss.Alias
+	}
+	if ss.Global {
+		return "GLOBAL"
+	}
+	if conn == nil {
+		panic("alias panic: should be unreachable")
+	}
+	return conn.Name
+
+}
+
 //TODO: refactor all this option parsing nonsense
-func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, query aql.Query, conn aql.Connection) error {
+func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, query aql.Query, conn aql.Connection, dest aql.SourceSink) error {
 	driver := conn.Driver
 	connString := conn.ConnectionString
 
@@ -182,13 +202,15 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 	if !ok {
 		return fmt.Errorf("expected TABLE option to be a STRING for connection %s and query %s", conn.Name, query.Name)
 	}
+	alias := alias(dest, &conn)
 
 	//Uniquify destination name
-	dag.AddDestination(strings.ToLower(query.Name + destinationUniquifier + conn.Name), &engine.SQLDestination{
+	dag.AddDestination(strings.ToLower(query.Name + destinationUniquifier + conn.Name), alias, &engine.SQLDestination{
 		Name: query.Name + destinationUniquifier + conn.Name,
 		Driver: driver,
 		ConnectionString: connString,
 		Table: table,
+		Alias: alias,
 	})
 
 	dag.Connect(strings.ToLower(query.Name), strings.ToLower(query.Name + destinationUniquifier + conn.Name))
@@ -198,7 +220,7 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 }
 
 //TODO: refactor all this option parsing nonsense
-func globalDest(js *aql.JobScript, dag engine.Coordinator, query aql.Query) error {
+func globalDest(js *aql.JobScript, dag engine.Coordinator, query aql.Query, dest aql.SourceSink) error {
 	driver := globalDbDriver
 	connString := globalDbConnString
 
@@ -214,12 +236,15 @@ func globalDest(js *aql.JobScript, dag engine.Coordinator, query aql.Query) erro
 		return fmt.Errorf("expected TABLE option to be a STRING for GLOBAL connection and query %s", query.Name)
 	}
 
+	alias := alias(dest, nil)
+
 	//Uniquify destination name
-	dag.AddDestination(strings.ToLower(query.Name + destinationUniquifier + "GLOBAL"), &engine.SQLDestination{
+	dag.AddDestination(strings.ToLower(query.Name + destinationUniquifier + "GLOBAL"), alias, &engine.SQLDestination{
 		Name: query.Name + destinationUniquifier + "GLOBAL",
 		Driver: driver,
 		ConnectionString: connString,
 		Table: table,
+		Alias: alias,
 	})
 
 	dag.Connect(strings.ToLower(query.Name), strings.ToLower(query.Name + destinationUniquifier + "GLOBAL"))
@@ -229,7 +254,7 @@ func globalDest(js *aql.JobScript, dag engine.Coordinator, query aql.Query) erro
 }
 
 //TODO: refactor all this option parsing nonsense
-func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, query aql.Query, conn aql.Connection) error {
+func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, query aql.Query, conn aql.Connection, dest aql.SourceSink) error {
 	//register Excel destination
 
 	fileOpt, ok := aql.FindOption(conn.Options, "FILE")
@@ -336,8 +361,10 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 			columns[i] = strings.TrimSpace(columns[i])
 		}
 	}
+
+	alias := alias(dest, &conn)
 	//Make destination name unique
-	dag.AddDestination(strings.ToLower(query.Name + destinationUniquifier + conn.Name), &engine.ExcelDestination{
+	dag.AddDestination(strings.ToLower(query.Name + destinationUniquifier + conn.Name), alias, &engine.ExcelDestination{
 		Name: query.Name + destinationUniquifier + conn.Name,
 		Filename: file,
 		Sheet: sheet,
@@ -351,6 +378,7 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 		Cols: columns,
 		Overwrite: overwrite,
 		Template: template,
+		Alias: alias,
 	})
 
 	dag.Connect(strings.ToLower(query.Name), strings.ToLower(query.Name + destinationUniquifier + conn.Name))
@@ -371,7 +399,7 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 				return fmt.Errorf("only GLOBAL, SQL and Excel destinations are currently supported for query %s", query.Name)
 			}
 			if dest.Global {
-				if err := globalDest(js, dag, query); err != nil {
+				if err := globalDest(js, dag, query, dest); err != nil {
 					return err
 				}
 				continue
@@ -382,9 +410,9 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 			conn := *connMap[strings.ToLower(*dest.Database)]
 			var err error
 			if strings.ToUpper(conn.Driver) == "EXCEL" {
-				err = excelDest(js, dag, connMap, query, conn)
+				err = excelDest(js, dag, connMap, query, conn, dest)
 			} else {
-				err = sqlDest(js, dag, connMap, query, conn)
+				err = sqlDest(js, dag, connMap, query, conn, dest)
 			}
 			if err != nil {
 				return err

@@ -16,7 +16,7 @@ func TestWithoutCoordinator(t *testing.T) {
 			l := &ConsoleLogger{}
 			st := &stopper{}
 
-			sourceStream := NewStream(s.Columns(), DefaultBufferSize)
+			sourceStream := NewStream(cols, DefaultBufferSize)
 			transformedStream := NewStream(cols, DefaultBufferSize)
 
 			s.Open(sourceStream, l, st)
@@ -36,12 +36,13 @@ func TestCoordinator(t *testing.T) {
 		Convey("It should execute a passthrough example correctly", func() {
 			s := NewSliceSource(cols, msg)
 			t := Passthrough{}
-			d := SliceDestination{}
-			err := c.AddSource("source", s)
+			t.SetName("passthrough")
+			d := SliceDestination{Alias: "slice"}
+			err := c.AddSource("source", "slice", s)
 			So(err, ShouldBeNil)
-			err = c.AddTransform("transformation", &t)
+			err = c.AddTransform("transformation", "passthrough", &t)
 			So(err, ShouldBeNil)
-			err = c.AddDestination("destination", &d)
+			err = c.AddDestination("destination", "slice", &d)
 			So(err, ShouldBeNil)
 			err = c.Connect("source", "transformation")
 			So(err, ShouldBeNil)
@@ -62,12 +63,14 @@ func TestCoordinator(t *testing.T) {
 		Convey("It should process many sources -> one destination correctly", func() {
 			s := NewSliceSource(cols, msg)
 			s2 := NewSliceSource(cols, msg)
-			d := SliceDestination{}
-			err := c.AddSource("source 1", s)
+			s.SetName("source 1")
+			s2.SetName("source 2")
+			d := SliceDestination{Alias: "destination"}
+			err := c.AddSource("source 1", "source 1", s)
 			So(err, ShouldBeNil)
-			err = c.AddSource("source 2", s2)
+			err = c.AddSource("source 2", "source 2", s2)
 			So(err, ShouldBeNil)
-			err = c.AddDestination("destination", &d)
+			err = c.AddDestination("destination", "destination", &d)
 			So(err, ShouldBeNil)
 			err = c.Connect("source 1", "destination")
 			So(err, ShouldBeNil)
@@ -81,13 +84,14 @@ func TestCoordinator(t *testing.T) {
 		})
 		Convey("It should process one source -> multiple destinations correctly", func() {
 			s := NewSliceSource(cols, msg)
-			d1 := SliceDestination{}
-			d2 := SliceDestination{}
-			err := c.AddSource("source", s)
+			s.SetName("source")
+			d1 := SliceDestination{Alias: "dest 1"}
+			d2 := SliceDestination{Alias: "dest 2"}
+			err := c.AddSource("source", "source", s)
 			So(err, ShouldBeNil)
-			err = c.AddDestination("destination 1", &d1)
+			err = c.AddDestination("destination 1", "dest 1", &d1)
 			So(err, ShouldBeNil)
-			err = c.AddDestination("destination 2", &d2)
+			err = c.AddDestination("destination 2", "dest 2", &d2)
 			So(err, ShouldBeNil)
 			err = c.Connect("source", "destination 1")
 			So(err, ShouldBeNil)
@@ -102,16 +106,19 @@ func TestCoordinator(t *testing.T) {
 		})
 		Convey("It should process one source -> multiple transforms -> one destination correctly", func() {
 			s := NewSliceSource(cols, msg)
+			s.SetName("s")
 			p1 := Passthrough{}
+			p1.SetName("transform 1")
 			p2 := Passthrough{}
-			d := SliceDestination{}
-			err := c.AddSource("source", s)
+			p2.SetName("transform 2")
+			d := SliceDestination{Alias: "destination"}
+			err := c.AddSource("source", "s", s)
 			So(err, ShouldBeNil)
-			err = c.AddTransform("transform 1", &p1)
+			err = c.AddTransform("transform 1", "transform 1", &p1)
 			So(err, ShouldBeNil)
-			err = c.AddTransform("transform 2", &p2)
+			err = c.AddTransform("transform 2", "transform 2", &p2)
 			So(err, ShouldBeNil)
-			err = c.AddDestination("destination", &d)
+			err = c.AddDestination("destination", "destination", &d)
 			So(err, ShouldBeNil)
 			err = c.Connect("source", "transform 1")
 			So(err, ShouldBeNil)
@@ -149,12 +156,13 @@ func TestTester(t *testing.T) {
 		}
 		Convey("It should stop stream if a test fails", func() {
 			s := NewSliceSource(cols, msg)
-			d := SliceDestination{}
-			err := c.AddSource("source", s)
+			s.SetName("s")
+			d := SliceDestination{Alias: "d"}
+			err := c.AddSource("source", "s", s)
 			So(err, ShouldBeNil)
 			err = c.AddTest("source", "failed test", "always failing test", failTester)
 			So(err, ShouldBeNil)
-			err = c.AddDestination("destination", &d)
+			err = c.AddDestination("destination", "d", &d)
 			err = c.Connect("source", "destination")
 			So(err, ShouldBeNil)
 			err = c.Compile()

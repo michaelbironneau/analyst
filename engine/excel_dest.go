@@ -15,6 +15,7 @@ type ExcelDestination struct {
 	Template             string
 	Sheet                string
 	Range                ExcelRange
+	Alias                string
 	Transpose            bool
 	Cols                 []string
 	posY                 int
@@ -87,7 +88,7 @@ func (ed *ExcelDestination) Open(s Stream, l Logger, st Stopper){
 
 	ed.posX = ed.Range.X1
 	ed.posY = ed.Range.Y1
-	for msg := range s.Chan() {
+	for msg := range s.Chan(ed.Alias) {
 		if st.Stopped() {
 			return
 		}
