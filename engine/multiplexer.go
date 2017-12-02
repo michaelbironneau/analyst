@@ -70,15 +70,20 @@ func (m *multiplexer) Columns() []string {
 }
 
 func (m *multiplexer) SetColumns(destination string, cols []string) error {
+	if destination == DestinationWildcard {
+		for _, s := range m.children {
+			if err := s.SetColumns(DestinationWildcard, cols); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	s := m.children[destination]
 	if s == nil {
-		return fmt.Errorf("unknown destionation alias %s", destination)
+		return fmt.Errorf("unknown destination alias %s", destination)
 	}
 	if err := s.SetColumns(destination, cols); err != nil {
 		return err
-	}
-	for i := range m.children {
-		m.children[i].SetColumns(destination, cols)
 	}
 	return nil
 }

@@ -78,7 +78,7 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 		return
 	}
 	sq.columns = cols
-	s.SetColumns(sq.outgoingName, cols)
+	s.SetColumns(DestinationWildcard, cols)
 	l.Chan() <- Event{
 		Source:  sq.Name,
 		Level:   Trace,

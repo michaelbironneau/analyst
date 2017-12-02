@@ -162,7 +162,7 @@ func (s *ExcelSource) Open(dest Stream, logger Logger, stop Stopper) {
 		return
 	}
 
-	dest.SetColumns(s.outgoingName, s.Cols)
+	dest.SetColumns(DestinationWildcard, s.Cols)
 	c := dest.Chan(s.outgoingName)
 	for {
 		if stop.Stopped() {

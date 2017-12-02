@@ -59,10 +59,11 @@ func TestCoordinator(t *testing.T) {
 	Convey("Given a coordinator", t, func() {
 		c := NewCoordinator(&ConsoleLogger{})
 		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
+		msg2 := [][]interface{}{[]interface{}{"g", "h", "i"}, []interface{}{"j", "k", "l"}}
 		cols := []string{"1", "2", "3"}
 		Convey("It should process many sources -> one destination correctly", func() {
 			s := NewSliceSource(cols, msg)
-			s2 := NewSliceSource(cols, msg)
+			s2 := NewSliceSource(cols, msg2)
 			s.SetName("source 1")
 			s2.SetName("source 2")
 			d := SliceDestination{Alias: "destination"}
@@ -80,7 +81,13 @@ func TestCoordinator(t *testing.T) {
 			So(err, ShouldBeNil)
 			err = c.Execute()
 			So(err, ShouldBeNil)
-			So(d.Results(), ShouldResemble, append(msg, msg...))
+			for _, m := range append(msg, msg2...) {
+				So(d.Results(), ShouldContain, m)
+			}
+			for _, m := range d.Results() {
+				So(append(msg, msg2...), ShouldContain, m)
+			}
+			So(d.Results(), ShouldHaveLength, 2*len(msg))
 		})
 		Convey("It should process one source -> multiple destinations correctly", func() {
 			s := NewSliceSource(cols, msg)
@@ -172,5 +179,42 @@ func TestTester(t *testing.T) {
 			So(d.Results(), ShouldHaveLength, 0)
 		})
 
+	})
+}
+
+func TestNamedStreams(t *testing.T){
+	Convey("Given a named slice source and two destinations", t, func(){
+		msg := []Message{
+			Message{
+				Destination: "d1",
+				Data: []interface{}{1, 2},
+			},
+			Message {
+				Destination: "d1",
+				Data: []interface{}{3,4},
+			},
+			Message{
+				Destination: "d2",
+				Data: []interface{}{5,6},
+			},
+		}
+		s := NewNamedSliceSource([]string{"a", "b"}, msg)
+		s.SetName("s")
+		d1 := SliceDestination{Alias: "d1"}
+		d2 := SliceDestination{Alias: "d2"}
+		c := NewCoordinator(&ConsoleLogger{})
+		c.AddSource("slice source", "s", s)
+		c.AddDestination("slice destination 1", "d1", &d1)
+		c.AddDestination("slice destination 2", "d2", &d2)
+		c.Connect("slice source", "slice destination 1")
+		c.Connect("slice source", "slice destination 2")
+		Convey("It should route the messages to their named destinations", func(){
+			err := c.Compile()
+			So(err, ShouldBeNil)
+			err = c.Execute()
+			So(err, ShouldBeNil)
+			So(d1.Results(), ShouldResemble, [][]interface{}{[]interface{}{1, 2}, []interface{}{3,4}})
+			So(d2.Results(), ShouldResemble, [][]interface{}{[]interface{}{5,6}})
+		})
 	})
 }
