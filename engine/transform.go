@@ -41,7 +41,7 @@ func (tn *testNode) Open(s Stream, dest Stream, l Logger, st Stopper) {
 			firstMessage = false
 		}
 		for i := range tn.conds {
-			if !tn.conds[i](msg) {
+			if !tn.conds[i](msg.Data) {
 				l.Chan() <- Event{
 					Source:  tn.names[i],
 					Message: fmt.Sprintf("[FAIL] %s", tn.descs[i]),

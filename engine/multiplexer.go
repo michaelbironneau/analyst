@@ -45,7 +45,7 @@ func (m *multiplexer) SetColumns(cols []string) {
 	}
 }
 
-func (m *multiplexer) Chan() chan []interface{} {
+func (m *multiplexer) Chan() chan Message {
 	m.Lock()
 	defer m.Unlock()
 	if m.i >= m.n {

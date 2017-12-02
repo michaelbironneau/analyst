@@ -17,19 +17,26 @@ type Stream interface {
 	SetColumns(cols []string)
 
 	//Chan is the channel for the stream. It will be closed by the sender when the stream is at an end.
-	Chan() chan []interface{}
+	Chan() chan Message
+}
+
+//Message is a named message. Source and/or destination can be blank (i.e. wildcard).
+type Message struct {
+	Source string
+	Destination string
+	Data []interface{}
 }
 
 //default wrapper for a stream
 type stream struct {
 	cols []string
-	msg  chan []interface{}
+	msg  chan Message
 }
 
 func NewStream(cols []string, bufferSize int) Stream {
 	return &stream{
 		cols: cols,
-		msg:  make(chan []interface{}, bufferSize),
+		msg:  make(chan Message, bufferSize),
 	}
 }
 
@@ -41,6 +48,6 @@ func (s *stream) SetColumns(cols []string) {
 	s.cols = cols
 }
 
-func (s *stream) Chan() chan []interface{} {
+func (s *stream) Chan() chan Message {
 	return s.msg
 }

@@ -173,7 +173,7 @@ func (s *ExcelSource) Open(dest Stream, logger Logger, stop Stopper) {
 			})
 		}
 		if nonEmptyRow || !s.Range.Y2.N {
-			c <- msg
+			c <- Message{Data: msg}
 		}
 
 		if s.Range.Y2.N && nonEmptyRow {

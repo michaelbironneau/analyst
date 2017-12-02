@@ -33,7 +33,7 @@ func (sd *SliceDestination) Open(s Stream, logger Logger, stop Stopper) {
 			return
 		}
 		sd.Lock()
-		sd.res = append(sd.res, msg)
+		sd.res = append(sd.res, msg.Data)
 		sd.Unlock()
 	}
 

@@ -105,10 +105,10 @@ func (ed *ExcelDestination) Open(s Stream, l Logger, st Stopper){
 		if ed.Transpose {
 			colLength = ed.posY - ed.Range.Y1 + 1
 		} else {
-			colLength = len(msg)
+			colLength = len(msg.Data)
 		}
 		if !ed.Range.X2.N && ed.Range.X2.P - ed.Range.X1 + 1 != colLength{
-			ed.fatalerr(fmt.Errorf("wrong number of columns. Expected %v columns, got %v", ed.Range.X2.P - ed.Range.X1 + 1, len(msg)), s, l)
+			ed.fatalerr(fmt.Errorf("wrong number of columns. Expected %v columns, got %v", ed.Range.X2.P - ed.Range.X1 + 1, len(msg.Data)), s, l)
 			return
 		}
 		if !ed.Range.Y2.N && ed.posY > ed.Range.Y2.P {
@@ -116,12 +116,12 @@ func (ed *ExcelDestination) Open(s Stream, l Logger, st Stopper){
 			return
 		}
 		fileManager.Use(ed.Filename, func(f *xlsx.File){
-			for i := range msg {
+			for i := range msg.Data {
 				if colMappers != nil {
-					f.SetCellValue(ed.Sheet, pointToCol(ed.posX, ed.posY), colMappers[i](msg))
+					f.SetCellValue(ed.Sheet, pointToCol(ed.posX, ed.posY), colMappers[i](msg.Data))
 				} else {
 					//identity mapping
-					f.SetCellValue(ed.Sheet, pointToCol(ed.posX, ed.posY), msg[i])
+					f.SetCellValue(ed.Sheet, pointToCol(ed.posX, ed.posY), msg.Data[i])
 				}
 
 				if ed.Transpose {

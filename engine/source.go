@@ -42,7 +42,7 @@ func (s *SliceSource) Open(dest Stream, logger Logger, stop Stopper) {
 		if stop.Stopped() {
 			break
 		}
-		c <- s.msg[i]
+		c <- Message{Data: s.msg[i]}
 	}
 	close(c)
 }

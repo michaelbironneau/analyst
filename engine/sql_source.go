@@ -93,7 +93,7 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 			sq.fatalerr(err, s, l)
 			return
 		}
-		s.Chan() <- rr
+		s.Chan() <- Message{Data:rr}
 	}
 	close(s.Chan())
 }
