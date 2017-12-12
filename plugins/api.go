@@ -1,4 +1,9 @@
-package scripting
+package plugins
+
+import (
+	"github.com/michaelbironneau/analyst/engine"
+	"strings"
+)
 
 //InputRow is a row sent from the executor to the plugin.
 type InputRow struct {
@@ -18,11 +23,22 @@ type LogEntry struct {
 	Message string `json:"message"`
 }
 
-//Transform is the interface for transforms.
-type Transform interface {
+//Plugin is the generic interface that all plugins must satisfy.
+type Plugin interface {
+	//Dial connects to the plugin using whatever RPC. It can hold resources open.
+	//These should be released when Close() is called.
+	Dial() error
 
 	//SetOption sets the given option name/value pair.
 	SetOption(name string, value interface{}) error
+
+	//Close releases any resources associated with the plugin.
+	Close() error
+}
+
+//Transform is the interface for transforms.
+type Transform interface {
+	Plugin
 
 	//SetSources sets the names of the input sources.
 	SetSources(names []string) error
@@ -43,16 +59,15 @@ type Transform interface {
 	//EOS signals the end of the stream and that the plugin should exit.
 	EOS() ([]OutputRow, []LogEntry, error)
 
+
 	//EOG (currently unused) signals the end of the aggregation group. This is reserved
 	//for user-defined aggregates in future versions.
 	//EOG() error
 }
 
+//Source is the interface for sources.
 type Source interface {
-	//Source is the interface for sources.
-
-	//SetOption sets the given option name/value pair.
-	SetOption(name string, value interface{}) error
+	Plugin
 
 	//SetDestinations sets the names of the output destinations.
 	SetDestinations(names []string) error
@@ -62,14 +77,12 @@ type Source interface {
 
 	//Receive optionally returns output rows and/or log entries. The boolean parameter
 	//is used to indicate whether End of Stream has been reached.
-	Receive() ([]OutputRow, []LogEntry, bool, error)
+	Receive() ([]OutputRow, []LogEntry, error)
 }
 
 //Destination is the interface for destinations.
 type Destination interface {
-
-	//SetOption sets the given option name/value pair.
-	SetOption(name string, value interface{}) error
+	Plugin
 
 	//SetSources sets the names of the input sources.
 	SetSources(names []string) error
@@ -85,3 +98,15 @@ type Destination interface {
 	EOS() ([]OutputRow, []LogEntry, error)
 }
 
+func logLevel(s string) engine.LogLevel {
+	switch strings.ToLower(s){
+	case "trace":
+		return engine.Trace
+	case "warning":
+		return engine.Warning
+	case "error":
+		return engine.Error
+	default:
+		return engine.Info
+	}
+}
