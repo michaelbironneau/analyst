@@ -1,9 +1,26 @@
 package scripting
 
-import "net/rpc"
+import (
+	"net/rpc"
+	"github.com/natefinch/pie"
+	"net/rpc/jsonrpc"
+	"os"
+)
 
 type transform struct{
 	Client *rpc.Client
+}
+
+func NewTransformClient(path string, args...string) (*transform, error) {
+	client, err := pie.StartProviderCodec(jsonrpc.NewClientCodec, os.Stderr, path, args...)
+	if err != nil {
+		return nil, err
+	}
+	return &transform{Client: client}, nil
+}
+
+func (t *transform) Close() error {
+	return t.Client.Close()
 }
 
 type option struct {
@@ -17,7 +34,7 @@ type inputColumns struct {
 }
 
 type output struct {
-	Data []OutputRow `json:"data"`
+	Rows []OutputRow `json:"rows"`
 	Logs []LogEntry `json:"logs"`
 }
 
@@ -50,11 +67,11 @@ func (t *transform) GetOutputColumns(destination string) ([]string, error){
 func (t *transform) Send(rows []InputRow) ([]OutputRow, []LogEntry, error){
 	var reply output
 	err := t.Client.Call("receive", rows, &reply)
-	return reply.Data, reply.Logs, err
+	return reply.Rows, reply.Logs, err
 }
 
 func (t *transform) EOS() ([]OutputRow, []LogEntry, error){
 	var reply output
 	err := t.Client.Call("receive", nil, &reply)
-	return reply.Data, reply.Logs, err
+	return reply.Rows, reply.Logs, err
 }
