@@ -12,6 +12,11 @@ type source struct {
 	S Source
 	Alias string
 	Destinations []string
+	opts []aql.Option
+}
+
+func (so *source) SetName(name string){
+	so.Alias = name
 }
 
 func (so *source) fatalerr(err error, s engine.Stream, l engine.Logger) {
@@ -29,7 +34,12 @@ func (so *source) Ping() error {
 }
 
 func (so *source) Configure(opts []aql.Option) error {
-	for _, opt := range opts {
+	so.opts = opts
+	return nil
+}
+
+func (so *source) configure() error {
+	for _, opt := range so.opts {
 		var val interface{}
 		if opt.Value.Str != nil {
 			val = *opt.Value.Str
@@ -52,11 +62,18 @@ func (so *source) Open(s engine.Stream, l engine.Logger, st engine.Stopper){
 	}
 
 	defer so.S.Close()
+
+	if err := so.configure(); err != nil {
+		so.fatalerr(err, s, l)
+		return
+	}
+
 	logChan := l.Chan()
 	msgChan := s.Chan(so.Alias)
 	logChan <- engine.Event{
 		Level: engine.Trace,
 		Source: so.Alias,
+		Time: time.Now(),
 		Message: "Source plugin opened",
 	}
 
@@ -86,6 +103,7 @@ func (so *source) Open(s engine.Stream, l engine.Logger, st engine.Stopper){
 				Level: logLevel(logMsg.Level),
 				Message: logMsg.Message,
 				Source: so.Alias,
+				Time: time.Now(),
 			}
 		}
 		if len(msgs) == 0 {

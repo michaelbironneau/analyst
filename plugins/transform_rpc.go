@@ -72,6 +72,7 @@ func (t *TransformJSONRPC) Send(rows []InputRow) ([]OutputRow, []LogEntry, error
 
 func (t *TransformJSONRPC) EOS() ([]OutputRow, []LogEntry, error){
 	var reply output
+
 	err := t.client.Call("receive", nil, &reply)
 	return reply.Rows, reply.Logs, err
 }

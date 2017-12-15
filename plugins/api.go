@@ -95,7 +95,7 @@ type Destination interface {
 	Send(row []InputRow) ([]LogEntry, error)
 
 	//EOS signals the end of the stream and that the plugin should exit.
-	EOS() ([]OutputRow, []LogEntry, error)
+	EOS() ([]LogEntry, error)
 }
 
 func logLevel(s string) engine.LogLevel {
