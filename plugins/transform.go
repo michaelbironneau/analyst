@@ -1,10 +1,10 @@
 package plugins
 
 import (
+	"fmt"
+	"github.com/michaelbironneau/analyst/aql"
 	"github.com/michaelbironneau/analyst/engine"
 	"time"
-	"github.com/michaelbironneau/analyst/aql"
-	"fmt"
 )
 
 //Transform is the default implementation of a Transform plugin
@@ -30,7 +30,7 @@ func (d *Transform) Ping() error {
 	return nil //TODO
 }
 
-func (d *Transform) SetName(name string){
+func (d *Transform) SetName(name string) {
 	d.Alias = name
 }
 
@@ -61,7 +61,6 @@ func (d *Transform) setInputColumns() error {
 	return nil
 }
 
-
 func (d *Transform) configure() error {
 	for _, opt := range d.opts {
 		var val interface{}
@@ -76,7 +75,6 @@ func (d *Transform) configure() error {
 	}
 	return nil
 }
-
 
 func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, st engine.Stopper) {
 
@@ -113,10 +111,10 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 	msgChan := s.Chan(d.Alias)
 	outChan := dest.Chan(d.Alias)
 	logChan <- engine.Event{
-		Level: engine.Trace,
-		Source: d.Alias,
+		Level:   engine.Trace,
+		Source:  d.Alias,
 		Message: "TransformPlugin plugin opened",
-		Time: time.Now(),
+		Time:    time.Now(),
 	}
 
 	for msg := range msgChan {
@@ -133,17 +131,17 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 		}
 		for _, logMsg := range logs {
 			logChan <- engine.Event{
-				Level: logLevel(logMsg.Level),
+				Level:   logLevel(logMsg.Level),
 				Message: logMsg.Message,
-				Source: d.Alias,
+				Source:  d.Alias,
 			}
 		}
 		fmt.Println(rows)
 		for _, row := range rows {
 			outChan <- engine.Message{
-				Source: d.Alias,
+				Source:      d.Alias,
 				Destination: row.Destination,
-				Data: row.Data,
+				Data:        row.Data,
 			}
 		}
 	}
@@ -152,21 +150,20 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 
 	for _, logMsg := range logs {
 		logChan <- engine.Event{
-			Level: logLevel(logMsg.Level),
+			Level:   logLevel(logMsg.Level),
 			Message: logMsg.Message,
-			Source: d.Alias,
-			Time: time.Now(),
+			Source:  d.Alias,
+			Time:    time.Now(),
 		}
 	}
 
 	for _, msg := range rows {
 		outChan <- engine.Message{
-			Source: d.Alias,
+			Source:      d.Alias,
 			Destination: msg.Destination,
-			Data: msg.Data,
+			Data:        msg.Data,
 		}
 	}
 
 	close(outChan)
 }
-

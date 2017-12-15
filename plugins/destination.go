@@ -1,9 +1,9 @@
 package plugins
 
 import (
+	"github.com/michaelbironneau/analyst/aql"
 	"github.com/michaelbironneau/analyst/engine"
 	"time"
-	"github.com/michaelbironneau/analyst/aql"
 )
 
 //Destination is the default implementation of a DestinationPlugin plugin
@@ -15,7 +15,7 @@ type Destination struct {
 	inputColumns map[string][]string
 }
 
-func (d *Destination) SetName(name string){
+func (d *Destination) SetName(name string) {
 	d.alias = name
 }
 
@@ -60,7 +60,6 @@ func (d *Destination) setInputColumns() error {
 	return nil
 }
 
-
 func (d *Destination) configure() error {
 	for _, opt := range d.opts {
 		var val interface{}
@@ -76,8 +75,7 @@ func (d *Destination) configure() error {
 	return nil
 }
 
-
-func (d *Destination) Open(s engine.Stream, l engine.Logger, st engine.Stopper){
+func (d *Destination) Open(s engine.Stream, l engine.Logger, st engine.Stopper) {
 
 	if err := d.Plugin.Dial(); err != nil {
 		d.fatalerr(err, s, l)
@@ -85,7 +83,6 @@ func (d *Destination) Open(s engine.Stream, l engine.Logger, st engine.Stopper){
 	}
 
 	defer d.Plugin.Close()
-
 
 	//  FIXME: It would be nice to have some heads up at compile time if
 	//  either configure() or setInputColumns() fails, rather than having
@@ -108,10 +105,10 @@ func (d *Destination) Open(s engine.Stream, l engine.Logger, st engine.Stopper){
 	logChan := l.Chan()
 	msgChan := s.Chan(d.alias)
 	logChan <- engine.Event{
-		Level: engine.Trace,
-		Source: d.alias,
+		Level:   engine.Trace,
+		Source:  d.alias,
 		Message: "DestinationPlugin plugin opened",
-		Time: time.Now(),
+		Time:    time.Now(),
 	}
 
 	for msg := range msgChan {
@@ -128,10 +125,10 @@ func (d *Destination) Open(s engine.Stream, l engine.Logger, st engine.Stopper){
 		}
 		for _, logMsg := range logs {
 			logChan <- engine.Event{
-				Level: logLevel(logMsg.Level),
+				Level:   logLevel(logMsg.Level),
 				Message: logMsg.Message,
-				Source: d.alias,
-				Time: time.Now(),
+				Source:  d.alias,
+				Time:    time.Now(),
 			}
 		}
 	}
@@ -140,10 +137,9 @@ func (d *Destination) Open(s engine.Stream, l engine.Logger, st engine.Stopper){
 
 	for _, logMsg := range logs {
 		logChan <- engine.Event{
-			Level: logLevel(logMsg.Level),
+			Level:   logLevel(logMsg.Level),
 			Message: logMsg.Message,
-			Source: d.alias,
+			Source:  d.alias,
 		}
 	}
 }
-

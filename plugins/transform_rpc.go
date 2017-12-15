@@ -1,15 +1,15 @@
 package plugins
 
 import (
-	"net/rpc"
 	"github.com/natefinch/pie"
+	"net/rpc"
 	"net/rpc/jsonrpc"
 	"os"
 )
 
-type TransformJSONRPC struct{
-	Path string
-	Args []string
+type TransformJSONRPC struct {
+	Path   string
+	Args   []string
 	client *rpc.Client
 }
 
@@ -24,18 +24,18 @@ func (t *TransformJSONRPC) Close() error {
 }
 
 type option struct {
-	Name string `json:"name"`
+	Name  string      `json:"name"`
 	Value interface{} `json:"value"`
 }
 
 type inputColumns struct {
-	Source string `json:"source"`
+	Source  string   `json:"source"`
 	Columns []string `json:"columns"`
 }
 
 type output struct {
 	Rows []OutputRow `json:"rows"`
-	Logs []LogEntry `json:"logs"`
+	Logs []LogEntry  `json:"logs"`
 }
 
 func (t *TransformJSONRPC) SetOption(name string, value interface{}) error {
@@ -58,19 +58,19 @@ func (t *TransformJSONRPC) SetInputColumns(source string, columns []string) erro
 	return t.client.Call("set_input_columns", inputColumns{source, columns}, &reply)
 }
 
-func (t *TransformJSONRPC) GetOutputColumns() (map[string][]string, error){
+func (t *TransformJSONRPC) GetOutputColumns() (map[string][]string, error) {
 	var reply map[string][]string
 	err := t.client.Call("get_output_columns", nil, &reply)
 	return reply, err
 }
 
-func (t *TransformJSONRPC) Send(rows []InputRow) ([]OutputRow, []LogEntry, error){
+func (t *TransformJSONRPC) Send(rows []InputRow) ([]OutputRow, []LogEntry, error) {
 	var reply output
 	err := t.client.Call("receive", rows, &reply)
 	return reply.Rows, reply.Logs, err
 }
 
-func (t *TransformJSONRPC) EOS() ([]OutputRow, []LogEntry, error){
+func (t *TransformJSONRPC) EOS() ([]OutputRow, []LogEntry, error) {
 	var reply output
 
 	err := t.client.Call("receive", nil, &reply)

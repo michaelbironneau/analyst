@@ -7,19 +7,19 @@ import (
 
 //InputRow is a row sent from the executor to the plugin.
 type InputRow struct {
-	Source string `json:"Source"`
-	Data []interface{} `json:"data"`
+	Source string        `json:"source"`
+	Data   []interface{} `json:"data"`
 }
 
 //OutputRow is a row sent from the plugin to the executor.
 type OutputRow struct {
-	Destination string `json:"Destination"`
-	Data []interface{} `json:"data"`
+	Destination string        `json:"destination"`
+	Data        []interface{} `json:"data"`
 }
 
 //LogEntry is a log entry recorded by the plugin.
 type LogEntry struct {
-	Level string `json:"level"`
+	Level   string `json:"level"`
 	Message string `json:"message"`
 }
 
@@ -58,7 +58,6 @@ type TransformPlugin interface {
 
 	//EOS signals the end of the stream and that the plugin should exit.
 	EOS() ([]OutputRow, []LogEntry, error)
-
 
 	//EOG (currently unused) signals the end of the aggregation group. This is reserved
 	//for user-defined aggregates in future versions.
@@ -99,7 +98,7 @@ type DestinationPlugin interface {
 }
 
 func logLevel(s string) engine.LogLevel {
-	switch strings.ToLower(s){
+	switch strings.ToLower(s) {
 	case "trace":
 		return engine.Trace
 	case "warning":

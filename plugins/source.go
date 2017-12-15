@@ -1,20 +1,20 @@
 package plugins
 
 import (
+	"github.com/michaelbironneau/analyst/aql"
 	"github.com/michaelbironneau/analyst/engine"
 	"time"
-	"github.com/michaelbironneau/analyst/aql"
 )
 
 //Source is the default implementation of a SourcePlugin plugin
 //that also satisfies the engine.SourcePlugin interface.
 type Source struct {
-	Plugin       SourcePlugin
-	alias        string
-	opts         []aql.Option
+	Plugin SourcePlugin
+	alias  string
+	opts   []aql.Option
 }
 
-func (so *Source) SetName(name string){
+func (so *Source) SetName(name string) {
 	so.alias = name
 }
 
@@ -52,8 +52,7 @@ func (so *Source) configure() error {
 	return nil
 }
 
-
-func (so *Source) Open(s engine.Stream, l engine.Logger, st engine.Stopper){
+func (so *Source) Open(s engine.Stream, l engine.Logger, st engine.Stopper) {
 
 	if err := so.Plugin.Dial(); err != nil {
 		so.fatalerr(err, s, l)
@@ -70,25 +69,23 @@ func (so *Source) Open(s engine.Stream, l engine.Logger, st engine.Stopper){
 	logChan := l.Chan()
 	msgChan := s.Chan(so.alias)
 	logChan <- engine.Event{
-		Level: engine.Trace,
-		Source: so.alias,
-		Time: time.Now(),
+		Level:   engine.Trace,
+		Source:  so.alias,
+		Time:    time.Now(),
 		Message: "SourcePlugin plugin opened",
 	}
 
-
-		cols, err := so.Plugin.GetOutputColumns()
-		if err != nil {
+	cols, err := so.Plugin.GetOutputColumns()
+	if err != nil {
+		so.fatalerr(err, s, l)
+		return
+	}
+	for dest, cs := range cols {
+		if err := s.SetColumns(dest, cs); err != nil {
 			so.fatalerr(err, s, l)
 			return
 		}
-		for dest, cs := range cols {
-			if err := s.SetColumns(dest, cs); err != nil {
-				so.fatalerr(err, s, l)
-				return
-			}
-		}
-
+	}
 
 	for {
 		if st.Stopped() {
@@ -101,10 +98,10 @@ func (so *Source) Open(s engine.Stream, l engine.Logger, st engine.Stopper){
 		}
 		for _, logMsg := range logs {
 			logChan <- engine.Event{
-				Level: logLevel(logMsg.Level),
+				Level:   logLevel(logMsg.Level),
 				Message: logMsg.Message,
-				Source: so.alias,
-				Time: time.Now(),
+				Source:  so.alias,
+				Time:    time.Now(),
 			}
 		}
 		if len(msgs) == 0 {
@@ -113,11 +110,10 @@ func (so *Source) Open(s engine.Stream, l engine.Logger, st engine.Stopper){
 		}
 		for _, msg := range msgs {
 			msgChan <- engine.Message{
-				Source: so.alias,
+				Source:      so.alias,
 				Destination: msg.Destination,
-				Data: msg.Data,
+				Data:        msg.Data,
 			}
 		}
 	}
 }
-

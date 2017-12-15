@@ -1,18 +1,17 @@
 package main
 
-
 import (
+	"database/sql"
+	"fmt"
 	"github.com/michaelbironneau/analyst/aql"
 	"github.com/michaelbironneau/analyst/engine"
 	"strings"
-	"fmt"
-	"database/sql"
 )
 
 const (
 	destinationUniquifier = ": "
-	globalDbDriver = "sqlite3"
-	globalDbConnString = "file::memory:?mode=memory&cache=shared"
+	globalDbDriver        = "sqlite3"
+	globalDbConnString    = "file::memory:?mode=memory&cache=shared"
 )
 
 func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, compileOnly bool) error {
@@ -144,9 +143,9 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 		}
 		if query.Sources[0].Global {
 			g := engine.SQLSource{
-				Driver: globalDbDriver ,
+				Driver:           globalDbDriver,
 				ConnectionString: globalDbConnString,
-				Query: query.Content,
+				Query:            query.Content,
 			}
 			alias := alias(query.Sources[0], nil)
 			g.SetName(alias)
@@ -161,9 +160,9 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 		}
 		conn := connMap[strings.ToLower(*query.Sources[0].Database)]
 		s := engine.SQLSource{
-			Driver: conn.Driver,
+			Driver:           conn.Driver,
 			ConnectionString: conn.ConnectionString,
-			Query: query.Content,
+			Query:            query.Content,
 		}
 		alias := alias(query.Sources[0], conn)
 		s.SetName(alias)
@@ -205,15 +204,15 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 	alias := alias(dest, &conn)
 
 	//Uniquify destination name
-	dag.AddDestination(strings.ToLower(query.Name + destinationUniquifier + conn.Name), alias, &engine.SQLDestination{
-		Name: query.Name + destinationUniquifier + conn.Name,
-		Driver: driver,
+	dag.AddDestination(strings.ToLower(query.Name+destinationUniquifier+conn.Name), alias, &engine.SQLDestination{
+		Name:             query.Name + destinationUniquifier + conn.Name,
+		Driver:           driver,
 		ConnectionString: connString,
-		Table: table,
-		Alias: alias,
+		Table:            table,
+		Alias:            alias,
 	})
 
-	dag.Connect(strings.ToLower(query.Name), strings.ToLower(query.Name + destinationUniquifier + conn.Name))
+	dag.Connect(strings.ToLower(query.Name), strings.ToLower(query.Name+destinationUniquifier+conn.Name))
 
 	return nil
 
@@ -239,15 +238,15 @@ func globalDest(js *aql.JobScript, dag engine.Coordinator, query aql.Query, dest
 	alias := alias(dest, nil)
 
 	//Uniquify destination name
-	dag.AddDestination(strings.ToLower(query.Name + destinationUniquifier + "GLOBAL"), alias, &engine.SQLDestination{
-		Name: query.Name + destinationUniquifier + "GLOBAL",
-		Driver: driver,
+	dag.AddDestination(strings.ToLower(query.Name+destinationUniquifier+"GLOBAL"), alias, &engine.SQLDestination{
+		Name:             query.Name + destinationUniquifier + "GLOBAL",
+		Driver:           driver,
 		ConnectionString: connString,
-		Table: table,
-		Alias: alias,
+		Table:            table,
+		Alias:            alias,
 	})
 
-	dag.Connect(strings.ToLower(query.Name), strings.ToLower(query.Name + destinationUniquifier + "GLOBAL"))
+	dag.Connect(strings.ToLower(query.Name), strings.ToLower(query.Name+destinationUniquifier+"GLOBAL"))
 
 	return nil
 
@@ -299,7 +298,6 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 		overwrite = overwriteOpt.Truthy()
 	}
 
-
 	rangOpt, ok := aql.FindOverridableOption("RANGE", conn.Name, query.Options, conn.Options)
 
 	if !ok {
@@ -337,9 +335,8 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 
 	var (
 		transpose bool
-		columns []string
+		columns   []string
 	)
-
 
 	trs, ok := aql.FindOverridableOption("TRANSPOSE", conn.Name, query.Options, conn.Options)
 
@@ -348,8 +345,6 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 	}
 
 	colsOpt, ok := aql.FindOverridableOption("COLUMNS", conn.Name, query.Options, conn.Options)
-
-
 
 	if ok {
 		cols, ok2 := colsOpt.String()
@@ -364,10 +359,10 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 
 	alias := alias(dest, &conn)
 	//Make destination name unique
-	dag.AddDestination(strings.ToLower(query.Name + destinationUniquifier + conn.Name), alias, &engine.ExcelDestination{
-		Name: query.Name + destinationUniquifier + conn.Name,
+	dag.AddDestination(strings.ToLower(query.Name+destinationUniquifier+conn.Name), alias, &engine.ExcelDestination{
+		Name:     query.Name + destinationUniquifier + conn.Name,
 		Filename: file,
-		Sheet: sheet,
+		Sheet:    sheet,
 		Range: engine.ExcelRange{
 			X1: x1,
 			Y1: y1,
@@ -375,13 +370,13 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 			Y2: yy2,
 		},
 		Transpose: transpose,
-		Cols: columns,
+		Cols:      columns,
 		Overwrite: overwrite,
-		Template: template,
-		Alias: alias,
+		Template:  template,
+		Alias:     alias,
 	})
 
-	dag.Connect(strings.ToLower(query.Name), strings.ToLower(query.Name + destinationUniquifier + conn.Name))
+	dag.Connect(strings.ToLower(query.Name), strings.ToLower(query.Name+destinationUniquifier+conn.Name))
 
 	return nil
 
@@ -392,7 +387,7 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 //  - Limited to SQL or Excel destinations
 //  - Multiple destinations supported for queries. The table for multiple destinations needs to be specified as TABLE_{DEST_NAME} = '{TABLE_NAME}'
 //  - GLOBAL, SCRIPT and BLOCK destinations not supported
-func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection) error{
+func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection) error {
 	for _, query := range js.Queries {
 		for _, dest := range query.Destinations {
 			if dest.Script != nil || dest.Block != nil {
@@ -434,4 +429,3 @@ func connectionMap(js *aql.JobScript) (map[string]*aql.Connection, error) {
 	}
 	return ret, nil
 }
-

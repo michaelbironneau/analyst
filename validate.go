@@ -1,16 +1,16 @@
 package main
 
 import (
-	"github.com/urfave/cli"
-	"github.com/michaelbironneau/analyst/aql"
 	"fmt"
+	"github.com/michaelbironneau/analyst/aql"
 	"github.com/michaelbironneau/analyst/engine"
+	"github.com/urfave/cli"
 )
 
 func Validate(c *cli.Context) error {
 	var (
 		opts []aql.Option
-		err error
+		err  error
 	)
 	oString := c.String("params")
 	if len(opts) > 0 {

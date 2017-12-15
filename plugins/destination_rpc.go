@@ -1,15 +1,15 @@
 package plugins
 
 import (
-	"net/rpc"
 	"github.com/natefinch/pie"
+	"net/rpc"
 	"net/rpc/jsonrpc"
 	"os"
 )
 
-type DestinationJSONRPC struct{
-	Path string
-	Args []string
+type DestinationJSONRPC struct {
+	Path   string
+	Args   []string
 	client *rpc.Client
 }
 
@@ -38,14 +38,13 @@ func (t *DestinationJSONRPC) SetInputColumns(source string, columns []string) er
 	return t.client.Call("set_input_columns", inputColumns{source, columns}, &reply)
 }
 
-
-func (t *DestinationJSONRPC) Send(rows []InputRow) ([]LogEntry, error){
+func (t *DestinationJSONRPC) Send(rows []InputRow) ([]LogEntry, error) {
 	var reply output
 	err := t.client.Call("receive", rows, &reply)
 	return reply.Logs, err
 }
 
-func (t *DestinationJSONRPC) EOS() ([]LogEntry, error){
+func (t *DestinationJSONRPC) EOS() ([]LogEntry, error) {
 	var reply output
 	err := t.client.Call("receive", nil, &reply)
 	return reply.Logs, err
