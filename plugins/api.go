@@ -7,13 +7,13 @@ import (
 
 //InputRow is a row sent from the executor to the plugin.
 type InputRow struct {
-	Source string `json:"source"`
+	Source string `json:"Source"`
 	Data []interface{} `json:"data"`
 }
 
 //OutputRow is a row sent from the plugin to the executor.
 type OutputRow struct {
-	Destination string `json:"destination"`
+	Destination string `json:"Destination"`
 	Data []interface{} `json:"data"`
 }
 
@@ -36,8 +36,8 @@ type Plugin interface {
 	Close() error
 }
 
-//Transform is the interface for transforms.
-type Transform interface {
+//TransformPlugin is the interface for transforms.
+type TransformPlugin interface {
 	Plugin
 
 	//SetSources sets the names of the input sources.
@@ -46,11 +46,11 @@ type Transform interface {
 	//SetDestinations sets the names of the output destinations.
 	SetDestinations(names []string) error
 
-	//SetInputColumns sets the names of the input columns for the given source.
+	//SetInputColumns sets the names of the input columns for the given Source.
 	SetInputColumns(source string, columns []string) error
 
-	//GetOutputColumns gets the name of the output columns for the given destination.
-	GetOutputColumns(destination string) ([]string, error)
+	//GetOutputColumns gets the name of the output columns for the given Destination.
+	GetOutputColumns() (map[string][]string, error)
 
 	//Send sends a batch of rows to the plugin, optionally returning output rows and/or
 	//log entries.
@@ -65,29 +65,29 @@ type Transform interface {
 	//EOG() error
 }
 
-//Source is the interface for sources.
-type Source interface {
+//SourcePlugin is the interface for sources.
+type SourcePlugin interface {
 	Plugin
 
 	//SetDestinations sets the names of the output destinations.
 	SetDestinations(names []string) error
 
-	//GetOutputColumns gets the name of the output columns for the given destination.
-	GetOutputColumns(destination string) ([]string, error)
+	//GetOutputColumns gets the name of the output columns for the given Destination.
+	GetOutputColumns() (map[string][]string, error)
 
 	//Receive optionally returns output rows and/or log entries. The boolean parameter
 	//is used to indicate whether End of Stream has been reached.
 	Receive() ([]OutputRow, []LogEntry, error)
 }
 
-//Destination is the interface for destinations.
-type Destination interface {
+//DestinationPlugin is the interface for destinations.
+type DestinationPlugin interface {
 	Plugin
 
 	//SetSources sets the names of the input sources.
 	SetSources(names []string) error
 
-	//SetInputColumns sets the names of the input columns for the given source.
+	//SetInputColumns sets the names of the input columns for the given Source.
 	SetInputColumns(source string, columns []string) error
 
 	//Send sends a batch of rows to the plugin, optionally returning output rows and/or

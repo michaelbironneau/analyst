@@ -6,39 +6,38 @@ import (
 	"github.com/michaelbironneau/analyst/aql"
 )
 
-//source is the default implementation of a Source plugin
-//that also satisfies the engine.Source interface.
-type source struct {
-	S Source
-	Alias string
-	Destinations []string
-	opts []aql.Option
+//Source is the default implementation of a SourcePlugin plugin
+//that also satisfies the engine.SourcePlugin interface.
+type Source struct {
+	Plugin       SourcePlugin
+	alias        string
+	opts         []aql.Option
 }
 
-func (so *source) SetName(name string){
-	so.Alias = name
+func (so *Source) SetName(name string){
+	so.alias = name
 }
 
-func (so *source) fatalerr(err error, s engine.Stream, l engine.Logger) {
+func (so *Source) fatalerr(err error, s engine.Stream, l engine.Logger) {
 	l.Chan() <- engine.Event{
 		Level:   engine.Error,
-		Source:  so.Alias,
+		Source:  so.alias,
 		Time:    time.Now(),
 		Message: err.Error(),
 	}
-	close(s.Chan(so.Alias))
+	close(s.Chan(so.alias))
 }
 
-func (so *source) Ping() error {
+func (so *Source) Ping() error {
 	return nil //TODO
 }
 
-func (so *source) Configure(opts []aql.Option) error {
+func (so *Source) Configure(opts []aql.Option) error {
 	so.opts = opts
 	return nil
 }
 
-func (so *source) configure() error {
+func (so *Source) configure() error {
 	for _, opt := range so.opts {
 		var val interface{}
 		if opt.Value.Str != nil {
@@ -46,7 +45,7 @@ func (so *source) configure() error {
 		} else if opt.Value.Number != nil {
 			val = *opt.Value.Number
 		}
-		if err := so.S.SetOption(opt.Key, val); err != nil {
+		if err := so.Plugin.SetOption(opt.Key, val); err != nil {
 			return err
 		}
 	}
@@ -54,14 +53,14 @@ func (so *source) configure() error {
 }
 
 
-func (so *source) Open(s engine.Stream, l engine.Logger, st engine.Stopper){
+func (so *Source) Open(s engine.Stream, l engine.Logger, st engine.Stopper){
 
-	if err := so.S.Dial(); err != nil {
+	if err := so.Plugin.Dial(); err != nil {
 		so.fatalerr(err, s, l)
 		return
 	}
 
-	defer so.S.Close()
+	defer so.Plugin.Close()
 
 	if err := so.configure(); err != nil {
 		so.fatalerr(err, s, l)
@@ -69,31 +68,33 @@ func (so *source) Open(s engine.Stream, l engine.Logger, st engine.Stopper){
 	}
 
 	logChan := l.Chan()
-	msgChan := s.Chan(so.Alias)
+	msgChan := s.Chan(so.alias)
 	logChan <- engine.Event{
 		Level: engine.Trace,
-		Source: so.Alias,
+		Source: so.alias,
 		Time: time.Now(),
-		Message: "Source plugin opened",
+		Message: "SourcePlugin plugin opened",
 	}
 
-	for _, dest := range so.Destinations {
-		cols, err := so.S.GetOutputColumns(dest)
+
+		cols, err := so.Plugin.GetOutputColumns()
 		if err != nil {
 			so.fatalerr(err, s, l)
 			return
 		}
-		if err := s.SetColumns(dest, cols); err != nil {
-			so.fatalerr(err, s, l)
-			return
+		for dest, cs := range cols {
+			if err := s.SetColumns(dest, cs); err != nil {
+				so.fatalerr(err, s, l)
+				return
+			}
 		}
-	}
+
 
 	for {
 		if st.Stopped() {
 			return
 		}
-		msgs, logs, err := so.S.Receive()
+		msgs, logs, err := so.Plugin.Receive()
 		if err != nil {
 			so.fatalerr(err, s, l)
 			return
@@ -102,7 +103,7 @@ func (so *source) Open(s engine.Stream, l engine.Logger, st engine.Stopper){
 			logChan <- engine.Event{
 				Level: logLevel(logMsg.Level),
 				Message: logMsg.Message,
-				Source: so.Alias,
+				Source: so.alias,
 				Time: time.Now(),
 			}
 		}
@@ -112,7 +113,7 @@ func (so *source) Open(s engine.Stream, l engine.Logger, st engine.Stopper){
 		}
 		for _, msg := range msgs {
 			msgChan <- engine.Message{
-				Source: so.Alias,
+				Source: so.alias,
 				Destination: msg.Destination,
 				Data: msg.Data,
 			}

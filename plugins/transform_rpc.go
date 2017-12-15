@@ -58,9 +58,9 @@ func (t *TransformJSONRPC) SetInputColumns(source string, columns []string) erro
 	return t.client.Call("set_input_columns", inputColumns{source, columns}, &reply)
 }
 
-func (t *TransformJSONRPC) GetOutputColumns(destination string) ([]string, error){
-	var reply []string
-	err := t.client.Call("get_output_columns", destination, &reply)
+func (t *TransformJSONRPC) GetOutputColumns() (map[string][]string, error){
+	var reply map[string][]string
+	err := t.client.Call("get_output_columns", nil, &reply)
 	return reply, err
 }
 

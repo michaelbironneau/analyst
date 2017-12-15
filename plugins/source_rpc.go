@@ -33,9 +33,9 @@ func (t *SourceJSONRPC) SetDestinations(names []string) error {
 	return t.client.Call("set_destinations", names, &reply)
 }
 
-func (t *SourceJSONRPC) GetOutputColumns(destination string) ([]string, error){
-	var reply []string
-	err := t.client.Call("get_output_columns", destination, &reply)
+func (t *SourceJSONRPC) GetOutputColumns() (map[string][]string, error){
+	var reply map[string][]string
+	err := t.client.Call("get_output_columns", nil, &reply)
 	return reply, err
 }
 

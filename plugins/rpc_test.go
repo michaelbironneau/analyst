@@ -35,13 +35,12 @@ func TestRPC(t *testing.T) {
 
 func TestSourceRPCWithWrapper(t *testing.T){
 	Convey("Given an RPC client", t, func(){
-		Convey("It should receive wrapped source messages correctly", func(){
+		Convey("It should receive wrapped Source messages correctly", func(){
 			sRPC := SourceJSONRPC{Path:"python", Args: []string{"./source.py"}}
 			optVal := "asdf"
-			s := source{
-				S: &sRPC,
-				Alias: "source",
-				Destinations: []string{"a"},
+			s := Source{
+				Plugin:       &sRPC,
+				alias:        "Source",
 			}
 			err := s.Configure([]aql.Option{
 				aql.Option{
@@ -66,7 +65,7 @@ func TestSourceRPCWithWrapper(t *testing.T){
 			So(msg.Data[0], ShouldEqual, 0)
 			So(msg.Data[1], ShouldEqual, 1)
 			So(msg.Data[2], ShouldEqual, 2)
-			So(msg.Source, ShouldEqual, "source")
+			So(msg.Source, ShouldEqual, "Source")
 
 		})
 	})
@@ -74,12 +73,12 @@ func TestSourceRPCWithWrapper(t *testing.T){
 
 func TestDestinationRPCWithWrapper(t *testing.T){
 	Convey("Given an RPC client", t, func(){
-		Convey("It should send messages to RPC destination correctly", func(){
+		Convey("It should send messages to RPC Destination correctly", func(){
 			sRPC := DestinationJSONRPC{Path:"python", Args: []string{"./destination.py"}}
 			optVal := "asdf"
-			s := destination{
-				D: &sRPC,
-				Alias: "destination",
+			s := Destination{
+				Plugin: &sRPC,
+				alias:  "Destination",
 			}
 			err := s.Configure([]aql.Option{
 				aql.Option{
@@ -93,7 +92,7 @@ func TestDestinationRPCWithWrapper(t *testing.T){
 
 			So(err, ShouldBeNil)
 
-			err = s.SetInputColumns("source", []string{"a", "b", "c"})
+			err = s.SetInputColumns("Source", []string{"a", "b", "c"})
 
 			So(err, ShouldBeNil)
 
@@ -104,7 +103,7 @@ func TestDestinationRPCWithWrapper(t *testing.T){
 			l := engine.ConsoleLogger{}
 			stop := engine.NewStopper()
 			var m engine.Message
-			m.Source = "source"
+			m.Source = "Source"
 			m.Data = []interface{}{"a", "b", "c"}
 			st.Chan("") <- m
 			close(st.Chan(""))
@@ -117,12 +116,11 @@ func TestDestinationRPCWithWrapper(t *testing.T){
 
 func TestTransformRPCWithWrapper(t *testing.T){
 	Convey("Given an RPC client", t, func(){
-		Convey("It should process messages to/from Transform correctly", func(){
+		Convey("It should process messages to/from TransformPlugin correctly", func(){
 			sRPC := TransformJSONRPC{Path:"python", Args: []string{"./transform.py"}}
 			optVal := "asdf"
-			s := transform{
-				T: &sRPC,
-				Destinations: []string{"destination"},
+			s := Transform{
+				Plugin:       &sRPC,
 			}
 			err := s.Configure([]aql.Option{
 				aql.Option{
@@ -137,7 +135,7 @@ func TestTransformRPCWithWrapper(t *testing.T){
 
 			So(err, ShouldBeNil)
 
-			err = s.SetInputColumns("source", []string{"a", "b", "c"})
+			err = s.SetInputColumns("Source", []string{"a", "b", "c"})
 
 
 			So(err, ShouldBeNil)
@@ -150,7 +148,7 @@ func TestTransformRPCWithWrapper(t *testing.T){
 			l := engine.ConsoleLogger{}
 			stop := engine.NewStopper()
 			var m engine.Message
-			m.Source = "source"
+			m.Source = "Source"
 			m.Data = []interface{}{1, 2, 3}
 			st.Chan("") <- m
 			go func(){

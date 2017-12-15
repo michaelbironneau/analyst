@@ -18,7 +18,7 @@ class Source(pyjsonrpc.JsonRpc):
     sources = []
     destinations = []
     input_columns = {}
-    output_columns = {}
+    output_columns = {"": ["a", "b", "c"]}
     process = None
     first_time = True
 
@@ -45,12 +45,7 @@ class Source(pyjsonrpc.JsonRpc):
 
     @pyjsonrpc.rpcmethod
     def get_output_columns(self, destination):
-        if destination in self.output_columns:
-            return self.output_columns[destination]
-        elif "*" in self.output_columns:
-            return self.output_columns["*"]
-        else:
-            return []
+        return self.output_columns
 
     @pyjsonrpc.rpcmethod
     def receive(self, args):

@@ -44,12 +44,7 @@ class Transform(pyjsonrpc.JsonRpc):
 
     @pyjsonrpc.rpcmethod
     def get_output_columns(self, destination):
-        if destination in self.output_columns:
-            return self.output_columns[destination]
-        elif "*" in self.output_columns:
-            return self.output_columns["*"]
-        else:
-            return []
+        return self.output_columns
 
     @pyjsonrpc.rpcmethod
     def receive(self, rows):
