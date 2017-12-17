@@ -5,6 +5,7 @@ import (
 	"github.com/michaelbironneau/analyst/aql"
 	"github.com/michaelbironneau/analyst/engine"
 	"time"
+	"sync"
 )
 
 //Transform is the default implementation of a Transform plugin
@@ -14,6 +15,9 @@ type Transform struct {
 	Alias        string
 	opts         []aql.Option
 	inputColumns map[string][]string
+	open         bool
+	l            sync.Mutex
+	s            engine.Sequencer
 }
 
 func (d *Transform) fatalerr(err error, s engine.Stream, l engine.Logger) {
@@ -40,6 +44,8 @@ func (d *Transform) Configure(opts []aql.Option) error {
 }
 
 func (d *Transform) SetInputColumns(source string, columns []string) error {
+	d.l.Lock()
+	defer d.l.Unlock()
 	if d.inputColumns == nil {
 		d.inputColumns = make(map[string][]string)
 	}
@@ -48,6 +54,8 @@ func (d *Transform) SetInputColumns(source string, columns []string) error {
 }
 
 func (d *Transform) setInputColumns() error {
+	d.l.Lock()
+	defer d.l.Unlock()
 	if d.inputColumns == nil {
 		return nil
 	}
@@ -76,14 +84,26 @@ func (d *Transform) configure() error {
 	return nil
 }
 
-func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, st engine.Stopper) {
+func (d *Transform) Sequence(sourceSeq []string){
+	d.l.Lock()
+	d.s = engine.NewSequencer(sourceSeq)
+	d.l.Unlock()
+}
 
-	if err := d.Plugin.Dial(); err != nil {
-		d.fatalerr(err, s, l)
-		return
+func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, st engine.Stopper) {
+	d.l.Lock()
+
+	if !d.open {
+		if err := d.Plugin.Dial(); err != nil {
+			d.fatalerr(err, s, l)
+			return
+		}
+		d.open = true
+		defer d.Plugin.Close()
 	}
 
-	defer d.Plugin.Close()
+	d.l.Unlock()
+
 
 	if err := d.configure(); err != nil {
 		d.fatalerr(err, s, l)
@@ -116,10 +136,14 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 		Message: "TransformPlugin plugin opened",
 		Time:    time.Now(),
 	}
-
+	var seqTask string
 	for msg := range msgChan {
 		if st.Stopped() {
 			return
+		}
+		if d.s != nil {
+			seqTask = msg.Source
+			d.s.Wait(seqTask)
 		}
 
 		//TODO: Buffering
@@ -163,6 +187,9 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 			Destination: msg.Destination,
 			Data:        msg.Data,
 		}
+	}
+	if d.s != nil {
+		d.s.Done(seqTask)
 	}
 
 	close(outChan)
