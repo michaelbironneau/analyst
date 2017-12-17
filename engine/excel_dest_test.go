@@ -19,7 +19,7 @@ func TestExcel(t *testing.T) {
 		d := ExcelDestination{
 			Filename: "./testing/output.xlsx",
 			Template: "./testing/template.xlsx",
-			Sheet: "Test",
+			Sheet:    "Test",
 			Range: ExcelRange{
 				X1: 1,
 				X2: ExcelRangePoint{
@@ -31,9 +31,9 @@ func TestExcel(t *testing.T) {
 					N: true,
 				},
 			},
-			Cols: cols,
+			Cols:      cols,
 			Overwrite: true,
-			Alias: "destination2",
+			Alias:     "destination2",
 		}
 		var e = ExcelSource{
 			Name:     "test",
@@ -51,7 +51,7 @@ func TestExcel(t *testing.T) {
 				},
 			},
 			RangeIncludesColumns: false,
-			Cols: cols,
+			Cols:                 cols,
 		}
 		msg := [][]interface{}{[]interface{}{2, "Bob", 29.4}, []interface{}{4, "Fred", 27}}
 		Convey("It should retrieve results correctly", func() {

@@ -52,7 +52,7 @@ func (e *excelFileManager) Register(filename string, create bool) error {
 		return nil
 	}
 	var (
-		f *xlsx.File
+		f   *xlsx.File
 		err error
 	)
 	if create {
@@ -107,7 +107,7 @@ type ExcelSource struct {
 	outgoingName         string
 }
 
-func (s *ExcelSource) SetName(name string){
+func (s *ExcelSource) SetName(name string) {
 	s.outgoingName = name
 }
 

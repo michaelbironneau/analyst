@@ -23,7 +23,7 @@ type SliceSource struct {
 
 type NamedSliceSource struct {
 	cols []string
-	msg []Message
+	msg  []Message
 	name string
 }
 
@@ -34,13 +34,13 @@ func NewNamedSliceSource(cols []string, msg []Message) Source {
 	}
 }
 
-func (ns *NamedSliceSource) SetName(name string){
+func (ns *NamedSliceSource) SetName(name string) {
 	ns.name = name
 }
 
-func (ns *NamedSliceSource) Ping() error {return nil}
+func (ns *NamedSliceSource) Ping() error { return nil }
 
-func (ns *NamedSliceSource) Open(dest Stream, logger Logger, stop Stopper){
+func (ns *NamedSliceSource) Open(dest Stream, logger Logger, stop Stopper) {
 	logger.Chan() <- Event{
 		Level:   Trace,
 		Time:    time.Now(),
@@ -56,7 +56,6 @@ func (ns *NamedSliceSource) Open(dest Stream, logger Logger, stop Stopper){
 	}
 	close(c)
 }
-
 
 func NewSliceSource(cols []string, msg [][]interface{}) Source {
 	return &SliceSource{
@@ -86,6 +85,6 @@ func (s *SliceSource) Open(dest Stream, logger Logger, stop Stopper) {
 	close(c)
 }
 
-func (s *SliceSource) SetName(name string){
+func (s *SliceSource) SetName(name string) {
 	s.name = name
 }

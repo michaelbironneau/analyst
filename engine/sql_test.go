@@ -32,7 +32,7 @@ func TestSQLite(t *testing.T) {
 			Driver:           "sqlite3",
 			ConnectionString: "./testing/test_insert.db",
 			Table:            "test",
-			Alias: "sql-dest",
+			Alias:            "sql-dest",
 		}
 		sqs := SQLSource{
 			Driver:           "sqlite3",

@@ -28,14 +28,14 @@ func TestWithoutCoordinator(t *testing.T) {
 	})
 }
 
-func TestCoordinatorInvalidTermination(t *testing.T){
-	Convey("Given a coordinator and a job that terminates on a transform", t, func(){
+func TestCoordinatorInvalidTermination(t *testing.T) {
+	Convey("Given a coordinator and a job that terminates on a transform", t, func() {
 		c := NewCoordinator(&ConsoleLogger{})
 		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
 		cols := []string{"1", "2", "3"}
 		s := NewSliceSource(cols, msg)
 		tt := Passthrough{}
-		Convey("It should return an error when compiling the job", func(){
+		Convey("It should return an error when compiling the job", func() {
 			err := c.AddSource("source", "slice", s)
 			So(err, ShouldBeNil)
 			err = c.AddTransform("transformation", "passthrough", &tt)
@@ -202,20 +202,20 @@ func TestTester(t *testing.T) {
 	})
 }
 
-func TestNamedStreams(t *testing.T){
-	Convey("Given a named slice source and two destinations", t, func(){
+func TestNamedStreams(t *testing.T) {
+	Convey("Given a named slice source and two destinations", t, func() {
 		msg := []Message{
 			Message{
 				Destination: "d1",
-				Data: []interface{}{1, 2},
+				Data:        []interface{}{1, 2},
 			},
-			Message {
+			Message{
 				Destination: "d1",
-				Data: []interface{}{3,4},
+				Data:        []interface{}{3, 4},
 			},
 			Message{
 				Destination: "d2",
-				Data: []interface{}{5,6},
+				Data:        []interface{}{5, 6},
 			},
 		}
 		s := NewNamedSliceSource([]string{"a", "b"}, msg)
@@ -228,13 +228,13 @@ func TestNamedStreams(t *testing.T){
 		c.AddDestination("slice destination 2", "d2", &d2)
 		c.Connect("slice source", "slice destination 1")
 		c.Connect("slice source", "slice destination 2")
-		Convey("It should route the messages to their named destinations", func(){
+		Convey("It should route the messages to their named destinations", func() {
 			err := c.Compile()
 			So(err, ShouldBeNil)
 			err = c.Execute()
 			So(err, ShouldBeNil)
-			So(d1.Results(), ShouldResemble, [][]interface{}{[]interface{}{1, 2}, []interface{}{3,4}})
-			So(d2.Results(), ShouldResemble, [][]interface{}{[]interface{}{5,6}})
+			So(d1.Results(), ShouldResemble, [][]interface{}{[]interface{}{1, 2}, []interface{}{3, 4}})
+			So(d2.Results(), ShouldResemble, [][]interface{}{[]interface{}{5, 6}})
 		})
 	})
 }

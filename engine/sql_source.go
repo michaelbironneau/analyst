@@ -4,10 +4,10 @@ import (
 	"database/sql"
 	_ "github.com/denisenkom/go-mssqldb" //Microsoft SQL Server driver
 	//_ "github.com/go-sql-driver/mysql"   //MySQL (4.1+), MariaDB, Percona Server, Google CloudSQL or Sphinx (2.2.3+)
-	_ "github.com/lib/pq"                //Postgres
-	_ "github.com/mattn/go-sqlite3"      //SQLite driver
-	"time"
 	"fmt"
+	_ "github.com/lib/pq"           //Postgres
+	_ "github.com/mattn/go-sqlite3" //SQLite driver
+	"time"
 )
 
 type SQLSource struct {
@@ -21,7 +21,7 @@ type SQLSource struct {
 	outgoingName     string
 }
 
-func (sq *SQLSource) SetName(name string){
+func (sq *SQLSource) SetName(name string) {
 	sq.outgoingName = name
 }
 
@@ -98,7 +98,7 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 			sq.fatalerr(err, s, l)
 			return
 		}
-		s.Chan(sq.outgoingName) <- Message{Source: sq.outgoingName, Data:rr}
+		s.Chan(sq.outgoingName) <- Message{Source: sq.outgoingName, Data: rr}
 	}
 	close(s.Chan(sq.outgoingName))
 }

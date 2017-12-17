@@ -1,9 +1,9 @@
 package engine
 
 import (
-	"sync"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -18,10 +18,10 @@ type multiplexer struct {
 
 func newMultiplexer(name string, aliases []string, bufferSize int) *multiplexer {
 	m := multiplexer{
-		name: name,
-		n: len(aliases),
+		name:       name,
+		n:          len(aliases),
 		bufferSize: bufferSize,
-		children: make(map[string]Stream),
+		children:   make(map[string]Stream),
 	}
 	for i := 0; i < m.n; i++ {
 		m.children[strings.ToLower(aliases[i])] = NewStream(nil, m.bufferSize)
@@ -57,7 +57,6 @@ func (m *multiplexer) Open(s Stream, l Logger, st Stopper) {
 
 			}
 		}
-
 
 	}
 	for i := range m.children {

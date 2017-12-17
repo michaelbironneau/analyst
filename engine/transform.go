@@ -20,13 +20,13 @@ type Transform interface {
 type Condition func([]interface{}) bool
 
 type testNode struct {
-	names []string
-	descs []string
-	conds []Condition
+	names        []string
+	descs        []string
+	conds        []Condition
 	outgoingName string
 }
 
-func (tn *testNode) SetName(name string){
+func (tn *testNode) SetName(name string) {
 	tn.outgoingName = name
 }
 
@@ -67,11 +67,11 @@ func (tn *testNode) Open(s Stream, dest Stream, l Logger, st Stopper) {
 
 type Passthrough struct {
 	sync.Mutex
-	inputs int
+	inputs       int
 	outgoingName string
 }
 
-func (p *Passthrough) SetName(name string){
+func (p *Passthrough) SetName(name string) {
 	p.outgoingName = name
 }
 

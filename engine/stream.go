@@ -7,9 +7,10 @@ import (
 var ErrEOS = errors.New("end of stream")
 
 const (
-	DefaultBufferSize = 100
+	DefaultBufferSize   = 100
 	DestinationWildcard = ""
 )
+
 //Stream represents a stream of data such as a database resultset
 type Stream interface {
 	//Columns returns a slice of column names
@@ -24,9 +25,9 @@ type Stream interface {
 
 //Message is a named message. Source and/or destination can be blank (i.e. wildcard).
 type Message struct {
-	Source string
+	Source      string
 	Destination string
-	Data []interface{}
+	Data        []interface{}
 }
 
 //default wrapper for a stream
