@@ -105,12 +105,17 @@ func (c *coordinator) Compile() error {
 
 		switch nv.(type) {
 		case *sourceNode:
-			//no rules?
+			if len(c.g.From(c.nodeIds[name])) == 0 {
+				return fmt.Errorf("a source cannot be a termination point of the task, but %s is", name)
+			}
 		case *destinationNode:
 			if len(c.g.From(c.nodeIds[name])) > 0 {
 				return fmt.Errorf("a destination is not allowed to have further destinations, but %s does", name)
 			}
 		case *transformNode:
+			if len(c.g.From(c.nodeIds[name])) == 0 {
+				return fmt.Errorf("a transform cannot be a termination point of the task, but %s is", name)
+			}
 			for _, dNode := range c.g.From(c.nodeIds[name]) {
 				dnv := c.nodeIdsRev[dNode.ID()]
 				switch (dnv).(type) {
@@ -122,6 +127,7 @@ func (c *coordinator) Compile() error {
 			panic(fmt.Sprintf("Unknown node type %T for node %s", nv, name))
 		}
 	}
+
 	return nil
 }
 

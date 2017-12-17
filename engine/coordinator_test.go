@@ -28,6 +28,26 @@ func TestWithoutCoordinator(t *testing.T) {
 	})
 }
 
+func TestCoordinatorInvalidTermination(t *testing.T){
+	Convey("Given a coordinator and a job that terminates on a transform", t, func(){
+		c := NewCoordinator(&ConsoleLogger{})
+		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
+		cols := []string{"1", "2", "3"}
+		s := NewSliceSource(cols, msg)
+		tt := Passthrough{}
+		Convey("It should return an error when compiling the job", func(){
+			err := c.AddSource("source", "slice", s)
+			So(err, ShouldBeNil)
+			err = c.AddTransform("transformation", "passthrough", &tt)
+			So(err, ShouldBeNil)
+			err = c.Connect("source", "transformation")
+			So(err, ShouldBeNil)
+			err = c.Compile()
+			So(err, ShouldNotBeNil)
+		})
+	})
+}
+
 func TestCoordinator(t *testing.T) {
 	Convey("Given a coordinator and some data", t, func() {
 		c := NewCoordinator(&ConsoleLogger{})
