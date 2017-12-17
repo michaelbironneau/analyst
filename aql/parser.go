@@ -46,8 +46,9 @@ type Query struct {
 	Dependencies []string     `[AFTER @IDENT {"," @IDENT }]`
 }
 
-type Script struct {
-	Name         string        `SCRIPT @QUOTED_STRING`
+type Transform struct {
+	Plugin       bool          `TRANSFORM [@PLUGIN]`
+	Name         string        `@QUOTED_STRING`
 	Extern       *string       `[EXTERN @QUOTED_STRING]`
 	Sources      []*SourceSink `FROM @@ {"," @@}`
 	Content      string        `['(' @PAREN_BODY ')']`
@@ -101,7 +102,7 @@ type JobScript struct {
 	Includes    []Include            `| @@ `
 	Tests       []Test               `| @@ `
 	Globals     []Global             `| @@ `
-	Scripts     []Script             ` | @@ }`
+	Transforms  []Transform          ` | @@ }`
 }
 
 //String returns the option value as a string. The boolean return parameter
@@ -393,8 +394,8 @@ func (b *JobScript) EvaluateParametrizedContent(globals []Option) error {
 		}
 	}
 
-	for i := range b.Scripts {
-		b.Scripts[i].Content, err = evaluateContent(b.Scripts[i].Content, b.Scripts[i].Options, globals)
+	for i := range b.Transforms {
+		b.Transforms[i].Content, err = evaluateContent(b.Transforms[i].Content, b.Transforms[i].Options, globals)
 		if err != nil {
 			return err
 		}
@@ -462,14 +463,14 @@ func (b *JobScript) resolveExtern(cwd string) error {
 		}
 	}
 
-	for i, script := range b.Scripts {
+	for i, script := range b.Transforms {
 		if script.Extern != nil {
 			s, err := getContent(cwd, *script.Extern)
 			if err != nil {
 				return err
 			}
-			b.Scripts[i].Content = s
-			b.Scripts[i].Extern = nil
+			b.Transforms[i].Content = s
+			b.Transforms[i].Extern = nil
 		}
 	}
 
@@ -527,7 +528,7 @@ func (b *JobScript) union(other *JobScript) {
 	//b.Includes = append(b.Includes, other.Includes...)
 	b.Tests = append(b.Tests, other.Tests...)
 	b.Globals = append(b.Globals, other.Globals...)
-	b.Scripts = append(b.Scripts, other.Scripts...)
+	b.Transforms = append(b.Transforms, other.Transforms...)
 }
 
 func (b *JobScript) ParseConnections() ([]Connection, error) {

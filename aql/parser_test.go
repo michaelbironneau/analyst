@@ -312,22 +312,39 @@ func TestInclude(t *testing.T) {
 }
 
 func TestScript(t *testing.T) {
-	parser, err := participle.Build(&Script{}, &definition{})
+	parser, err := participle.Build(&Transform{}, &definition{})
 	if err != nil {
 		panic(err)
 	}
 	Convey("It should parse script blocks successfully", t, func() {
 		//1
-		s1 := `SCRIPT 'name' FROM CONNECTION source (
+		s1 := `TRANSFORM 'name' FROM CONNECTION source (
 			query_source()
 		) INTO CONNECTION destination
 		`
-		b := &Script{}
+		b := &Transform{}
 		err = parser.ParseString(s1, b)
 		So(err, ShouldBeNil)
 		So(b.Name, ShouldEqual, "name")
 		So(strings.TrimSpace(b.Content), ShouldEqual, "query_source()")
 		So(b.Sources, ShouldHaveLength, 1)
+		s := "source"
+		So(b.Sources[0].Database, ShouldResemble, &s)
+		So(*b.Destinations[0].Database, ShouldEqual, "destination")
+	})
+	Convey("It should parse transform blocks with PLUGIN successfully", t, func() {
+		//1
+		s1 := `TRANSFORM PLUGIN 'name' FROM CONNECTION source (
+			query_source()
+		) INTO CONNECTION destination
+		`
+		b := &Transform{}
+		err = parser.ParseString(s1, b)
+		So(err, ShouldBeNil)
+		So(b.Name, ShouldEqual, "name")
+		So(strings.TrimSpace(b.Content), ShouldEqual, "query_source()")
+		So(b.Sources, ShouldHaveLength, 1)
+		So(b.Plugin, ShouldBeTrue)
 		s := "source"
 		So(b.Sources[0].Database, ShouldResemble, &s)
 		So(*b.Destinations[0].Database, ShouldEqual, "destination")

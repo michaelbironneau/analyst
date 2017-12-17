@@ -132,6 +132,21 @@ func constraints(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 	return nil
 }
 
+//scripts makes engine.Transforms out of JobScript scripts.
+//Script sources/destinations are not yet supported. We can have:
+//  [NOT YET IMPLEMENTED] script source    -> GLOBAL
+//  [NOT YET IMPLEMENTED] script source    -> script transform
+//  [NOT YET IMPLEMENTED] script source    -> script destination
+//  SQL source       -> script transform
+//  GLOBAL           -> script transform
+//  script transform -> script transform
+//  [NOT YET IMPLEMENTED] script transform -> script destination
+//  script transform -> GLOBAL destination
+//  script transform -> SQL destination
+func scripts(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection) error {
+	return nil
+}
+
 //sources makes engine.Source s out of JobScript sources.
 //As of current release:
 //	- Limited to SQL sources (Excel sources require scripts or built-ins to process data which won't come until vNext)
@@ -153,7 +168,7 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			continue
 		}
 		if query.Sources[0].Database == nil {
-			return fmt.Errorf("at present only GLOBAL and CONNECTION sources are supported for query %s", query.Name)
+			return fmt.Errorf("at present only GLOBAL, SCRIPT and CONNECTION sources are supported for query %s", query.Name)
 		}
 		if connMap[strings.ToLower(*query.Sources[0].Database)] == nil {
 			return fmt.Errorf("could not find connection %s for query %s", *query.Sources[0].Database, query.Name)
