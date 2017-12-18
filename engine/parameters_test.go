@@ -7,7 +7,7 @@ import (
 
 func TestParameterTable(t *testing.T) {
 	Convey("Given a parameter table", t, func(){
-		p := newParameterTable()
+		p := NewParameterTable()
 		Convey("It should allow declarations", func(){
 			err := p.Declare("A")
 			So(err, ShouldBeNil)
@@ -38,21 +38,22 @@ func TestParameterTable(t *testing.T) {
 
 func TestParameterTableAsDestination(t *testing.T){
 	Convey("Given a parameter table, stream, logger, stopper", t, func(){
-		p := newParameterTable()
-		p.Declare("Aa")
-		p.Declare("Bb")
+		pp := NewParameterTable()
+		p := NewParameterTableDestination(pp, []string{"AA", "bb"})
+		pp.Declare("Aa")
+		pp.Declare("Bb")
 		st := NewStopper()
 		l := &ConsoleLogger{}
-		s := NewStream([]string{"AA", "bb"}, 100)
+		s := NewStream([]string{"CC", "DD"}, 100)
 		Convey("It should correctly populate the parameter table from valid messages", func(){
 			s.Chan("") <- Message{Data: []interface{}{1, 2}}
 			s.Chan("") <- Message{Data: []interface{}{3, 4}}
 			close(s.Chan(""))
 			p.Open(s, l, st)
-			a, ok := p.Get("Aa")
+			a, ok := pp.Get("Aa")
 			So(ok, ShouldBeTrue)
 			So(a, ShouldEqual, 3)
-			b, ok := p.Get("BB")
+			b, ok := pp.Get("BB")
 			So(ok, ShouldBeTrue)
 			So(b, ShouldEqual, 4)
 		})

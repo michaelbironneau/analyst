@@ -14,20 +14,20 @@ const (
 )
 
 
-type parameterTable struct {
+type ParameterTable struct {
 	sync.Mutex
 	allowedNames map[string]bool
 	values map[string]interface{}
 }
 
-func newParameterTable() *parameterTable {
-	return &parameterTable{
+func NewParameterTable() *ParameterTable {
+	return &ParameterTable{
 		allowedNames: make(map[string]bool),
 		values: make(map[string]interface{}),
 	}
 }
 
-func (p *parameterTable) Declare(name string) error {
+func (p *ParameterTable) Declare(name string) error {
 	p.Lock()
 	defer p.Unlock()
 	if p.allowedNames[strings.ToLower(name)] {
@@ -37,14 +37,14 @@ func (p *parameterTable) Declare(name string) error {
 	return nil
 }
 
-func (p *parameterTable) Get(name string) (interface{}, bool){
+func (p *ParameterTable) Get(name string) (interface{}, bool){
 	p.Lock()
 	defer p.Unlock()
 	val, ok := p.values[strings.ToLower(name)]
 	return val, ok
 }
 
-func (p *parameterTable) Set(name string, value interface{}) error {
+func (p *ParameterTable) Set(name string, value interface{}) error {
 	p.Lock()
 	defer p.Unlock()
 	if !p.allowedNames[strings.ToLower(name)]{
@@ -66,11 +66,23 @@ type Destination interface {
 }
  */
 
- func (p *parameterTable) Ping() error {
+ type ParameterTableDestination struct {
+ 	cols []string
+ 	p *ParameterTable
+ }
+
+ func NewParameterTableDestination(p *ParameterTable, cols []string) Destination {
+ 	return &ParameterTableDestination{
+ 		p: p,
+ 		cols: cols,
+	}
+ }
+
+ func (p *ParameterTableDestination) Ping() error {
  	return nil
  }
 
- func (p *parameterTable) Open(s Stream, l Logger, st Stopper){
+ func (p *ParameterTableDestination) Open(s Stream, l Logger, st Stopper){
 	 l.Chan() <- Event{
 	 	 Source: "Parameter Table",
 		 Level:   Trace,
@@ -87,7 +99,15 @@ type Destination interface {
 		 }
 
 		 for i := range msg.Data {
-		 	err := p.Set(cols[i], msg.Data[i])
+		 	if len(msg.Data) != len(p.cols) {
+				l.Chan() <- Event{
+					Source: "Parameter Table",
+					Level:   Error,
+					Time:    time.Now(),
+					Message: fmt.Sprintf("Expected %v parameters but got %v", len(p.cols), len(msg.Data)),
+				}
+			}
+		 	err := p.p.Set(p.cols[i], msg.Data[i])
 		 	if err != nil {
 				l.Chan() <- Event{
 					Source: "Parameter Table",
