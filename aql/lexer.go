@@ -21,7 +21,6 @@ type Item struct {
 const (
 	QUERY tokenType = iota
 	TEST
-	SCRIPT
 	DESCRIPTION
 	TRANSFORM
 	FROM
@@ -47,15 +46,15 @@ const (
 )
 
 var (
-	tokenToString = map[tokenType]string{QUERY: "QUERY", TEST: "TEST", SCRIPT: "SCRIPT", DESCRIPTION: "DESCRIPTION",
+	tokenToString = map[tokenType]string{QUERY: "QUERY", TEST: "TEST", DESCRIPTION: "DESCRIPTION",
 		TRANSFORM: "TRANSFORM", FROM: "FROM", INTO: "INTO", EXTERN: "EXTERN", INCLUDE: "INCLUDE", LPAREN: "(",
 		RPAREN: ")", PAREN_BODY: "PAREN_BODY", WITH: "WITH",
 		EQUALS: "=", COMMA: ",", QUOTED_STRING: "QUOTED_STRING", IDENTIFIER: "IDENT", NUMBER: "NUMBER", GLOBAL: "GLOBAL",
 		CONNECTION: "CONNECTION", BLOCK: "BLOCK", AS: "AS", AFTER: "AFTER", PLUGIN: "PLUGIN"}
 	whitespace = regexp.MustCompile(`\s`)
-	keywords   = map[tokenType]bool{TEST: true, QUERY: true, SCRIPT: true, DESCRIPTION: true, TRANSFORM: true, FROM: true, INTO: true, EXTERN: true,
+	keywords   = map[tokenType]bool{TEST: true, QUERY: true, DESCRIPTION: true, TRANSFORM: true, FROM: true, INTO: true, EXTERN: true,
 		INCLUDE: true, WITH: true, GLOBAL: true, CONNECTION: true, BLOCK: true, AS: true, AFTER: true, PLUGIN: true}
-	keywordReverse = map[string]tokenType{"TEST": TEST, "QUERY": QUERY, "SCRIPT": SCRIPT, "DESCRIPTION": DESCRIPTION, "TRANSFORM": TRANSFORM, "FROM": FROM,
+	keywordReverse = map[string]tokenType{"TEST": TEST, "QUERY": QUERY, "DESCRIPTION": DESCRIPTION, "TRANSFORM": TRANSFORM, "FROM": FROM,
 		"INTO": INTO, "EXTERN": EXTERN, "INCLUDE": INCLUDE, "WITH": WITH, "GLOBAL": GLOBAL, "CONNECTION": CONNECTION, "BLOCK": BLOCK, "AS": AS, "AFTER": AFTER, "PLUGIN": PLUGIN}
 )
 

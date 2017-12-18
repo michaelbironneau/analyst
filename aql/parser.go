@@ -34,8 +34,7 @@ type Option struct {
 }
 
 type SourceSink struct {
-	Script   *string `(SCRIPT @QUOTED_STRING`
-	Database *string `| CONNECTION @IDENT`
+	Database *string `( CONNECTION @IDENT`
 	Global   bool    `| @GLOBAL`
 	Block    *string `| BLOCK @IDENT)`
 	Alias    *string `[AS @QUOTED_STRING]`
@@ -80,7 +79,7 @@ func (q *Transform) GetOptions() []Option {
 
 type Test struct {
 	Query        bool         `TEST [@QUERY `
-	Script       bool         `|@SCRIPT ]`
+	Plugin       bool         `|@PLUGIN ]`
 	Name         string       `@QUOTED_STRING`
 	Extern       *string      `[EXTERN @QUOTED_STRING]`
 	Sources      []SourceSink `FROM @@ {"," @@}`

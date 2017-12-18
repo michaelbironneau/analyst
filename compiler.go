@@ -722,10 +722,6 @@ func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection) error {
 	for _, query := range js.Queries {
 		for _, dest := range query.Destinations {
-			if dest.Script != nil {
-				return fmt.Errorf("SCRIPT destinations are deprecated in favor of BLOCK: %s", query.Name)
-			}
-
 			if dest.Block != nil {
 				return fmt.Errorf("BLOCK destinations are not allowed because they create non-deterministic source orders: %s", query.Name)
 			}
@@ -754,9 +750,6 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 	}
 	for _, transform := range js.Transforms {
 		for _, dest := range transform.Destinations {
-			if dest.Script != nil {
-				return fmt.Errorf("SCRIPT destinations are deprecated in favor of BLOCK: %s", transform.Name)
-			}
 			if dest.Block != nil {
 				return fmt.Errorf("BLOCK destinations are not allowed because they create non-deterministic source orders: %s", transform.Name)
 			}

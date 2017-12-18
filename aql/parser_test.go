@@ -263,7 +263,7 @@ func TestQuery(t *testing.T) {
 
 		//2
 		s1 = `QUERY 'name' EXTERN 'sourcee'
-		FROM GLOBAL, SCRIPT 'asdf.py' (
+		FROM GLOBAL, BLOCK asdf (
 			thing''
 		) INTO GLOBAL
 		`
@@ -277,7 +277,7 @@ func TestQuery(t *testing.T) {
 		So(b.Sources, ShouldHaveLength, 2)
 		So(b.Sources[0].Global, ShouldBeTrue)
 		ss = "asdf.py"
-		So(b.Sources[1].Script, ShouldResemble, &ss)
+		So(*b.Sources[1].Block, ShouldResemble, "asdf")
 		So(b.Destinations[0].Global, ShouldBeTrue)
 
 		//3
@@ -367,7 +367,7 @@ func TestTest(t *testing.T) {
 	}
 	Convey("It should parse test blocks successfully", t, func() {
 		//1
-		s1 := `TEST SCRIPT 'name' FROM CONNECTION source (
+		s1 := `TEST PLUGIN 'name' FROM CONNECTION source (
 			query_source()
 		)
 		`
@@ -379,7 +379,7 @@ func TestTest(t *testing.T) {
 		So(b.Sources, ShouldHaveLength, 1)
 		s := "source"
 		So(b.Sources[0].Database, ShouldResemble, &s)
-		So(b.Script, ShouldBeTrue)
+		So(b.Plugin, ShouldBeTrue)
 		So(b.Query, ShouldBeFalse)
 	})
 }
