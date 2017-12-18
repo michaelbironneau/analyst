@@ -43,6 +43,8 @@ const (
 	EOF
 	AFTER
 	PLUGIN
+	DECLARE
+	VARIABLE
 )
 
 var (
@@ -50,12 +52,12 @@ var (
 		TRANSFORM: "TRANSFORM", FROM: "FROM", INTO: "INTO", EXTERN: "EXTERN", INCLUDE: "INCLUDE", LPAREN: "(",
 		RPAREN: ")", PAREN_BODY: "PAREN_BODY", WITH: "WITH",
 		EQUALS: "=", COMMA: ",", QUOTED_STRING: "QUOTED_STRING", IDENTIFIER: "IDENT", NUMBER: "NUMBER", GLOBAL: "GLOBAL",
-		CONNECTION: "CONNECTION", BLOCK: "BLOCK", AS: "AS", AFTER: "AFTER", PLUGIN: "PLUGIN"}
+		CONNECTION: "CONNECTION", BLOCK: "BLOCK", AS: "AS", AFTER: "AFTER", PLUGIN: "PLUGIN", DECLARE: "DECLARE", VARIABLE: "VARIABLE"}
 	whitespace = regexp.MustCompile(`\s`)
 	keywords   = map[tokenType]bool{TEST: true, QUERY: true, DESCRIPTION: true, TRANSFORM: true, FROM: true, INTO: true, EXTERN: true,
-		INCLUDE: true, WITH: true, GLOBAL: true, CONNECTION: true, BLOCK: true, AS: true, AFTER: true, PLUGIN: true}
+		INCLUDE: true, WITH: true, GLOBAL: true, CONNECTION: true, BLOCK: true, AS: true, AFTER: true, PLUGIN: true, DECLARE: true, VARIABLE: true}
 	keywordReverse = map[string]tokenType{"TEST": TEST, "QUERY": QUERY, "DESCRIPTION": DESCRIPTION, "TRANSFORM": TRANSFORM, "FROM": FROM,
-		"INTO": INTO, "EXTERN": EXTERN, "INCLUDE": INCLUDE, "WITH": WITH, "GLOBAL": GLOBAL, "CONNECTION": CONNECTION, "BLOCK": BLOCK, "AS": AS, "AFTER": AFTER, "PLUGIN": PLUGIN}
+		"INTO": INTO, "EXTERN": EXTERN, "INCLUDE": INCLUDE, "WITH": WITH, "GLOBAL": GLOBAL, "CONNECTION": CONNECTION, "BLOCK": BLOCK, "AS": AS, "AFTER": AFTER, "PLUGIN": PLUGIN, "DECLARE": DECLARE, "VARIABLE": VARIABLE}
 )
 
 type ForwardLexer struct {
@@ -152,15 +154,15 @@ func Lex(s string) ([]Item, error) {
 				innerContent += ")"
 			}
 			if parenDepth == 1 {
-				if len(ret) > 2 && ret[len(ret)-2].ID == WITH {
-					//special case - if we are in WITH block, lex the options
+				if len(ret) > 2 && lexableBlock(ret[len(ret)-2].ID) {
+					//special case - if we are in WITH/VARIABLE/etc block, lex the options
 					opts, err := Lex(innerContent)
 					if err != nil {
 						return nil, err
 					}
 					ret = append(ret, opts...)
 				} else {
-					//not in WITH block - could be eg. QUERY or SCRIPT
+					//not in WITH/VARIABLE/etc block - could be eg. QUERY or SCRIPT
 					ret = append(ret, Item{PAREN_BODY, lineNumber, innerContent})
 				}
 				ret = append(ret, Item{RPAREN, lineNumber, ")"}) //we only care about outermost parenthesis - AQL never nests but the queries or scripts could.
@@ -224,6 +226,10 @@ func Lex(s string) ([]Item, error) {
 			ret = append(ret, Item{EQUALS, lineNumber, "="})
 			index++
 			continue
+		}
+
+		if s[index] == ';' && (index < len(s)-1 && isWhitespace(s, index+1)) {
+			index++
 		}
 
 		if s[index] == '\n' {
@@ -292,6 +298,13 @@ func isDelimiter(s string, i int) bool {
 		return true
 	}
 	if s[i] == '\'' || s[i] == ',' || s[i] == '(' || s[i] == ')' || s[i] == '=' {
+		return true
+	}
+	return false
+}
+
+func lexableBlock(t tokenType) bool {
+	if t == WITH || t == VARIABLE {
 		return true
 	}
 	return false

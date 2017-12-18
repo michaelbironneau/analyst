@@ -33,11 +33,13 @@ type Option struct {
 	Value *OptionValue `@@`
 }
 
+
 type SourceSink struct {
-	Database *string `( CONNECTION @IDENT`
-	Global   bool    `| @GLOBAL`
-	Block    *string `| BLOCK @IDENT)`
-	Alias    *string `[AS @QUOTED_STRING]`
+	Database *string   `( CONNECTION @IDENT`
+	Global   bool      `| @GLOBAL`
+	Variables []string `| VARIABLE '(' @IDENT {"," @IDENT } ')'`
+	Block    *string   `| BLOCK @IDENT)`
+	Alias    *string   `[AS @QUOTED_STRING]`
 }
 
 type Query struct {
@@ -75,6 +77,10 @@ func (q *Transform) GetName() string {
 
 func (q *Transform) GetOptions() []Option {
 	return q.Options
+}
+
+type Declaration struct {
+	Name string  `DECLARE @IDENT`
 }
 
 type Test struct {
@@ -118,6 +124,7 @@ type Connection struct {
 type JobScript struct {
 	Description *Description         `[@@]`
 	Queries     []Query              `{ @@`
+	Declarations []Declaration       `| @@`
 	Connections []UnparsedConnection `| @@`
 	Includes    []Include            `| @@ `
 	Tests       []Test               `| @@ `

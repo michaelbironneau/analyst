@@ -247,8 +247,7 @@ func TestQuery(t *testing.T) {
 		s1 := `QUERY 'name' FROM CONNECTION source (
 			query_source()
 		) INTO CONNECTION destination, GLOBAL
-		AFTER dependency
-		`
+		AFTER dependency`
 		b := &Query{}
 		err = parser.ParseString(s1, b)
 		So(err, ShouldBeNil)
@@ -369,7 +368,7 @@ func TestTest(t *testing.T) {
 		//1
 		s1 := `TEST PLUGIN 'name' FROM CONNECTION source (
 			query_source()
-		)
+		);
 		`
 		b := &Test{}
 		err = parser.ParseString(s1, b)
@@ -419,6 +418,30 @@ func TestDescription(t *testing.T) {
 		So(b.Content, ShouldEqual, `This is a
 		description`)
 	})
+}
+
+func TestVariables(t *testing.T){
+	Convey("Given a valid job script with variable declaration and usage", t, func(){
+		js, err := ParseString(`
+		DECLARE TestVar;
+
+		QUERY 'asdf' FROM GLOBAL (
+			SELECT MAX(Time) AS 'Time' FROM Table
+		) INTO VARIABLE (TestVar, Test2)
+	  `)
+		Convey("It should be correctly parsed", func(){
+			So(err, ShouldBeNil)
+			So(js.Declarations, ShouldHaveLength, 1)
+			So(js.Declarations[0].Name, ShouldEqual, "TestVar")
+			So(js.Queries[0].Destinations, ShouldHaveLength, 1)
+			So(js.Queries[0].Destinations[0].Variables, ShouldHaveLength, 2)
+			So(js.Queries[0].Destinations[0].Variables[0], ShouldEqual, "TestVar")
+			So(js.Queries[0].Destinations[0].Variables[1], ShouldEqual, "Test2")
+		})
+	})
+
+
+
 }
 
 func TestConnection(t *testing.T) {
