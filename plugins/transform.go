@@ -139,8 +139,8 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 		d.fatalerr(err, s, l)
 		return
 	}
-	for dest, cs := range cols {
-		if err := s.SetColumns(dest, cs); err != nil {
+	for destName, cs := range cols {
+		if err := dest.SetColumns(destName, cs); err != nil {
 			d.fatalerr(err, s, l)
 			return
 		}
@@ -210,5 +210,11 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 		d.s.Done(seqTask)
 	}
 
-	close(outChan)
+	d.l.Lock()
+	if d.open {
+		d.open = false
+		close(outChan)
+	}
+	d.l.Unlock()
+
 }

@@ -88,6 +88,48 @@ func TestCompiler(t *testing.T) {
 	})
 }
 
+func TestCompilerWithTransform(t *testing.T) {
+	script := `
+	CONNECTION 'Workbook' (
+		Driver = 'Excel',
+		ConnectionString = 'hello, world',
+		File = './output_transform.xlsx'
+	)
+
+	QUERY 'SliceOfData' FROM GLOBAL (
+		SELECT 1 AS 'Value'
+			UNION ALL
+		SELECT -1 AS 'Value'
+			UNION ALL
+		SELECT 2 AS 'Value'
+	)
+
+	QUERY 'SliceOfData2' FROM GLOBAL (
+		SELECT 10 AS 'Value'
+			UNION ALL
+		SELECT 11 AS 'Value'
+			UNION ALL
+		SELECT -2 AS 'Value'
+	)
+
+	TRANSFORM PLUGIN 'FilterNegatives' FROM BLOCK SliceOfData, BLOCK SliceOfData2 ()
+	INTO CONNECTION Workbook
+	WITH (
+		Sheet = 'TestSheet', Range = 'A1:A*',
+			Columns = 'Value', Multisource_Order = 'Sequential',
+		Executable = 'python', Args = '["./test_filter.py"]', Overwrite = 'True'
+	)
+	`
+	Convey("Given a script with a transform and an Excel data destination", t, func() {
+		l := &engine.ConsoleLogger{}
+		err := ExecuteString(script, nil, l)
+		So(err, ShouldBeNil)
+		_, err = os.Stat("./output_transform.xlsx")
+		//os.Remove("./output_transform.xlsx") //best effort cleanup attempt
+		So(err, ShouldBeNil)
+	})
+}
+
 func TestConnectionMap(t *testing.T) {
 	script := `
 	CONNECTION 'DB' (
