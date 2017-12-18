@@ -99,6 +99,7 @@ func (d *Transform) Sequence(sourceSeq []string){
 }
 
 func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, st engine.Stopper) {
+	outChan := dest.Chan(d.Alias)
 
 	//For later cleanup of the plugin - see note below
 	d.wg.Add(1)
@@ -116,7 +117,9 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 		//but only after the others have finished.
 		go func(){
 			d.wg.Wait()
+			close(outChan)
 			d.Plugin.Close()
+
 		}()
 	}
 
@@ -148,7 +151,7 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 
 	logChan := l.Chan()
 	msgChan := s.Chan(d.Alias)
-	outChan := dest.Chan(d.Alias)
+
 	logChan <- engine.Event{
 		Level:   engine.Trace,
 		Source:  d.Alias,
@@ -209,12 +212,5 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 	if d.s != nil {
 		d.s.Done(seqTask)
 	}
-
-	d.l.Lock()
-	if d.open {
-		d.open = false
-		close(outChan)
-	}
-	d.l.Unlock()
 
 }

@@ -7,11 +7,9 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"testing"
+	xlsx "github.com/360EntSecGroup-Skylar/excelize"
 )
 
-func cleanup() {
-
-}
 
 func TestGlobal(t *testing.T) {
 	script := `
@@ -122,11 +120,22 @@ func TestCompilerWithTransform(t *testing.T) {
 	`
 	Convey("Given a script with a transform and an Excel data destination", t, func() {
 		l := &engine.ConsoleLogger{}
-		err := ExecuteString(script, nil, l)
-		So(err, ShouldBeNil)
-		_, err = os.Stat("./output_transform.xlsx")
-		//os.Remove("./output_transform.xlsx") //best effort cleanup attempt
-		So(err, ShouldBeNil)
+		Convey("It should execute without error", func(){
+			err := ExecuteString(script, nil, l)
+			So(err, ShouldBeNil)
+			_, err = os.Stat("./output_transform.xlsx")
+			So(err, ShouldBeNil)
+			Convey("It should return the correct output", func(){
+				x, err := xlsx.OpenFile("./output_transform.xlsx")
+				So(err, ShouldBeNil)
+				So(x.GetCellValue("TestSheet", "A1"), ShouldEqual, "1")
+				So(x.GetCellValue("TestSheet", "A2"), ShouldEqual, "2")
+				So(x.GetCellValue("TestSheet", "A3"), ShouldEqual, "10")
+				So(x.GetCellValue("TestSheet", "A4"), ShouldEqual, "11")
+				os.Remove("./output_transform.xlsx") //best effort cleanup attempt
+			})
+		})
+
 	})
 }
 

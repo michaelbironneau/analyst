@@ -283,12 +283,12 @@ func sequenceSources(transform *plugins.Transform, block aql.Block, sourceSequen
 	var sequence bool
 
 	seq, ok := aql.FindOption(block.GetOptions(), "MULTISOURCE_ORDER")
-
 	if ok {
 		seqStr, ok2 := seq.String()
 
 		if !ok2 {
 			return fmt.Errorf("expected MULTISOURCE_ORDER option to be a string in transform %s", block.GetName())
+		}
 			switch strings.ToUpper(seqStr) {
 			case "PARALLEL":
 				//default option
@@ -298,7 +298,7 @@ func sequenceSources(transform *plugins.Transform, block aql.Block, sourceSequen
 				return fmt.Errorf("expected MULTISOURCE_ORDER	 to be PARALLEL or SEQUENTIAL in transform %s but got '%s'", block.GetName(), seqStr)
 
 			}
-		}
+
 	}
 
 	if sequence {
@@ -387,7 +387,8 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 				ConnectionString: globalDbConnString,
 				Query:            query.Content,
 			}
-			alias := alias(query.Sources[0], nil)
+			//alias := alias(query.Sources[0], nil)
+			alias := query.Name //Queries can only have one source, so let's do away with this confusing alias nonsense
 			g.SetName(alias)
 			dag.AddSource(strings.ToLower(query.Name), alias, &g)
 			continue
@@ -404,7 +405,8 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			ConnectionString: conn.ConnectionString,
 			Query:            query.Content,
 		}
-		alias := alias(query.Sources[0], conn)
+		//alias := alias(query.Sources[0], conn)
+		alias := query.Name //Queries can only have one source, so let's do away with this confusing alias nonsense
 		s.SetName(alias)
 		dag.AddSource(strings.ToLower(query.Name), alias, &s)
 	}
@@ -700,6 +702,7 @@ func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 	}
 
 	alias := alias(source, &conn)
+
 	//Make destination name unique
 	dag.AddSource(strings.ToLower(transform.Name+sourceUniquifier+alias), alias, &engine.ExcelSource{
 		Name:     transform.Name + sourceUniquifier + alias,
