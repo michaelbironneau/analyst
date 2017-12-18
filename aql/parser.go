@@ -2,21 +2,26 @@ package aql
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	xlsx "github.com/360EntSecGroup-Skylar/excelize"
 	"github.com/alecthomas/participle"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
-	"strconv"
-	xlsx "github.com/360EntSecGroup-Skylar/excelize"
 	"unicode"
-	"encoding/json"
 )
 
 //MaxIncludeDepth is the maximum depth of includes that will be processed before an error is returned.
 const MaxIncludeDepth = 8
+
+type Block interface {
+	GetName() string
+	GetOptions() []Option
+}
 
 type OptionValue struct {
 	Str    *string  ` @QUOTED_STRING`
@@ -46,14 +51,31 @@ type Query struct {
 	Dependencies []string     `[AFTER @IDENT {"," @IDENT }]`
 }
 
-type Script struct {
-	Name         string        `SCRIPT @QUOTED_STRING`
+func (q *Query) GetName() string {
+	return q.Name
+}
+
+func (q *Query) GetOptions() []Option {
+	return q.Options
+}
+
+type Transform struct {
+	Plugin       bool          `TRANSFORM [@PLUGIN]`
+	Name         string        `@QUOTED_STRING`
 	Extern       *string       `[EXTERN @QUOTED_STRING]`
 	Sources      []*SourceSink `FROM @@ {"," @@}`
 	Content      string        `['(' @PAREN_BODY ')']`
 	Destinations []SourceSink  `[INTO @@ {"," @@}]`
 	Options      []Option      `[WITH '(' @@ {"," @@ } ')' ]`
-	Dependencies []string     `[AFTER @IDENT {"," @IDENT }]`
+	Dependencies []string      `[AFTER @IDENT {"," @IDENT }]`
+}
+
+func (q *Transform) GetName() string {
+	return q.Name
+}
+
+func (q *Transform) GetOptions() []Option {
+	return q.Options
 }
 
 type Test struct {
@@ -101,12 +123,12 @@ type JobScript struct {
 	Includes    []Include            `| @@ `
 	Tests       []Test               `| @@ `
 	Globals     []Global             `| @@ `
-	Scripts     []Script             ` | @@ }`
+	Transforms  []Transform          ` | @@ }`
 }
 
 //String returns the option value as a string. The boolean return parameter
 //will be true if the option was a string and false otherwise.
-func (opt Option) String() (string, bool){
+func (opt Option) String() (string, bool) {
 	if opt.Value != nil && opt.Value.Str != nil {
 		return *opt.Value.Str, true
 	}
@@ -115,7 +137,7 @@ func (opt Option) String() (string, bool){
 
 //StrToOpts converts an option string of the form Key1:Val1,Key2:Val2
 //into a slice of Options.
-func StrToOpts(s string) ([]Option, error){
+func StrToOpts(s string) ([]Option, error) {
 	var ret []Option
 	ss := strings.Split(s, ",")
 	for _, sss := range ss {
@@ -130,7 +152,7 @@ func StrToOpts(s string) ([]Option, error){
 		if err != nil {
 			return nil, fmt.Errorf("expected key-value option with the value either a JSON number of string type: %s", sss)
 		}
-		switch val := i.(type){
+		switch val := i.(type) {
 		case float64:
 			o.Value = &OptionValue{
 				Number: &val,
@@ -176,7 +198,7 @@ func (opt Option) Truthy() bool {
 
 //ParseExcelRange parses a range of the form 'A1:C4' with possible wildcards
 //such as 'A1:*4'
-func ParseExcelRange(s string) (x1 int, x2 *int, y1 int, y2 *int, err error){
+func ParseExcelRange(s string) (x1 int, x2 *int, y1 int, y2 *int, err error) {
 	ps := strings.Split(s, ":")
 
 	if len(ps) != 2 {
@@ -198,11 +220,11 @@ func ParseExcelRange(s string) (x1 int, x2 *int, y1 int, y2 *int, err error){
 
 }
 
-func parseCell(s string) (x, y int, err error){
+func parseCell(s string) (x, y int, err error) {
 	var (
 		col string
-		i int
-		r rune
+		i   int
+		r   rune
 	)
 	for i, r = range s {
 		if unicode.IsLetter(r) {
@@ -211,7 +233,7 @@ func parseCell(s string) (x, y int, err error){
 		}
 	}
 
-	if i == len(s) -1 {
+	if i == len(s)-1 {
 		return 0, 0, fmt.Errorf("expected row number in range %s", s)
 	}
 
@@ -222,11 +244,11 @@ func parseCell(s string) (x, y int, err error){
 	return
 }
 
-func parseCellWithWildcards(s string) (x, y *int, err error){
+func parseCellWithWildcards(s string) (x, y *int, err error) {
 	var (
-		col string
-		i int
-		r rune
+		col         string
+		i           int
+		r           rune
 		wildcardCol bool
 	)
 	for i, r = range s {
@@ -240,7 +262,7 @@ func parseCellWithWildcards(s string) (x, y *int, err error){
 		}
 	}
 
-	if i == len(s) -1 {
+	if i == len(s)-1 {
 		return nil, nil, fmt.Errorf("expected row number in range %s", s)
 	}
 
@@ -249,7 +271,7 @@ func parseCellWithWildcards(s string) (x, y *int, err error){
 		x = &xx
 	}
 
-	if s[i:] == "*" {
+	if s[i+1:] == "*" {
 		return //wildcard row => y also nil
 	}
 
@@ -262,7 +284,7 @@ func parseCellWithWildcards(s string) (x, y *int, err error){
 
 //ParseExcelRange parses a range of the form '[x1,x2]:[y1,y2]'
 //TODO: Rewrite this in a more efficient and maintainable way.
-func parseExcelRange_Old(s string) (x1 int, x2 *int, y1 int, y2 *int, err error){
+func parseExcelRange_Old(s string) (x1 int, x2 *int, y1 int, y2 *int, err error) {
 	ps := strings.Split(s, ":")
 
 	if len(ps) != 2 {
@@ -284,25 +306,24 @@ func parseExcelRange_Old(s string) (x1 int, x2 *int, y1 int, y2 *int, err error)
 		return
 	}
 
-
 	p1[0] = strings.TrimSpace(p1[0])
 	p1[1] = strings.TrimSpace(p1[1])
-	p2[0] = strings.TrimSpace (p2[0])
+	p2[0] = strings.TrimSpace(p2[0])
 	p2[1] = strings.TrimSpace(p2[1])
 
 	if p1[0][0] != '[' || p2[0][0] != '[' {
 		err = fmt.Errorf("expected '[' in range %s", s)
 		return
 	}
-	if p1[1][len(p1[1])-1] != ']' ||  p2[1][len(p2[1])-1] != ']' {
+	if p1[1][len(p1[1])-1] != ']' || p2[1][len(p2[1])-1] != ']' {
 		err = fmt.Errorf("expected ']' in range %s", s)
 	}
 
 	//Get rid of [ and ]
 	p1[0] = p1[0][1:]
 	p2[0] = p2[0][1:]
-	p1[1] = p1[1][0:len(p1[1])-1]
-	p2[1] = p2[1][0:len(p2[1])-1]
+	p1[1] = p1[1][0 : len(p1[1])-1]
+	p2[1] = p2[1][0 : len(p2[1])-1]
 
 	x1, err = strconv.Atoi(p1[0])
 
@@ -344,7 +365,7 @@ func parseExcelRange_Old(s string) (x1 int, x2 *int, y1 int, y2 *int, err error)
 //FindOption traverses the slice of options and returns the one whose key matches the needle.
 //The search is case-insensitive.
 //The second argument indicates whether the needle was found or not.
-func FindOption(options []Option, needle string) (*Option, bool){
+func FindOption(options []Option, needle string) (*Option, bool) {
 	n := strings.ToLower(needle)
 	for _, opt := range options {
 		if strings.ToLower(opt.Key) == n {
@@ -359,14 +380,14 @@ func FindOption(options []Option, needle string) (*Option, bool){
 //the generic. The first found option is returned. For example:
 // Looking for SHEET option given QUERY options and CONN options, connection 'ExcelA',
 // would be accomplished with FindOverridableOption("SHEET", "ExcelA", query.Options, conn.Options)
-func FindOverridableOption(needle string, namespace string, hierarchy ...[]Option) (*Option, bool){
+func FindOverridableOption(needle string, namespace string, hierarchy ...[]Option) (*Option, bool) {
 	for _, opts := range hierarchy {
 		var (
 			opt *Option
-			ok bool
+			ok  bool
 		)
 		//First, try destination-specific override
-		opt, ok = FindOption(opts, namespace + "_" + needle )
+		opt, ok = FindOption(opts, namespace+"_"+needle)
 
 		if ok {
 			return opt, ok
@@ -394,8 +415,8 @@ func (b *JobScript) EvaluateParametrizedContent(globals []Option) error {
 		}
 	}
 
-	for i := range b.Scripts {
-		b.Scripts[i].Content, err = evaluateContent(b.Scripts[i].Content, b.Scripts[i].Options, globals)
+	for i := range b.Transforms {
+		b.Transforms[i].Content, err = evaluateContent(b.Transforms[i].Content, b.Transforms[i].Options, globals)
 		if err != nil {
 			return err
 		}
@@ -463,14 +484,14 @@ func (b *JobScript) resolveExtern(cwd string) error {
 		}
 	}
 
-	for i, script := range b.Scripts {
+	for i, script := range b.Transforms {
 		if script.Extern != nil {
 			s, err := getContent(cwd, *script.Extern)
 			if err != nil {
 				return err
 			}
-			b.Scripts[i].Content = s
-			b.Scripts[i].Extern = nil
+			b.Transforms[i].Content = s
+			b.Transforms[i].Extern = nil
 		}
 	}
 
@@ -528,10 +549,10 @@ func (b *JobScript) union(other *JobScript) {
 	//b.Includes = append(b.Includes, other.Includes...)
 	b.Tests = append(b.Tests, other.Tests...)
 	b.Globals = append(b.Globals, other.Globals...)
-	b.Scripts = append(b.Scripts, other.Scripts...)
+	b.Transforms = append(b.Transforms, other.Transforms...)
 }
 
-func (b *JobScript) ParseConnections() ([]Connection, error){
+func (b *JobScript) ParseConnections() ([]Connection, error) {
 	return parseConnections(b.Connections)
 }
 

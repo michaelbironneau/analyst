@@ -52,7 +52,7 @@ func (e *excelFileManager) Register(filename string, create bool) error {
 		return nil
 	}
 	var (
-		f *xlsx.File
+		f   *xlsx.File
 		err error
 	)
 	if create {
@@ -104,6 +104,11 @@ type ExcelSource struct {
 	Cols                 []string
 	posX                 int
 	posY                 int
+	outgoingName         string
+}
+
+func (s *ExcelSource) SetName(name string) {
+	s.outgoingName = name
 }
 
 func (s *ExcelSource) Ping() error {
@@ -126,7 +131,7 @@ func (s *ExcelSource) fatalerr(err error, st Stream, l Logger) {
 		Time:    time.Now(),
 		Message: err.Error(),
 	}
-	close(st.Chan())
+	close(st.Chan(s.outgoingName))
 }
 
 func (s *ExcelSource) Open(dest Stream, logger Logger, stop Stopper) {
@@ -157,8 +162,8 @@ func (s *ExcelSource) Open(dest Stream, logger Logger, stop Stopper) {
 		return
 	}
 
-	dest.SetColumns(s.Cols)
-	c := dest.Chan()
+	dest.SetColumns(DestinationWildcard, s.Cols)
+	c := dest.Chan(s.outgoingName)
 	for {
 		if stop.Stopped() {
 			break
@@ -173,7 +178,7 @@ func (s *ExcelSource) Open(dest Stream, logger Logger, stop Stopper) {
 			})
 		}
 		if nonEmptyRow || !s.Range.Y2.N {
-			c <- msg
+			c <- Message{Source: s.outgoingName, Data: msg}
 		}
 
 		if s.Range.Y2.N && nonEmptyRow {

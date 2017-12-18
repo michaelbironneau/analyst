@@ -9,6 +9,9 @@ import (
 //Transform is a component that is neither a source nor a sink. It is configured with
 //one or more sources, and one or more sinks.
 type Transform interface {
+	//SetName sets the alias of the transform for outgoing messages
+	SetName(name string)
+
 	//Open gives the transform a stream to start pulling from
 	Open(source Stream, dest Stream, logger Logger, stop Stopper)
 }
@@ -17,9 +20,14 @@ type Transform interface {
 type Condition func([]interface{}) bool
 
 type testNode struct {
-	names []string
-	descs []string
-	conds []Condition
+	names        []string
+	descs        []string
+	conds        []Condition
+	outgoingName string
+}
+
+func (tn *testNode) SetName(name string) {
+	tn.outgoingName = name
 }
 
 func (tn *testNode) Add(name string, desc string, cond Condition) {
@@ -34,14 +42,14 @@ func (tn *testNode) Ping() error {
 
 func (tn *testNode) Open(s Stream, dest Stream, l Logger, st Stopper) {
 	var firstMessage = true
-	d := dest.Chan()
-	for msg := range s.Chan() {
+	d := dest.Chan(tn.outgoingName)
+	for msg := range s.Chan(tn.outgoingName) {
 		if firstMessage {
-			dest.SetColumns(s.Columns())
+			dest.SetColumns(tn.outgoingName, s.Columns())
 			firstMessage = false
 		}
 		for i := range tn.conds {
-			if !tn.conds[i](msg) {
+			if !tn.conds[i](msg.Data) {
 				l.Chan() <- Event{
 					Source:  tn.names[i],
 					Message: fmt.Sprintf("[FAIL] %s", tn.descs[i]),
@@ -59,7 +67,12 @@ func (tn *testNode) Open(s Stream, dest Stream, l Logger, st Stopper) {
 
 type Passthrough struct {
 	sync.Mutex
-	inputs int
+	inputs       int
+	outgoingName string
+}
+
+func (p *Passthrough) SetName(name string) {
+	p.outgoingName = name
 }
 
 func (p *Passthrough) Open(source Stream, dest Stream, logger Logger, stop Stopper) {
@@ -71,8 +84,8 @@ func (p *Passthrough) Open(source Stream, dest Stream, logger Logger, stop Stopp
 	p.Lock()
 	p.inputs++
 	p.Unlock()
-	destChan := dest.Chan()
-	for msg := range source.Chan() {
+	destChan := dest.Chan(p.outgoingName)
+	for msg := range source.Chan(p.outgoingName) {
 		destChan <- msg
 		if stop.Stopped() {
 			close(destChan)

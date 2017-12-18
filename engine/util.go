@@ -1,9 +1,9 @@
 package engine
 
 import (
-	"os"
-	"io"
 	"fmt"
+	"io"
+	"os"
 	"strings"
 )
 
@@ -11,7 +11,7 @@ func getValue(cols []string, col string) (func([]interface{}) interface{}, error
 	c := strings.ToLower(col)
 
 	var (
-		i int
+		i     int
 		found bool
 	)
 	for i = range cols {
@@ -25,7 +25,7 @@ func getValue(cols []string, col string) (func([]interface{}) interface{}, error
 		return nil, fmt.Errorf("column not found %s", col)
 	}
 
-	return func(ii []interface{}) interface{}{
+	return func(ii []interface{}) interface{} {
 		return ii[i]
 	}, nil
 }
@@ -40,7 +40,6 @@ func fileExists(name string) bool {
 	}
 	return true
 }
-
 
 // copyFile copies a file from src to dst. If src and dst files exist, and are
 // the same, then return success. Copy the file contents from src to dst.

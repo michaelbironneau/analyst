@@ -2,17 +2,17 @@ package engine
 
 import (
 	"fmt"
-	"sync"
 	"github.com/gonum/graph"
 	"github.com/gonum/graph/simple"
 	"github.com/gonum/graph/topo"
+	"sync"
 )
 
 type Coordinator interface {
-	AddSource(name string, s Source) error
-	AddDestination(name string, d Destination) error
+	AddSource(name string, alias string, s Source) error
+	AddDestination(name string, alias string, d Destination) error
 	AddTest(node string, name string, desc string, c Condition) error
-	AddTransform(name string, t Transform) error
+	AddTransform(name string, alias string, t Transform) error
 	AddConstraint(before, after string) error
 	Connect(from string, to string) error
 	Compile() error
@@ -22,40 +22,43 @@ type Coordinator interface {
 
 type constraint struct {
 	Before string
-	After string
+	After  string
 }
 
 type coordinator struct {
-	s               Stopper
-	l               Logger
-	g               *simple.DirectedGraph
-	nodes           map[string]interface{}
-	nodeIdsRev      map[int]interface{}
-	nodeIds         map[string]graph.Node
-	streams         map[string]Stream
-	sources         map[string]Source
-	destinations    map[string]Destination
-	transformations map[string]Transform
-	tests           map[string]*testNode
-	testStreams     map[string]Stream
-	constraints     []constraint
-	constraintMap   map[string][]string //map after -> before
+	s                Stopper
+	l                Logger
+	g                *simple.DirectedGraph
+	nodes            map[string]interface{}
+	nodeIdsRev       map[int]interface{}
+	nodeIds          map[string]graph.Node
+	streams          map[string]Stream
+	sources          map[string]Source
+	destinations     map[string]Destination
+	transformations  map[string]Transform
+	tests            map[string]*testNode
+	testStreams      map[string]Stream
+	constraints      []constraint
+	constraintMap    map[string][]string //map after -> before
 	constraintMapRev map[string][]string //map before -> after
 }
 
 type sourceNode struct {
-	name string
-	s    Source
+	name  string
+	alias string
+	s     Source
 }
 
 type transformNode struct {
-	name string
-	t    Transform
+	name  string
+	alias string
+	t     Transform
 }
 
 type destinationNode struct {
-	name string
-	d    Destination
+	name  string
+	alias string
+	d     Destination
 }
 
 //Stop interrupts the job immediately.
@@ -97,17 +100,21 @@ func (c *coordinator) Compile() error {
 		return fmt.Errorf("cannot compile: the dag for the job has cycles")
 	}
 
-
 	for name, nv := range c.nodes {
 
 		switch nv.(type) {
 		case *sourceNode:
-			//no rules?
+			if len(c.g.From(c.nodeIds[name])) == 0 {
+				return fmt.Errorf("a source cannot be a termination point of the task, but %s is", name)
+			}
 		case *destinationNode:
 			if len(c.g.From(c.nodeIds[name])) > 0 {
 				return fmt.Errorf("a destination is not allowed to have further destinations, but %s does", name)
 			}
 		case *transformNode:
+			if len(c.g.From(c.nodeIds[name])) == 0 {
+				return fmt.Errorf("a transform cannot be a termination point of the task, but %s is", name)
+			}
 			for _, dNode := range c.g.From(c.nodeIds[name]) {
 				dnv := c.nodeIdsRev[dNode.ID()]
 				switch (dnv).(type) {
@@ -119,6 +126,7 @@ func (c *coordinator) Compile() error {
 			panic(fmt.Sprintf("Unknown node type %T for node %s", nv, name))
 		}
 	}
+
 	return nil
 }
 
@@ -149,7 +157,7 @@ func (c *coordinator) Execute() error {
 					constraints[name].Wait()
 				}
 				n.s.Open(c.streams[name], c.l, c.s)
-				for _, after := range c.constraintMapRev[name]{
+				for _, after := range c.constraintMapRev[name] {
 					constraints[after].Done()
 				}
 				wg.Done()
@@ -159,7 +167,8 @@ func (c *coordinator) Execute() error {
 			panic(fmt.Sprintf("unknown node type %T: %v", nv, nv))
 		}
 		neighbors := c.g.From(node)
-		multiplex := newMultiplexer(len(neighbors), DefaultBufferSize)
+
+		multiplex := newMultiplexer(c.getNodeName(node), c.getAliases(neighbors), DefaultBufferSize)
 		var testedParentStream Stream
 
 		if c.tests[upstream] == nil {
@@ -176,7 +185,7 @@ func (c *coordinator) Execute() error {
 		if len(neighbors) > 0 {
 			wg.Add(1)
 			go func(parentStream Stream) {
-				multiplex.Open(parentStream)
+				multiplex.Open(parentStream, c.l, c.s)
 				wg.Done()
 			}(testedParentStream)
 		}
@@ -191,7 +200,7 @@ func (c *coordinator) Execute() error {
 						constraints[name].Wait()
 					}
 					d.t.Open(multiplex, c.streams[name], c.l, c.s)
-					for _, after := range c.constraintMapRev[name]{
+					for _, after := range c.constraintMapRev[name] {
 						constraints[after].Done()
 					}
 					wg.Done()
@@ -206,7 +215,7 @@ func (c *coordinator) Execute() error {
 						constraints[name].Wait()
 					}
 					d.d.Open(multiplex, c.l, c.s)
-					for _, after := range c.constraintMapRev[name]{
+					for _, after := range c.constraintMapRev[name] {
 						constraints[after].Done()
 					}
 					wg.Done()
@@ -221,22 +230,52 @@ func (c *coordinator) Execute() error {
 	return nil
 }
 
+func (c *coordinator) getNodeName(node graph.Node) string {
+	n := c.nodeIdsRev[node.ID()]
+	switch d := n.(type) {
+	case *sourceNode:
+		return d.name
+	case *transformNode:
+		return d.name
+	case *destinationNode:
+		return d.name
+	default:
+		panic(fmt.Sprintf("unknown node type %T: %v", n, node.ID()))
+	}
+}
+
+func (c *coordinator) getAliases(nodes []graph.Node) []string {
+	var aliases []string
+	for i := range nodes {
+		node := c.nodeIdsRev[nodes[i].ID()]
+		switch d := node.(type) {
+		case *transformNode:
+			aliases = append(aliases, d.alias)
+		case *destinationNode:
+			aliases = append(aliases, d.alias)
+		default:
+			panic(fmt.Sprintf("unknown node type %T: %v", node, node))
+		}
+	}
+	return aliases
+}
+
 func NewCoordinator(logger Logger) Coordinator {
 	return &coordinator{
-		s:               &stopper{},
-		l:               logger,
-		g:               simple.NewDirectedGraph(0,0),
-		nodes:           make(map[string]interface{}),
-		nodeIds:         make(map[string]graph.Node),
-		nodeIdsRev:      make(map[int]interface{}),
-		sources:         make(map[string]Source),
-		destinations:    make(map[string]Destination),
-		transformations: make(map[string]Transform),
-		streams:         make(map[string]Stream),
-		tests:           make(map[string]*testNode),
-		testStreams:     make(map[string]Stream),
-		constraintMap:   make(map[string][]string),
-		constraintMapRev : make(map[string][]string),
+		s:                &stopper{},
+		l:                logger,
+		g:                simple.NewDirectedGraph(0, 0),
+		nodes:            make(map[string]interface{}),
+		nodeIds:          make(map[string]graph.Node),
+		nodeIdsRev:       make(map[int]interface{}),
+		sources:          make(map[string]Source),
+		destinations:     make(map[string]Destination),
+		transformations:  make(map[string]Transform),
+		streams:          make(map[string]Stream),
+		tests:            make(map[string]*testNode),
+		testStreams:      make(map[string]Stream),
+		constraintMap:    make(map[string][]string),
+		constraintMapRev: make(map[string][]string),
 	}
 }
 
@@ -247,7 +286,6 @@ func (c *coordinator) addNode(name string, val interface{}) error {
 	id := c.g.NewNodeID()
 	node := simple.Node(id)
 
-
 	c.g.AddNode(node)
 	c.nodes[name] = val
 	c.nodeIds[name] = node
@@ -255,8 +293,8 @@ func (c *coordinator) addNode(name string, val interface{}) error {
 	return nil
 }
 
-func (c *coordinator) AddSource(name string, s Source) error {
-	if err := c.addNode(name, &sourceNode{name, s}); err != nil {
+func (c *coordinator) AddSource(name string, alias string, s Source) error {
+	if err := c.addNode(name, &sourceNode{name, alias, s}); err != nil {
 		return err
 	}
 	c.sources[name] = s
@@ -264,8 +302,8 @@ func (c *coordinator) AddSource(name string, s Source) error {
 	return nil
 }
 
-func (c *coordinator) AddDestination(name string, d Destination) error {
-	if err := c.addNode(name, &destinationNode{name, d}); err != nil {
+func (c *coordinator) AddDestination(name string, alias string, d Destination) error {
+	if err := c.addNode(name, &destinationNode{name, alias, d}); err != nil {
 		return err
 	}
 	c.destinations[name] = d
@@ -285,8 +323,8 @@ func (c *coordinator) AddConstraint(before, after string) error {
 	return nil
 }
 
-func (c *coordinator) AddTransform(name string, t Transform) error {
-	if err := c.addNode(name, &transformNode{name, t}); err != nil {
+func (c *coordinator) AddTransform(name string, alias string, t Transform) error {
+	if err := c.addNode(name, &transformNode{name, alias, t}); err != nil {
 		return err
 	}
 	c.transformations[name] = t

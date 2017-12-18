@@ -1,20 +1,16 @@
 package main
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
-	"testing"
-	"github.com/michaelbironneau/analyst/engine"
-	"os"
-	"github.com/michaelbironneau/analyst/aql"
 	"database/sql"
+	xlsx "github.com/360EntSecGroup-Skylar/excelize"
+	"github.com/michaelbironneau/analyst/aql"
+	"github.com/michaelbironneau/analyst/engine"
+	. "github.com/smartystreets/goconvey/convey"
+	"os"
+	"testing"
 )
 
-func cleanup(){
-
-}
-
-
-func TestGlobal(t *testing.T){
+func TestGlobal(t *testing.T) {
 	script := `
 	GLOBAL 'InitializeInputTable' (
 		CREATE TABLE test (
@@ -39,13 +35,13 @@ func TestGlobal(t *testing.T){
 	`
 	db, err := sql.Open(globalDbDriver, globalDbConnString)
 	defer db.Close()
-	Convey("Given a script making use of GLOBAL", t, func(){
-		Convey("It should be processed correctly and generate the expected results", func(){
+	Convey("Given a script making use of GLOBAL", t, func() {
+		Convey("It should be processed correctly and generate the expected results", func() {
 			So(err, ShouldBeNil)
 			err := ExecuteString(script, nil, &engine.ConsoleLogger{})
 			So(err, ShouldBeNil)
 			var row struct {
-				ID int
+				ID   int
 				Name string
 			}
 			r := db.QueryRow("SELECT * FROM test2 LIMIT 1")
@@ -89,7 +85,60 @@ func TestCompiler(t *testing.T) {
 	})
 }
 
-func TestConnectionMap(t *testing.T){
+func TestCompilerWithTransform(t *testing.T) {
+	script := `
+	CONNECTION 'Workbook' (
+		Driver = 'Excel',
+		ConnectionString = 'hello, world',
+		File = './output_transform.xlsx'
+	)
+
+	QUERY 'SliceOfData' FROM GLOBAL (
+		SELECT 1 AS 'Value'
+			UNION ALL
+		SELECT -1 AS 'Value'
+			UNION ALL
+		SELECT 2 AS 'Value'
+	)
+
+	QUERY 'SliceOfData2' FROM GLOBAL (
+		SELECT 10 AS 'Value'
+			UNION ALL
+		SELECT 11 AS 'Value'
+			UNION ALL
+		SELECT -2 AS 'Value'
+	)
+
+	TRANSFORM PLUGIN 'FilterNegatives' FROM BLOCK SliceOfData, BLOCK SliceOfData2 ()
+	INTO CONNECTION Workbook
+	WITH (
+		Sheet = 'TestSheet', Range = 'A1:A*',
+			Columns = 'Value', Multisource_Order = 'Sequential',
+		Executable = 'python', Args = '["./test_filter.py"]', Overwrite = 'True'
+	)
+	`
+	Convey("Given a script with a transform and an Excel data destination", t, func() {
+		l := &engine.ConsoleLogger{}
+		Convey("It should execute without error", func() {
+			err := ExecuteString(script, nil, l)
+			So(err, ShouldBeNil)
+			_, err = os.Stat("./output_transform.xlsx")
+			So(err, ShouldBeNil)
+			Convey("It should return the correct output", func() {
+				x, err := xlsx.OpenFile("./output_transform.xlsx")
+				So(err, ShouldBeNil)
+				So(x.GetCellValue("TestSheet", "A1"), ShouldEqual, "1")
+				So(x.GetCellValue("TestSheet", "A2"), ShouldEqual, "2")
+				So(x.GetCellValue("TestSheet", "A3"), ShouldEqual, "10")
+				So(x.GetCellValue("TestSheet", "A4"), ShouldEqual, "11")
+				os.Remove("./output_transform.xlsx") //best effort cleanup attempt
+			})
+		})
+
+	})
+}
+
+func TestConnectionMap(t *testing.T) {
 	script := `
 	CONNECTION 'DB' (
 		Driver = 'sqlite3',
@@ -109,10 +158,10 @@ func TestConnectionMap(t *testing.T){
 
 	`
 	js, err := aql.ParseString(script)
-	Convey("Given a valid script with connections", t, func(){
+	Convey("Given a valid script with connections", t, func() {
 		So(err, ShouldBeNil)
 		So(len(js.Connections), ShouldEqual, 2)
-		Convey("The connection map should be correctly generated", func(){
+		Convey("The connection map should be correctly generated", func() {
 			c, err := connectionMap(js)
 			So(err, ShouldBeNil)
 			So(c["workbook"].Driver, ShouldEqual, "Excel")

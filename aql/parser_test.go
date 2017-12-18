@@ -10,7 +10,6 @@ import (
 	"testing"
 )
 
-
 func getExpectedResult(scriptPath string) (*JobScript, error) {
 	jsonPath := strings.Replace(scriptPath, ".txt", ".json", 1)
 	var bb JobScript
@@ -32,9 +31,9 @@ func saveExpectedResult(scriptPath string, b JobScript) error {
 	return err
 }
 
-func TestParseOptions(t *testing.T){
-	Convey("Given some options as a string", t, func(){
-		Convey("It should parse them correctly if they are valid", func(){
+func TestParseOptions(t *testing.T) {
+	Convey("Given some options as a string", t, func() {
+		Convey("It should parse them correctly if they are valid", func() {
 			s := "key1:1.2,key2:1,key3:\"asdf\""
 			opts, err := StrToOpts(s)
 			v1 := 1.2
@@ -47,7 +46,7 @@ func TestParseOptions(t *testing.T){
 			So(opts[1].Value, ShouldResemble, &OptionValue{Number: &v2})
 			So(opts[2].Value, ShouldResemble, &OptionValue{Str: &v3})
 		})
-		Convey("It should return an error if they are invalid", func(){
+		Convey("It should return an error if they are invalid", func() {
 			s := "key1:null,key2:1,key3\"asdf\""
 			_, err := StrToOpts(s)
 
@@ -58,8 +57,8 @@ func TestParseOptions(t *testing.T){
 
 }
 
-func TestParseExcelRange(t *testing.T){
-	Convey("Given a valid Excel range", t, func(){
+func TestParseExcelRange(t *testing.T) {
+	Convey("Given a valid Excel range", t, func() {
 		s := "A2:*1"
 		x1, x2, y1, y2, err := ParseExcelRange(s)
 		So(err, ShouldBeNil)
@@ -68,15 +67,24 @@ func TestParseExcelRange(t *testing.T){
 		So(y1, ShouldEqual, 2)
 		So(*y2, ShouldEqual, 1)
 	})
-	Convey("Given an invalid Excel range", t, func(){
+	Convey("Given another valid Excel range", t, func() {
+		s := "A2:A*"
+		x1, x2, y1, y2, err := ParseExcelRange(s)
+		So(err, ShouldBeNil)
+		So(x1, ShouldEqual, 1)
+		So(*x2, ShouldEqual, 1)
+		So(y1, ShouldEqual, 2)
+		So(y2, ShouldBeNil)
+	})
+	Convey("Given an invalid Excel range", t, func() {
 		s := "A*:B]"
-		_,_,_,_,err := ParseExcelRange(s)
+		_, _, _, _, err := ParseExcelRange(s)
 		So(err, ShouldNotBeNil)
 	})
 }
 
-func TestFindOption(t *testing.T){
-	Convey("Given some options", t, func(){
+func TestFindOption(t *testing.T) {
+	Convey("Given some options", t, func() {
 		f := 1.0
 		f2 := 2.0
 		opts := []Option{
@@ -89,7 +97,7 @@ func TestFindOption(t *testing.T){
 			Option{
 				Key: "O2",
 				Value: &OptionValue{
-					Number : &f2,
+					Number: &f2,
 				},
 			},
 		}
@@ -102,8 +110,8 @@ func TestFindOption(t *testing.T){
 	})
 }
 
-func TestFindOverridableOption(t *testing.T){
-	Convey("Given some options", t, func(){
+func TestFindOverridableOption(t *testing.T) {
+	Convey("Given some options", t, func() {
 		f := 1.0
 		f2 := 2.0
 		f3 := 3.0
@@ -118,7 +126,7 @@ func TestFindOverridableOption(t *testing.T){
 			Option{
 				Key: "O2",
 				Value: &OptionValue{
-					Number : &f2,
+					Number: &f2,
 				},
 			},
 		}
@@ -146,8 +154,8 @@ func TestFindOverridableOption(t *testing.T){
 	})
 }
 
-func TestTruthy(t *testing.T){
-	Convey("Given some options that may or not be truthy", t, func(){
+func TestTruthy(t *testing.T) {
+	Convey("Given some options that may or not be truthy", t, func() {
 		v1 := float64(1)
 		s1 := "true"
 		s2 := "false"
@@ -172,7 +180,7 @@ func TestTruthy(t *testing.T){
 				Str: &s2,
 			},
 		}
-		Convey("It should return whether the value is truthy correctly", func(){
+		Convey("It should return whether the value is truthy correctly", func() {
 			So(o1.Truthy(), ShouldBeTrue)
 			So(o2.Truthy(), ShouldBeFalse)
 			So(o3.Truthy(), ShouldBeTrue)
@@ -182,9 +190,9 @@ func TestTruthy(t *testing.T){
 	})
 }
 
-func TestString(t *testing.T){
-	Convey("Given some options", t, func(){
-		Convey("It should successfully return string value of a String option", func(){
+func TestString(t *testing.T) {
+	Convey("Given some options", t, func() {
+		Convey("It should successfully return string value of a String option", func() {
 			s := "string"
 			o1 := Option{
 				Value: &OptionValue{
@@ -195,7 +203,7 @@ func TestString(t *testing.T){
 			So(ok, ShouldBeTrue)
 			So(ss, ShouldEqual, s)
 		})
-		Convey("It should return false when passed Number option", func(){
+		Convey("It should return false when passed Number option", func() {
 			v := float64(1)
 			o1 := Option{
 				Value: &OptionValue{
@@ -313,22 +321,39 @@ func TestInclude(t *testing.T) {
 }
 
 func TestScript(t *testing.T) {
-	parser, err := participle.Build(&Script{}, &definition{})
+	parser, err := participle.Build(&Transform{}, &definition{})
 	if err != nil {
 		panic(err)
 	}
 	Convey("It should parse script blocks successfully", t, func() {
 		//1
-		s1 := `SCRIPT 'name' FROM CONNECTION source (
+		s1 := `TRANSFORM 'name' FROM CONNECTION source (
 			query_source()
 		) INTO CONNECTION destination
 		`
-		b := &Script{}
+		b := &Transform{}
 		err = parser.ParseString(s1, b)
 		So(err, ShouldBeNil)
 		So(b.Name, ShouldEqual, "name")
 		So(strings.TrimSpace(b.Content), ShouldEqual, "query_source()")
 		So(b.Sources, ShouldHaveLength, 1)
+		s := "source"
+		So(b.Sources[0].Database, ShouldResemble, &s)
+		So(*b.Destinations[0].Database, ShouldEqual, "destination")
+	})
+	Convey("It should parse transform blocks with PLUGIN successfully", t, func() {
+		//1
+		s1 := `TRANSFORM PLUGIN 'name' FROM CONNECTION source (
+			query_source()
+		) INTO CONNECTION destination
+		`
+		b := &Transform{}
+		err = parser.ParseString(s1, b)
+		So(err, ShouldBeNil)
+		So(b.Name, ShouldEqual, "name")
+		So(strings.TrimSpace(b.Content), ShouldEqual, "query_source()")
+		So(b.Sources, ShouldHaveLength, 1)
+		So(b.Plugin, ShouldBeTrue)
 		s := "source"
 		So(b.Sources[0].Database, ShouldResemble, &s)
 		So(*b.Destinations[0].Database, ShouldEqual, "destination")

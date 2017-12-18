@@ -1,7 +1,10 @@
 package engine
 
 import (
+	"fmt"
+	"strings"
 	"sync"
+	"time"
 )
 
 type multiplexer struct {
@@ -9,28 +12,55 @@ type multiplexer struct {
 	bufferSize int
 	n          int
 	s          Stream
-	i          int
-	children   []Stream
+	children   map[string]Stream
+	name       string
 }
 
-func newMultiplexer(n int, bufferSize int) *multiplexer {
-	m := multiplexer{n: n, bufferSize: bufferSize, i: 0, children: nil}
-	for i := 0; i < m.n; i++ {
-		m.children = append(m.children, NewStream(nil, m.bufferSize))
+func newMultiplexer(name string, aliases []string, bufferSize int) *multiplexer {
+	m := multiplexer{
+		name:       name,
+		n:          len(aliases),
+		bufferSize: bufferSize,
+		children:   make(map[string]Stream),
 	}
+	for i := 0; i < m.n; i++ {
+		m.children[strings.ToLower(aliases[i])] = NewStream(nil, m.bufferSize)
+	}
+
 	return &m
 }
 
-func (m *multiplexer) Open(s Stream) {
+func (m *multiplexer) fatalerr(err error, s Stream, l Logger) {
+
+	l.Chan() <- Event{
+		Level:   Error,
+		Source:  m.name + " multiplexer",
+		Time:    time.Now(),
+		Message: err.Error(),
+	}
+	close(s.Chan(DestinationWildcard))
+}
+
+func (m *multiplexer) Open(s Stream, l Logger, st Stopper) {
 	m.s = s
-	m.SetColumns(s.Columns())
-	for msg := range s.Chan() {
-		for i := range m.children {
-			m.children[i].Chan() <- msg
+	//m.SetColumns(s.Columns())
+	for msg := range s.Chan(DestinationWildcard) {
+		if msg.Destination == DestinationWildcard {
+			for alias, ss := range m.children {
+				ss.Chan(alias) <- msg
+			}
+		} else {
+			if ss := m.children[strings.ToLower(msg.Destination)]; ss != nil {
+				ss.Chan(msg.Destination) <- msg
+			} else {
+				//stop everything
+
+			}
 		}
+
 	}
 	for i := range m.children {
-		close(m.children[i].Chan())
+		close(m.children[i].Chan(DestinationWildcard))
 	}
 }
 
@@ -38,20 +68,35 @@ func (m *multiplexer) Columns() []string {
 	return m.s.Columns()
 }
 
-func (m *multiplexer) SetColumns(cols []string) {
-	m.s.SetColumns(cols)
-	for i := range m.children {
-		m.children[i].SetColumns(cols)
+func (m *multiplexer) SetColumns(destination string, cols []string) error {
+	if destination == DestinationWildcard {
+		for _, s := range m.children {
+			if err := s.SetColumns(DestinationWildcard, cols); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
+	s := m.children[destination]
+	if s == nil {
+		return fmt.Errorf("unknown destination alias %s", destination)
+	}
+	if err := s.SetColumns(destination, cols); err != nil {
+		return err
+	}
+	return nil
 }
 
-func (m *multiplexer) Chan() chan []interface{} {
+func (m *multiplexer) Chan(destination string) chan Message {
 	m.Lock()
 	defer m.Unlock()
-	if m.i >= m.n {
-		panic("multiplexer does not have enough outputs")
+	if destination == DestinationWildcard {
+		panic("cannot open multiplexed stream anonymously")
 	}
-	m.i++
-	return m.children[m.i-1].Chan()
+	s := m.children[strings.ToLower(destination)]
+	if s == nil {
+		panic(fmt.Errorf("alias %s not recognised for source/sink", destination))
+	}
+	return s.Chan(destination)
 
 }

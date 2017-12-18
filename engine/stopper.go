@@ -16,6 +16,10 @@ type stopper struct {
 	flag int32
 }
 
+func NewStopper() Stopper {
+	return &stopper{}
+}
+
 func (s *stopper) Stopped() bool {
 	if i := atomic.LoadInt32(&s.flag); i == 1 {
 		return true

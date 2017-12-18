@@ -14,6 +14,7 @@ type SQLDestination struct {
 	Table            string
 	columns          []string
 	db               *sql.DB
+	Alias            string
 }
 
 const InsertQuery = `INSERT INTO %s (%s) VALUES (%s)`
@@ -73,19 +74,19 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 	var (
 		stmt *sql.Stmt
 	)
-	for msg := range s.Chan() {
+	for msg := range s.Chan(sq.Alias) {
 		if st.Stopped() {
 			tx.Rollback()
 			return
 		}
-		if len(s.Columns()) != len(msg) {
-			sq.fatalerr(fmt.Errorf("expected %v columns but got %v", len(s.Columns()), len(msg)), l)
+		if len(s.Columns()) != len(msg.Data) {
+			sq.fatalerr(fmt.Errorf("expected %v columns but got %v", len(s.Columns()), len(msg.Data)), l)
 			tx.Rollback() //discard error - best effort attempt
 			return
 		}
 		if stmt == nil {
 			sq.columns = s.Columns()
-			insertQuery := sq.prepare(s, msg)
+			insertQuery := sq.prepare(s, msg.Data)
 			stmt, err = tx.Prepare(insertQuery)
 			if err != nil {
 				sq.fatalerr(err, l)
@@ -93,7 +94,7 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 				return
 			}
 		}
-		_, err := stmt.Exec(msg...)
+		_, err := stmt.Exec(msg.Data...)
 		if err != nil {
 			sq.fatalerr(err, l)
 			tx.Rollback()

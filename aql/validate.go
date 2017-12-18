@@ -22,7 +22,7 @@ func nametable(js *JobScript) (map[string]interface{}, []error) {
 		}
 	}
 
-	for _, s := range js.Scripts {
+	for _, s := range js.Transforms {
 		if _, ok := names[s.Name]; ok {
 			duplicates = append(duplicates, fmt.Errorf("there are two blocks with name '%s'", s.Name))
 		} else {
