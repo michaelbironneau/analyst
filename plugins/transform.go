@@ -1,7 +1,6 @@
 package plugins
 
 import (
-	"fmt"
 	"github.com/michaelbironneau/analyst/aql"
 	"github.com/michaelbironneau/analyst/engine"
 	"time"
@@ -18,6 +17,8 @@ type Transform struct {
 	open         bool
 	l            sync.Mutex
 	s            engine.Sequencer
+	lastTask     string
+	wg           sync.WaitGroup
 }
 
 func (d *Transform) fatalerr(err error, s engine.Stream, l engine.Logger) {
@@ -26,6 +27,9 @@ func (d *Transform) fatalerr(err error, s engine.Stream, l engine.Logger) {
 		Source:  d.Alias,
 		Time:    time.Now(),
 		Message: err.Error(),
+	}
+	if d.Plugin != nil {
+		d.Plugin.Close()
 	}
 	close(s.Chan(d.Alias))
 }
@@ -85,12 +89,20 @@ func (d *Transform) configure() error {
 }
 
 func (d *Transform) Sequence(sourceSeq []string){
+	if len(sourceSeq) == 0 {
+		panic("transform cannot be sequenced with 0 tasks") //should be unreachable
+	}
 	d.l.Lock()
 	d.s = engine.NewSequencer(sourceSeq)
+	d.lastTask = sourceSeq[len(sourceSeq)-1]
 	d.l.Unlock()
 }
 
 func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, st engine.Stopper) {
+
+	//For later cleanup of the plugin - see note below
+	d.wg.Add(1)
+
 	d.l.Lock()
 
 	if !d.open {
@@ -99,11 +111,18 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 			return
 		}
 		d.open = true
-		defer d.Plugin.Close()
+
+		//Cleanup - the invocation of Open() that opens the plugin cleans it up,
+		//but only after the others have finished.
+		go func(){
+			d.wg.Wait()
+			d.Plugin.Close()
+		}()
 	}
 
 	d.l.Unlock()
 
+	defer d.wg.Done()
 
 	if err := d.configure(); err != nil {
 		d.fatalerr(err, s, l)
@@ -160,7 +179,6 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 				Source:  d.Alias,
 			}
 		}
-		fmt.Println(rows)
 		for _, row := range rows {
 			outChan <- engine.Message{
 				Source:      d.Alias,
