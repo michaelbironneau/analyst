@@ -18,6 +18,11 @@ import (
 //MaxIncludeDepth is the maximum depth of includes that will be processed before an error is returned.
 const MaxIncludeDepth = 8
 
+type Block interface{
+	GetName() string
+	GetOptions() []Option
+}
+
 type OptionValue struct {
 	Str    *string  ` @QUOTED_STRING`
 	Number *float64 `| @NUMBER`
@@ -46,6 +51,15 @@ type Query struct {
 	Dependencies []string     `[AFTER @IDENT {"," @IDENT }]`
 }
 
+func (q *Query) GetName() string {
+	return q.Name
+}
+
+func (q *Query) GetOptions() []Option {
+	return q.Options
+}
+
+
 type Transform struct {
 	Plugin       bool          `TRANSFORM [@PLUGIN]`
 	Name         string        `@QUOTED_STRING`
@@ -55,6 +69,14 @@ type Transform struct {
 	Destinations []SourceSink  `[INTO @@ {"," @@}]`
 	Options      []Option      `[WITH '(' @@ {"," @@ } ')' ]`
 	Dependencies []string      `[AFTER @IDENT {"," @IDENT }]`
+}
+
+func (q *Transform) GetName() string {
+	return q.Name
+}
+
+func (q *Transform) GetOptions() []Option {
+	return q.Options
 }
 
 type Test struct {
@@ -250,7 +272,7 @@ func parseCellWithWildcards(s string) (x, y *int, err error) {
 		x = &xx
 	}
 
-	if s[i:] == "*" {
+	if s[i+1:] == "*" {
 		return //wildcard row => y also nil
 	}
 

@@ -67,6 +67,15 @@ func TestParseExcelRange(t *testing.T) {
 		So(y1, ShouldEqual, 2)
 		So(*y2, ShouldEqual, 1)
 	})
+	Convey("Given another valid Excel range", t, func() {
+		s := "A2:A*"
+		x1, x2, y1, y2, err := ParseExcelRange(s)
+		So(err, ShouldBeNil)
+		So(x1, ShouldEqual, 1)
+		So(*x2, ShouldEqual, 1)
+		So(y1, ShouldEqual, 2)
+		So(y2, ShouldBeNil)
+	})
 	Convey("Given an invalid Excel range", t, func() {
 		s := "A*:B]"
 		_, _, _, _, err := ParseExcelRange(s)
