@@ -18,7 +18,7 @@ import (
 //MaxIncludeDepth is the maximum depth of includes that will be processed before an error is returned.
 const MaxIncludeDepth = 8
 
-type Block interface{
+type Block interface {
 	GetName() string
 	GetOptions() []Option
 }
@@ -58,7 +58,6 @@ func (q *Query) GetName() string {
 func (q *Query) GetOptions() []Option {
 	return q.Options
 }
-
 
 type Transform struct {
 	Plugin       bool          `TRANSFORM [@PLUGIN]`

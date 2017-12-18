@@ -2,12 +2,12 @@ package main
 
 import (
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"github.com/michaelbironneau/analyst/aql"
 	"github.com/michaelbironneau/analyst/engine"
-	"strings"
-	"encoding/json"
 	"github.com/michaelbironneau/analyst/plugins"
+	"strings"
 )
 
 const (
@@ -175,8 +175,8 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 			//  - SQL database with SELECT * FROM Table query
 			//  - GLOBAL with SELECT * FROM Table query
 			var (
-				sourceTable string
-				connectionAlias    string
+				sourceTable     string
+				connectionAlias string
 			)
 			if source.Global || source.Database != nil {
 				var ok bool
@@ -186,7 +186,6 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 				if !ok {
 					return fmt.Errorf("expected TABLE option for %s in the TRANSFORM %s options", connectionAlias, transform.Name)
 				}
-
 
 				sourceTable, ok = tableOpt.String()
 
@@ -202,11 +201,11 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 					Query:            fmt.Sprintf(sqlSelectAll, sourceTable),
 				}
 				g.SetName(connectionAlias)
-				if err := dag.AddSource(strings.ToLower(transform.Name) + sourceUniquifier + connectionAlias, connectionAlias, &g); err != nil {
+				if err := dag.AddSource(strings.ToLower(transform.Name)+sourceUniquifier+connectionAlias, connectionAlias, &g); err != nil {
 					return err
 				}
 
-				if err := dag.Connect(strings.ToLower(transform.Name) + sourceUniquifier + connectionAlias, strings.ToLower(transform.Name)); err != nil {
+				if err := dag.Connect(strings.ToLower(transform.Name)+sourceUniquifier+connectionAlias, strings.ToLower(transform.Name)); err != nil {
 					return err
 				}
 				sourceSequence = append(sourceSequence, connectionAlias)
@@ -224,7 +223,7 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 						return err
 					}
 
-					if err := dag.Connect(strings.ToLower(transform.Name) + sourceUniquifier + connectionAlias, strings.ToLower(transform.Name)); err != nil {
+					if err := dag.Connect(strings.ToLower(transform.Name)+sourceUniquifier+connectionAlias, strings.ToLower(transform.Name)); err != nil {
 						return err
 					}
 
@@ -238,11 +237,11 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 					Query:            fmt.Sprintf(sqlSelectAll, sourceTable),
 				}
 				s.SetName(connectionAlias)
-				if err := dag.AddSource(strings.ToLower(transform.Name) + sourceUniquifier + connectionAlias, connectionAlias, &s); err != nil {
+				if err := dag.AddSource(strings.ToLower(transform.Name)+sourceUniquifier+connectionAlias, connectionAlias, &s); err != nil {
 					return err
 				}
 
-				if err := dag.Connect(strings.ToLower(transform.Name) + sourceUniquifier + connectionAlias, strings.ToLower(transform.Name)); err != nil {
+				if err := dag.Connect(strings.ToLower(transform.Name)+sourceUniquifier+connectionAlias, strings.ToLower(transform.Name)); err != nil {
 					return err
 				}
 				sourceSequence = append(sourceSequence, connectionAlias)
@@ -272,8 +271,6 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 			return err
 		}
 
-
-
 	}
 	return nil
 }
@@ -289,15 +286,15 @@ func sequenceSources(transform *plugins.Transform, block aql.Block, sourceSequen
 		if !ok2 {
 			return fmt.Errorf("expected MULTISOURCE_ORDER option to be a string in transform %s", block.GetName())
 		}
-			switch strings.ToUpper(seqStr) {
-			case "PARALLEL":
-				//default option
-			case "SEQUENTIAL":
-				sequence = true
-			default:
-				return fmt.Errorf("expected MULTISOURCE_ORDER	 to be PARALLEL or SEQUENTIAL in transform %s but got '%s'", block.GetName(), seqStr)
+		switch strings.ToUpper(seqStr) {
+		case "PARALLEL":
+			//default option
+		case "SEQUENTIAL":
+			sequence = true
+		default:
+			return fmt.Errorf("expected MULTISOURCE_ORDER	 to be PARALLEL or SEQUENTIAL in transform %s but got '%s'", block.GetName(), seqStr)
 
-			}
+		}
 
 	}
 
@@ -342,7 +339,6 @@ func addPlugin(js *aql.JobScript, dag engine.Coordinator, transform aql.Transfor
 		argStr = argStr2
 	}
 
-
 	var argList []string
 
 	if ok {
@@ -351,18 +347,15 @@ func addPlugin(js *aql.JobScript, dag engine.Coordinator, transform aql.Transfor
 		}
 	}
 
-
 	//Create plugin instance and configure with options
 	sRPC := plugins.TransformJSONRPC{Path: execStr, Args: argList}
 	s := plugins.Transform{
 		Plugin: &sRPC,
-		Alias: transform.Name, //FIXME: What if it is a source for another block??
+		Alias:  transform.Name, //FIXME: What if it is a source for another block??
 	}
 	if err := s.Configure(transform.Options); err != nil {
 		return nil, err
 	}
-
-
 
 	//FIXME: Transform aliases don't work. There are a few issues here:
 	//  1) How does a transform know what its aliases are?
@@ -623,7 +616,6 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 
 }
 
-
 func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, transform aql.Transform, conn aql.Connection, source aql.SourceSink) error {
 	//register Excel destination
 
@@ -649,7 +641,6 @@ func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 	if !ok {
 		return fmt.Errorf("expected SHEET option to be a STRING for connection %s and transform %s", conn.Name, transform.Name)
 	}
-
 
 	rangOpt, ok := aql.FindOverridableOption("RANGE", conn.Name, transform.Options, conn.Options)
 
@@ -686,7 +677,7 @@ func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 		yy2.P = *y2
 	}
 
-	var columns   []string
+	var columns []string
 
 	colsOpt, ok := aql.FindOverridableOption("COLUMNS", conn.Name, transform.Options, conn.Options)
 
@@ -714,7 +705,7 @@ func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 			X2: xx2,
 			Y2: yy2,
 		},
-		Cols:      columns,
+		Cols: columns,
 	})
 
 	//dag.Connect(strings.ToLower(transform.Name+sourceUniquifier+alias), strings.ToLower(transform.Name))
@@ -722,8 +713,6 @@ func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 	return nil
 
 }
-
-
 
 //destinations makes engine.Destination s out of JobScript destinations and connects sources to them.
 //As of current release:
@@ -733,7 +722,7 @@ func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection) error {
 	for _, query := range js.Queries {
 		for _, dest := range query.Destinations {
-			if dest.Script != nil  {
+			if dest.Script != nil {
 				return fmt.Errorf("SCRIPT destinations are deprecated in favor of BLOCK: %s", query.Name)
 			}
 
@@ -765,7 +754,7 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 	}
 	for _, transform := range js.Transforms {
 		for _, dest := range transform.Destinations {
-			if dest.Script != nil  {
+			if dest.Script != nil {
 				return fmt.Errorf("SCRIPT destinations are deprecated in favor of BLOCK: %s", transform.Name)
 			}
 			if dest.Block != nil {

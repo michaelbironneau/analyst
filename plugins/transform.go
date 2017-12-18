@@ -3,8 +3,8 @@ package plugins
 import (
 	"github.com/michaelbironneau/analyst/aql"
 	"github.com/michaelbironneau/analyst/engine"
-	"time"
 	"sync"
+	"time"
 )
 
 //Transform is the default implementation of a Transform plugin
@@ -88,7 +88,7 @@ func (d *Transform) configure() error {
 	return nil
 }
 
-func (d *Transform) Sequence(sourceSeq []string){
+func (d *Transform) Sequence(sourceSeq []string) {
 	if len(sourceSeq) == 0 {
 		panic("transform cannot be sequenced with 0 tasks") //should be unreachable
 	}
@@ -115,7 +115,7 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 
 		//Cleanup - the invocation of Open() that opens the plugin cleans it up,
 		//but only after the others have finished.
-		go func(){
+		go func() {
 			d.wg.Wait()
 			close(outChan)
 			d.Plugin.Close()

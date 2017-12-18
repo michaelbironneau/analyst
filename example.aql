@@ -1,0 +1,29 @@
+CONNECTION 'Workbook' (
+	Driver = 'Excel',
+	ConnectionString = '.',
+	File = './output_transform.xlsx'
+)
+
+QUERY 'SliceOfData' FROM GLOBAL (
+	SELECT 1 AS 'Value'
+		UNION ALL
+	SELECT -1 AS 'Value'
+		UNION ALL
+	SELECT 2 AS 'Value'
+)
+
+QUERY 'SliceOfData2' FROM GLOBAL (
+	SELECT 10 AS 'Value'
+		UNION ALL
+	SELECT 11 AS 'Value'
+		UNION ALL
+	SELECT -2 AS 'Value'
+)
+
+TRANSFORM PLUGIN 'FilterNegatives' FROM BLOCK SliceOfData, BLOCK SliceOfData2 ()
+INTO CONNECTION Workbook
+WITH (
+		Sheet = 'TestSheet', Range = 'A1:A*',
+		Columns = 'Value', Multisource_Order = 'Sequential',
+		Executable = 'python', Args = '["./test_filter.py"]', Overwrite = 'True'
+)
