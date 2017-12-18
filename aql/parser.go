@@ -33,13 +33,12 @@ type Option struct {
 	Value *OptionValue `@@`
 }
 
-
 type SourceSink struct {
-	Database *string   `( CONNECTION @IDENT`
-	Global   bool      `| @GLOBAL`
+	Database  *string  `( CONNECTION @IDENT`
+	Global    bool     `| @GLOBAL`
 	Variables []string `| VARIABLE '(' @IDENT {"," @IDENT } ')'`
-	Block    *string   `| BLOCK @IDENT)`
-	Alias    *string   `[AS @QUOTED_STRING]`
+	Block     *string  `| BLOCK @IDENT)`
+	Alias     *string  `[AS @QUOTED_STRING]`
 }
 
 type Query struct {
@@ -47,6 +46,7 @@ type Query struct {
 	Extern       *string      `[EXTERN @QUOTED_STRING]`
 	Sources      []SourceSink `FROM @@ { "," @@ }`
 	Content      string       `['(' @PAREN_BODY ')' ]`
+	Parameters   []string     `[USING PARAMETER @IDENT { "," @IDENT }]`
 	Destinations []SourceSink `[INTO @@ { "," @@ } ]`
 	Options      []Option     `[WITH '(' @@ {"," @@ } ')' ]`
 	Dependencies []string     `[AFTER @IDENT {"," @IDENT }]`
@@ -80,7 +80,7 @@ func (q *Transform) GetOptions() []Option {
 }
 
 type Declaration struct {
-	Name string  `DECLARE @IDENT`
+	Name string `DECLARE @IDENT`
 }
 
 type Test struct {
@@ -122,14 +122,14 @@ type Connection struct {
 }
 
 type JobScript struct {
-	Description *Description         `[@@]`
-	Queries     []Query              `{ @@`
-	Declarations []Declaration       `| @@`
-	Connections []UnparsedConnection `| @@`
-	Includes    []Include            `| @@ `
-	Tests       []Test               `| @@ `
-	Globals     []Global             `| @@ `
-	Transforms  []Transform          ` | @@ }`
+	Description  *Description         `[@@]`
+	Queries      []Query              `{ @@`
+	Declarations []Declaration        `| @@`
+	Connections  []UnparsedConnection `| @@`
+	Includes     []Include            `| @@ `
+	Tests        []Test               `| @@ `
+	Globals      []Global             `| @@ `
+	Transforms   []Transform          ` | @@ }`
 }
 
 //String returns the option value as a string. The boolean return parameter
