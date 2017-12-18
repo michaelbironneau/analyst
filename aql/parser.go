@@ -36,7 +36,7 @@ type Option struct {
 type SourceSink struct {
 	Database  *string  `( CONNECTION @IDENT`
 	Global    bool     `| @GLOBAL`
-	Variables []string `| VARIABLE '(' @IDENT {"," @IDENT } ')'`
+	Variables []string `| PARAMETER '(' @IDENT {"," @IDENT } ')'`
 	Block     *string  `| BLOCK @IDENT)`
 	Alias     *string  `[AS @QUOTED_STRING]`
 }
