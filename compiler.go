@@ -128,8 +128,6 @@ func globalInit(js *aql.JobScript) error {
 }
 
 //constraints applies AFTER constraints.
-//As of current release:
-//  - Limited to QUERY blocks
 func constraints(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection) error {
 	for _, query := range js.Queries {
 		for _, before := range query.Dependencies {
@@ -139,6 +137,15 @@ func constraints(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 			}
 		}
 	}
+	for _, transform := range js.Transforms {
+		for _, before := range transform.Dependencies {
+			err := dag.AddConstraint(strings.ToLower(before), strings.ToLower(transform.Name))
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
