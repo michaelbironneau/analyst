@@ -60,16 +60,6 @@ func (sq *SQLSource) fatalerr(err error, s Stream, l Logger) {
 }
 
 func (sq *SQLSource) parameters() ([]interface{}, error) {
-
-	//  FIXME
-	//  There is a race condition: if a source query returns so fast that the source
-	//  Open() returns before the parameter destination processes the message (or if
-	//  it is not even open because the coordinator has not finished setting up the job)
-	//  then this method will fail because the parameter has not been written yet.
-	//  This either requires a short sleep in front of all SQL sources, or further
-	//  synchronization in the coordinator. I prefer the first one for now.
-	time.Sleep(time.Millisecond * 100)
-
 	if sq.ParameterTable == nil && sq.ParameterNames != nil {
 		panic("parameter table uninitialized!") //if this gets reached it is a big-time bug
 	}

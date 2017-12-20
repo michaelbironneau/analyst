@@ -317,9 +317,25 @@ func (c *coordinator) AddConstraint(before, after string) error {
 	if _, ok := c.nodes[after]; !ok {
 		return fmt.Errorf("name does not exist %s", after)
 	}
+
 	c.constraints = append(c.constraints, constraint{before, after})
 	c.constraintMap[after] = append(c.constraintMap[after], before)
 	c.constraintMapRev[before] = append(c.constraintMapRev[before], after)
+
+	//Add additional constraint between 'before' destinations and 'after, to ensure
+	//that all destinations will complete before the 'after' node Open()s
+	for _, node := range c.g.From(c.nodeIds[before]){
+		dnv := c.nodeIdsRev[node.ID()]
+		if dest, ok := dnv.(*destinationNode); ok{
+			if _, ok := c.nodes[dest.name]; !ok {
+				panic(fmt.Errorf("destination constraint does not exist %s", dest.name))
+			}
+			c.constraints = append(c.constraints, constraint{dest.name, after})
+			c.constraintMap[after] = append(c.constraintMap[after], dest.name)
+			c.constraintMapRev[dest.name] = append(c.constraintMapRev[dest.name], after)
+		}
+	}
+
 	return nil
 }
 
