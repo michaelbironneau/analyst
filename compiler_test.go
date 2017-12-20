@@ -85,6 +85,55 @@ func TestCompiler(t *testing.T) {
 	})
 }
 
+func TestCompilerWithParameters(t *testing.T) {
+	script := `
+	DECLARE @Id;
+
+	GLOBAL 'Initialize' (
+		CREATE TABLE Contacts (
+			id integer PRIMARY KEY,
+			first_name text NOT NULL
+		);
+
+		INSERT INTO  Contacts (id, first_name) VALUES (1, 'Bob');
+		INSERT INTO  Contacts (id, first_name) VALUES (2, 'Steven');
+		INSERT INTO  Contacts (id, first_name) VALUES (3, 'Jack');
+	);
+
+	QUERY 'GetId' FROM GLOBAL (
+		SELECT 1 AS 'Id'
+	) INTO PARAMETER (@Id);
+
+	QUERY 'GetName' FROM GLOBAL (
+		SELECT 4 As Id, first_name FROM Contacts
+		WHERE id = ?
+	)
+	USING PARAMETER @Id
+	INTO GLOBAL WITH (Table = 'Contacts')
+	AFTER GetId
+	`
+	Convey("Given a script that uses parameters", t, func() {
+		l := &engine.ConsoleLogger{}
+		err := ExecuteString(script, nil, l)
+		So(err, ShouldBeNil)
+		db, err := sql.Open(globalDbDriver, globalDbConnString)
+		defer db.Close()
+		So(err, ShouldBeNil)
+		rows, err := db.Query("Select first_name FROM Contacts ORDER BY id")
+		So(err, ShouldBeNil)
+		var names []string
+		defer rows.Close()
+		for rows.Next() {
+			var name string
+			err := rows.Scan(&name)
+			So(err, ShouldBeNil)
+			names = append(names, name)
+		}
+		So(names, ShouldResemble, []string{"Bob", "Steven", "Jack", "Bob"})
+	})
+
+}
+
 func TestCompilerWithTransform(t *testing.T) {
 	script := `
 	CONNECTION 'Workbook' (

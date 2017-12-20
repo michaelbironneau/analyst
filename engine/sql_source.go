@@ -19,15 +19,11 @@ type SQLSource struct {
 	columns          []string
 	db               *sql.DB
 	outgoingName     string
-	params           []string
+	ParameterNames   []string
 }
 
 func (sq *SQLSource) SetName(name string) {
 	sq.outgoingName = name
-}
-
-func (sq *SQLSource) SetParameterNames(names []string){
-	sq.params = names
 }
 
 func (sq *SQLSource) Columns() []string {
@@ -63,15 +59,25 @@ func (sq *SQLSource) fatalerr(err error, s Stream, l Logger) {
 	close(s.Chan(sq.outgoingName))
 }
 
-func (sq *SQLSource) parameters() ([]interface{}, error){
-	if sq.ParameterTable == nil && sq.params != nil {
+func (sq *SQLSource) parameters() ([]interface{}, error) {
+
+	//  FIXME
+	//  There is a race condition: if a source query returns so fast that the source
+	//  Open() returns before the parameter destination processes the message (or if
+	//  it is not even open because the coordinator has not finished setting up the job)
+	//  then this method will fail because the parameter has not been written yet.
+	//  This either requires a short sleep in front of all SQL sources, or further
+	//  synchronization in the coordinator. I prefer the first one for now.
+	time.Sleep(time.Millisecond * 100)
+
+	if sq.ParameterTable == nil && sq.ParameterNames != nil {
 		panic("parameter table uninitialized!") //if this gets reached it is a big-time bug
 	}
 	var params []interface{}
-	for _, name := range sq.params {
+	for _, name := range sq.ParameterNames {
 		val, ok := sq.ParameterTable.Get(name)
 		if !ok {
-			return nil, fmt.Errorf("parameter not found %s", name)
+			return nil, fmt.Errorf("parameter not set %s", name)
 		}
 		params = append(params, val)
 	}
