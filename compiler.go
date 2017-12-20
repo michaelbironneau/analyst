@@ -20,6 +20,7 @@ const (
 
 func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, compileOnly bool) error {
 	dag := engine.NewCoordinator(logger)
+	params := engine.NewParameterTable()
 	err := js.ResolveExternalContent()
 	if err != nil {
 		return fmt.Errorf("error resolving external content: %v", err)
@@ -33,13 +34,19 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 		return fmt.Errorf("error parsing connections: %v", err)
 	}
 
+	err = declarations(js, params)
+
+	if err != nil {
+		return err
+	}
+
 	err = globalInit(js)
 
 	if err != nil {
 		return err
 	}
 
-	err = sources(js, dag, connMap)
+	err = sources(js, dag, connMap, params)
 
 	if err != nil {
 		return err
@@ -51,7 +58,7 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 		return err
 	}
 
-	err = destinations(js, dag, connMap)
+	err = destinations(js, dag, connMap, params)
 
 	if err != nil {
 		return err
@@ -107,6 +114,15 @@ func ValidateFile(filename string, options []aql.Option, logger engine.Logger) e
 	return execute(js, options, logger, true)
 }
 
+func declarations(js *aql.JobScript, p *engine.ParameterTable) error {
+	for _, declaration := range js.Declarations {
+		if err := p.Declare(declaration.Name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 //globalInit initializes the GLOBAL db based on user-defined queries
 //Any valid SQL can be used to initialize the database.
 //Currently, the GLOBAL database must live in-memory. In future releases
@@ -128,8 +144,6 @@ func globalInit(js *aql.JobScript) error {
 }
 
 //constraints applies AFTER constraints.
-//As of current release:
-//  - Limited to QUERY blocks
 func constraints(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection) error {
 	for _, query := range js.Queries {
 		for _, before := range query.Dependencies {
@@ -139,6 +153,15 @@ func constraints(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 			}
 		}
 	}
+	for _, transform := range js.Transforms {
+		for _, before := range transform.Dependencies {
+			err := dag.AddConstraint(strings.ToLower(before), strings.ToLower(transform.Name))
+			if err != nil {
+				return err
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -369,7 +392,7 @@ func addPlugin(js *aql.JobScript, dag engine.Coordinator, transform aql.Transfor
 //As of current release:
 //	- Limited to SQL sources (Excel sources require scripts or built-ins to process data which won't come until vNext)
 //	- Queries limited to single source (this will probably remain a limitation for the foreseeable future)
-func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection) error {
+func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, params *engine.ParameterTable) error {
 	for _, query := range js.Queries {
 		if len(query.Sources) != 1 {
 			return fmt.Errorf("queries must have exactly one source but %s has %v", query.Name, len(query.Sources))
@@ -379,6 +402,8 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 				Driver:           globalDbDriver,
 				ConnectionString: globalDbConnString,
 				Query:            query.Content,
+				ParameterTable:   params,
+				ParameterNames:   query.Parameters,
 			}
 			//alias := alias(query.Sources[0], nil)
 			alias := query.Name //Queries can only have one source, so let's do away with this confusing alias nonsense
@@ -397,6 +422,8 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			Driver:           conn.Driver,
 			ConnectionString: conn.ConnectionString,
 			Query:            query.Content,
+			ParameterTable:   params,
+			ParameterNames:   query.Parameters,
 		}
 		//alias := alias(query.Sources[0], conn)
 		alias := query.Name //Queries can only have one source, so let's do away with this confusing alias nonsense
@@ -714,18 +741,32 @@ func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 
 }
 
+func parameterDest(js *aql.JobScript, dag engine.Coordinator, query *aql.Query, dest aql.SourceSink, p *engine.ParameterTable) error {
+	paramDest := engine.NewParameterTableDestination(p, dest.Variables)
+	name := strings.ToLower(query.Name + destinationUniquifier + engine.ParameterTableName)
+	err := dag.AddDestination(name, engine.ParameterTableName, paramDest)
+
+	if err != nil {
+		return err
+	}
+
+	return dag.Connect(strings.ToLower(query.Name), name)
+}
+
 //destinations makes engine.Destination s out of JobScript destinations and connects sources to them.
 //As of current release:
-//  - Limited to SQL or Excel destinations
+//  - Limited to SQL, parameter or Excel destinations
 //  - Multiple destinations supported for queries. The table for multiple destinations needs to be specified as TABLE_{DEST_NAME} = '{TABLE_NAME}'
 //  - GLOBAL, SCRIPT and BLOCK destinations not supported
-func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection) error {
+func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, p *engine.ParameterTable) error {
 	for _, query := range js.Queries {
 		for _, dest := range query.Destinations {
-			if dest.Script != nil {
-				return fmt.Errorf("SCRIPT destinations are deprecated in favor of BLOCK: %s", query.Name)
+			if dest.Variables != nil {
+				if err := parameterDest(js, dag, &query, dest, p); err != nil {
+					return err
+				}
+				continue
 			}
-
 			if dest.Block != nil {
 				return fmt.Errorf("BLOCK destinations are not allowed because they create non-deterministic source orders: %s", query.Name)
 			}
@@ -754,9 +795,6 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 	}
 	for _, transform := range js.Transforms {
 		for _, dest := range transform.Destinations {
-			if dest.Script != nil {
-				return fmt.Errorf("SCRIPT destinations are deprecated in favor of BLOCK: %s", transform.Name)
-			}
 			if dest.Block != nil {
 				return fmt.Errorf("BLOCK destinations are not allowed because they create non-deterministic source orders: %s", transform.Name)
 			}
