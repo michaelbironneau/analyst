@@ -15,14 +15,19 @@ type SQLSource struct {
 	Driver           string
 	ConnectionString string
 	Query            string
-	QueryParameters  []interface{}
+	ParameterTable   *ParameterTable
 	columns          []string
 	db               *sql.DB
 	outgoingName     string
+	params           []string
 }
 
 func (sq *SQLSource) SetName(name string) {
 	sq.outgoingName = name
+}
+
+func (sq *SQLSource) SetParameterNames(names []string){
+	sq.params = names
 }
 
 func (sq *SQLSource) Columns() []string {
@@ -58,6 +63,21 @@ func (sq *SQLSource) fatalerr(err error, s Stream, l Logger) {
 	close(s.Chan(sq.outgoingName))
 }
 
+func (sq *SQLSource) parameters() ([]interface{}, error){
+	if sq.ParameterTable == nil && sq.params != nil {
+		panic("parameter table uninitialized!") //if this gets reached it is a big-time bug
+	}
+	var params []interface{}
+	for _, name := range sq.params {
+		val, ok := sq.ParameterTable.Get(name)
+		if !ok {
+			return nil, fmt.Errorf("parameter not found %s", name)
+		}
+		params = append(params, val)
+	}
+	return params, nil
+}
+
 func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 	if sq.db == nil {
 		err := sq.connect()
@@ -66,7 +86,12 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 			return
 		}
 	}
-	r, err := sq.db.Query(sq.Query, sq.QueryParameters...)
+	params, err := sq.parameters()
+	if err != nil {
+		sq.fatalerr(err, s, l)
+		return
+	}
+	r, err := sq.db.Query(sq.Query, params...)
 	if err != nil {
 		sq.fatalerr(err, s, l)
 		return
