@@ -27,11 +27,11 @@ func (s *avg) Reduce(arg []interface{}) error {
 	case float64:
 		s.result = (s.count*s.result + v) / (s.count + 1)
 	case int:
-		s.result += (s.count*s.result + float64(v)) / (s.count + 1)
+		s.result = (s.count*s.result + float64(v)) / (s.count + 1)
 	case int64:
-		s.result += (s.count*s.result + float64(v)) / (s.count + 1)
+		s.result = (s.count*s.result + float64(v)) / (s.count + 1)
 	case int32:
-		s.result += (s.count*s.result + float64(v)) / (s.count + 1)
+		s.result = (s.count*s.result + float64(v)) / (s.count + 1)
 	default:
 		return fmt.Errorf("AVG takes a single numerical argument, but %v was provided", args[0])
 	}

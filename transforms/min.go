@@ -31,9 +31,9 @@ func (s *min) Reduce(arg []interface{}) error {
 	case int:
 		s.result = math.Min(s.result, float64(v))
 	case int64:
-		s.result += math.Min(s.result, float64(v))
+		s.result = math.Min(s.result, float64(v))
 	case int32:
-		s.result += math.Min(s.result, float64(v))
+		s.result = math.Min(s.result, float64(v))
 	default:
 		return fmt.Errorf("MIN takes a single numerical argument, but %v was provided", args[0])
 	}

@@ -34,9 +34,9 @@ func (s *max) Reduce(arg []interface{}) error {
 	case int:
 		s.result = math.Max(s.result, float64(v))
 	case int64:
-		s.result += math.Max(s.result, float64(v))
+		s.result = math.Max(s.result, float64(v))
 	case int32:
-		s.result += math.Max(s.result, float64(v))
+		s.result = math.Max(s.result, float64(v))
 	default:
 		return fmt.Errorf("max takes a single numerical argument, but %v was provided", args[0])
 	}
