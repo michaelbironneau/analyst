@@ -24,6 +24,9 @@ func (s *max) Reduce(arg []interface{}) error {
 	if len(args) != 1 {
 		return fmt.Errorf("max takes exactly 1 argument but %v were provided", len(args))
 	}
+	if args[0] == nil {
+		return nil
+	}
 	s.notNull = true
 	if args[0] == nil {
 		return nil //ignore

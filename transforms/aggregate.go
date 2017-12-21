@@ -21,7 +21,8 @@ var (
 		`|(?P<String>'[^']*'|"[^"]*")`+
 		`|(?P<Operators><>|!=|<=|>=|[-+*/%,.()=<>])`,
 	)), "Keyword"), "String")
-	Reducers = map[string]Reducer{"sum": &sum{}, "min": &min{}, "max": &max{}, "avg": &avg{}}
+	Reducers                  = map[string]Reducer{"sum": &sum{}, "min": &min{}, "max": &max{}, "avg": &avg{}, "zoh": &zoh{}}
+	DefaultArgMap ArgumentMap = func(i []interface{}) []interface{} { return i }
 )
 
 type FunctionArgument struct {

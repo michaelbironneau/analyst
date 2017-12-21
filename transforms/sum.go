@@ -18,10 +18,14 @@ func (s *sum) SetArgumentMap(am ArgumentMap) {
 
 func (s *sum) Reduce(arg []interface{}) error {
 	args := s.am(arg)
-	s.notNull = true
+
 	if len(args) != 1 {
 		return fmt.Errorf("SUM takes exactly 1 argument but %v were provided", len(args))
 	}
+	if args[0] == nil {
+		return nil
+	}
+	s.notNull = true
 	switch v := args[0].(type) {
 	case float64:
 		s.result += v

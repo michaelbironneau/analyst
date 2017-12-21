@@ -22,6 +22,9 @@ func (s *avg) Reduce(arg []interface{}) error {
 	if len(args) != 1 {
 		return fmt.Errorf("AVG takes exactly 1 argument but %v were provided", len(args))
 	}
+	if args[0] == nil {
+		return nil
+	}
 	s.notNull = true
 	switch v := args[0].(type) {
 	case float64:
