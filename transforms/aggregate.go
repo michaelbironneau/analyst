@@ -21,7 +21,7 @@ var (
 		`|(?P<String>'[^']*'|"[^"]*")`+
 		`|(?P<Operators><>|!=|<=|>=|[-+*/%,.()=<>])`,
 	)), "Keyword"), "String")
-	Reducers = map[string]Reducer{"sum": &sum{}}
+	Reducers = map[string]Reducer{"sum": &sum{}, "min": &min{}, "max": &max{}, "avg": &avg{}}
 )
 
 type FunctionArgument struct {
@@ -86,48 +86,7 @@ type Reducer interface {
 	SetArgumentMap(ArgumentMap)
 	Reduce(arg []interface{}) error
 	Copy() Reducer //Returns a reducer with blank state
-	Return() float64
-}
-
-type sum struct {
-	result float64
-	am     ArgumentMap
-}
-
-func (s *sum) ParameterLen() int {
-	return 1
-}
-
-func (s *sum) SetArgumentMap(am ArgumentMap) {
-	s.am = am
-}
-
-func (s *sum) Reduce(arg []interface{}) error {
-	args := s.am(arg)
-	if len(args) != 1 {
-		return fmt.Errorf("SUM takes exactly 1 argument but %v were provided", len(args))
-	}
-	switch v := args[0].(type) {
-	case float64:
-		s.result += v
-	case int:
-		s.result += float64(v)
-	case int64:
-		s.result += float64(v)
-	case int32:
-		s.result += float64(v)
-	default:
-		return fmt.Errorf("SUM takes a single numerical argument, but %v was provided", args[0])
-	}
-	return nil
-}
-
-func (s *sum) Return() float64 {
-	return s.result
-}
-
-func (s *sum) Copy() Reducer {
-	return &sum{am: s.am}
+	Return() *float64
 }
 
 type groupByRow struct {
@@ -257,7 +216,13 @@ func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 				continue
 			}
 			if g, ok := row.aggregates[col]; ok {
-				data = append(data, g.Return())
+				var f *float64
+				f = g.Return()
+				if f == nil {
+					data = append(data, nil)
+				} else {
+					data = append(data, *f)
+				}
 				continue
 			}
 			panic(fmt.Sprintf("column %s not found", col)) //should be unreachable
