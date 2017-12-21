@@ -136,7 +136,7 @@ func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 	cols := s.Columns()
 
 	if err := dest.SetColumns(a.name, a.aliasOrder); err != nil {
-		a.fatalerr(err, s, l)
+		a.fatalerr(err, dest, l)
 		return
 	}
 
@@ -145,7 +145,7 @@ func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 	for key, maker := range a.argMaker {
 		am, err := maker(cols)
 		if err != nil {
-			a.fatalerr(err, s, l)
+			a.fatalerr(err, dest, l)
 			return
 		}
 		argMakers[key] = am
@@ -161,7 +161,7 @@ func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 	getKey, err := groupBy(a.keyColumns, cols)
 
 	if err != nil {
-		a.fatalerr(err, s, l)
+		a.fatalerr(err, dest, l)
 		return
 	}
 
@@ -170,13 +170,13 @@ func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 		var err error
 		keyMakers[key], err = maker(cols)
 		if err != nil {
-			a.fatalerr(err, s, l)
+			a.fatalerr(err, dest, l)
 			return
 		}
 	}
 
 	if err != nil {
-		a.fatalerr(err, s, l)
+		a.fatalerr(err, dest, l)
 		return
 	}
 

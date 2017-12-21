@@ -53,7 +53,7 @@ func (s *zoh) Reduce(arg []interface{}) error {
 			err     error
 		)
 		if s, ok := args[2].(string); !ok {
-			return fmt.Errorf("expected string for third argument but got %s", args[2])
+			return fmt.Errorf("expected string for third argument but got %T %s", args[2], args[2])
 		} else {
 			start, sFormat, err = parseTime(s)
 		}
@@ -61,7 +61,7 @@ func (s *zoh) Reduce(arg []interface{}) error {
 			return err
 		}
 		if f, ok := args[3].(string); !ok {
-			return fmt.Errorf("expected string for fourth argument but got %s", args[2])
+			return fmt.Errorf("expected string for fourth argument but got %T %s", args[3], args[3])
 		} else {
 			finish, fFormat, err = parseTime(f)
 		}
@@ -75,7 +75,6 @@ func (s *zoh) Reduce(arg []interface{}) error {
 		s.finish = finish
 		s.format = sFormat
 	}
-
 	//first argument should be time
 	var (
 		t   time.Time
@@ -85,12 +84,12 @@ func (s *zoh) Reduce(arg []interface{}) error {
 	)
 
 	if ss, ok := args[0].(string); !ok {
-		return fmt.Errorf("expected string for first argument but got %s", args[0])
+		return fmt.Errorf("expected string for first argument but got %T %s", args[0], args[0])
 	} else {
 		t, err = time.Parse(s.format, ss)
 	}
 	if err != nil {
-		return fmt.Errorf("expected string for first argument but got %v", args[0])
+		return fmt.Errorf("failed to parse time %v: %v", args[0], err)
 	}
 
 	//second argument should be value, and it should be float64
@@ -117,15 +116,15 @@ func (s *zoh) Return() *float64 {
 }
 
 func (s *zoh) Copy() Reducer {
-	var newStart time.Time
-	var newFinish time.Time
+	var newStart *time.Time
+	var newFinish *time.Time
 	if s.start != nil {
-		newStart = *s.start
+		newStart = &(*s.start)
 	}
 	if s.finish != nil {
-		newFinish = *s.finish
+		newFinish = &(*s.finish)
 	}
-	return &zoh{am: s.am, start: &newStart, finish: &newFinish, format: s.format}
+	return &zoh{am: s.am, start: newStart, finish: newFinish, format: s.format}
 }
 
 //ErrTimeseriesNoEarlierData is returned when trimming or resampling a timeseries when the desired start time is later than the

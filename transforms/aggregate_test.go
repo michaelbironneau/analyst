@@ -91,6 +91,42 @@ func TestSuperAggregate(t *testing.T) {
 
 }
 
+func TestFunctionParameters(t *testing.T) {
+	Convey("Given an aggregate that takes static parameters", t, func() {
+		s := `AGGREGATE ZOH(Time, Value, '2017-01-01T12:00:00Z', '2017-01-01T12:30:00Z') AS Val`
+		a, err := NewAggregate(s)
+		So(err, ShouldBeNil)
+		Convey("It should process messages correctly", func() {
+			in := engine.NewStream([]string{"time", "value"}, 100)
+			out := engine.NewStream(nil, 100)
+			l := engine.ConsoleLogger{}
+			st := engine.NewStopper()
+			a.SetName("Agg")
+			inChan := in.Chan("Agg")
+			inChan <- engine.Message{
+				Source:      "Upstream",
+				Destination: "Agg",
+				Data:        []interface{}{"2017-01-01T12:00:00Z", 0.0, "2017-01-01T12:00:00Z", "2017-01-01T12:30:00Z"},
+			}
+			inChan <- engine.Message{
+				Source:      "Upstream",
+				Destination: "Agg",
+				Data:        []interface{}{"2017-01-01T12:20:00Z", 3.0, "2017-01-01T12:00:00Z", "2017-01-01T12:30:00Z"},
+			}
+			close(in.Chan("Agg"))
+			a.Open(in, out, &l, st)
+			var count int
+			for msg := range out.Chan(engine.DestinationWildcard) {
+				So(out.Columns(), ShouldResemble, []string{"Val"})
+				count++
+				So(count, ShouldEqual, 1)
+				So(msg.Source, ShouldEqual, "Agg")
+				So(msg.Data, ShouldResemble, []interface{}{1.0})
+			}
+		})
+	})
+}
+
 func TestGroupByAggregate(t *testing.T) {
 	Convey("Given a valid group-by aggregate", t, func() {
 		s := `
