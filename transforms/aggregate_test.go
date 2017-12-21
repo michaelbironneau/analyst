@@ -2,8 +2,9 @@ package transforms
 
 import (
 	"github.com/alecthomas/participle"
-	"testing"
+	"github.com/michaelbironneau/analyst/engine"
 	. "github.com/smartystreets/goconvey/convey"
+	"testing"
 )
 
 func TestAggregateParsing(t *testing.T) {
@@ -26,4 +27,127 @@ func TestAggregateParsing(t *testing.T) {
 		So(a.GroupBy[0], ShouldEqual, "cde")
 
 	})
+}
+
+func TestFind(t *testing.T) {
+	Convey("Given a haystack", t, func() {
+		h := []string{"a", "B", "vvv"}
+		Convey("It should return the index of a contained needle", func() {
+			ix, ok := find(h, "vVv")
+			So(ok, ShouldBeTrue)
+			So(ix, ShouldEqual, 2)
+		})
+		Convey("It should return -1 index and not found if needle is not contained", func() {
+			ix, ok := find(h, "www")
+			So(ok, ShouldBeFalse)
+			So(ix, ShouldEqual, -1)
+		})
+	})
+}
+
+func TestSuperAggregate(t *testing.T) {
+	Convey("Given a superaggregate", t, func() {
+		s := `AGGREGATE SUM(A) As Val`
+		a, err := NewAggregate(s)
+		Convey("It should create the Transform", func() {
+			So(err, ShouldBeNil)
+			So(a.aliasOrder, ShouldResemble, []string{"Val"})
+			So(a.keyColumns, ShouldBeNil)
+			So(a.blank.aggregates["Val"], ShouldHaveSameTypeAs, &sum{})
+			So(a.blank.key, ShouldBeEmpty)
+		})
+		Convey("It should correctly generate the argument maps, and they should be case-insensitive", func() {
+			maker := a.argMaker["Val"]
+			argMap, err := maker([]string{"val", "A", "B"})
+			So(err, ShouldBeNil)
+			So(argMap([]interface{}{1, 2, 3}), ShouldResemble, []interface{}{2})
+		})
+		Convey("It should process messages correctly", func() {
+			in := engine.NewStream([]string{"val", "A", "B"}, 100)
+			out := engine.NewStream(nil, 100)
+			l := engine.ConsoleLogger{}
+			st := engine.NewStopper()
+			a.SetName("Agg")
+			for i := 0; i < 5; i++ {
+				var msg engine.Message
+				msg.Source = "Source"
+				msg.Destination = "Agg"
+				msg.Data = []interface{}{"HHH", i, i + 1}
+				in.Chan("Agg") <- msg
+			}
+			close(in.Chan("Agg"))
+			a.Open(in, out, &l, st)
+			var count int
+			for msg := range out.Chan(engine.DestinationWildcard) {
+				So(out.Columns(), ShouldResemble, []string{"Val"})
+				count++
+				So(count, ShouldEqual, 1)
+				So(msg.Source, ShouldEqual, "Agg")
+				So(msg.Data, ShouldResemble, []interface{}{10.0})
+			}
+
+		})
+	})
+
+}
+
+func TestGroupByAggregate(t *testing.T) {
+	Convey("Given a valid group-by aggregate", t, func() {
+		s := `
+			AGGREGATE SUM(A) As Val, "B"
+			GROUP BY B
+			`
+		a, err := NewAggregate(s)
+		Convey("It should create the Transform", func() {
+			So(err, ShouldBeNil)
+			So(a.aliasOrder, ShouldResemble, []string{"Val", "B"})
+			So(a.keyColumns, ShouldResemble, []string{"B"})
+			So(a.blank.aggregates["Val"], ShouldHaveSameTypeAs, &sum{})
+			So(a.blank.key, ShouldBeEmpty)
+		})
+		Convey("It should correctly generate the argument maps, and they should be case-insensitive", func() {
+			maker := a.argMaker["Val"]
+			argMap, err := maker([]string{"val", "A", "B"})
+			So(err, ShouldBeNil)
+			So(argMap([]interface{}{1, 2, 3}), ShouldResemble, []interface{}{2})
+		})
+		Convey("It should correctly generate the key map", func() {
+			maker := a.keyMaker["B"]
+			argMap, err := maker([]string{"val", "A", "B"})
+			So(err, ShouldBeNil)
+			So(argMap([]interface{}{1, 2, 3}), ShouldResemble, []interface{}{3})
+		})
+		Convey("It should process messages correctly", func() {
+			in := engine.NewStream([]string{"val", "A", "B"}, 100)
+			out := engine.NewStream(nil, 100)
+			l := engine.ConsoleLogger{}
+			st := engine.NewStopper()
+			a.SetName("Agg")
+			for i := 0; i < 5; i++ {
+				var msg engine.Message
+				msg.Source = "Source"
+				msg.Destination = "Agg"
+				msg.Data = []interface{}{"HHH", i, i % 2}
+				in.Chan("Agg") <- msg
+			}
+			close(in.Chan("Agg"))
+			a.Open(in, out, &l, st)
+			var count int
+			for msg := range out.Chan(engine.DestinationWildcard) {
+				if count == 0 {
+					So(out.Columns(), ShouldResemble, []string{"Val", "B"})
+				}
+				count++
+				So(msg.Source, ShouldEqual, "Agg")
+				if msg.Data[1].(int) == 0 {
+					So(msg.Data, ShouldResemble, []interface{}{6.0, 0})
+				} else {
+					So(msg.Data, ShouldResemble, []interface{}{4.0, 1})
+				}
+			}
+			So(count, ShouldEqual, 2)
+
+		})
+	})
+
 }

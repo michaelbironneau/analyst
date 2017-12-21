@@ -1,10 +1,10 @@
 package transforms
 
 import (
-	"github.com/alecthomas/participle/lexer"
 	"fmt"
-	"github.com/michaelbironneau/analyst/engine"
 	"github.com/alecthomas/participle"
+	"github.com/alecthomas/participle/lexer"
+	"github.com/michaelbironneau/analyst/engine"
 	"strings"
 	"time"
 )
@@ -21,18 +21,18 @@ var (
 		`|(?P<String>'[^']*'|"[^"]*")`+
 		`|(?P<Operators><>|!=|<=|>=|[-+*/%,.()=<>])`,
 	)), "Keyword"), "String")
-	Reducers = map[string]Reducer{}
+	Reducers = map[string]Reducer{"sum": &sum{}}
 )
 
 type FunctionArgument struct {
 	Column string   `@Ident`
-	String *string   `| @String`
+	String *string  `| @String`
 	Number *float64 `| @Number`
 }
 
 type FunctionApplication struct {
-	Function string    `@Ident "("`
-	Columns  []FunctionArgument  `@@ { "," @@ } ")"`
+	Function string             `@Ident "("`
+	Columns  []FunctionArgument `@@ { "," @@ } ")"`
 }
 
 type AggregateTerm struct {
@@ -41,38 +41,25 @@ type AggregateTerm struct {
 	//means that this is not currently possible as it will then fail
 	//to match Ident + "(" to a Function Application.
 	//https://github.com/alecthomas/participle/issues/3
-	Column   string               `(@String`
+	Column string `(@String`
 
 	Function *FunctionApplication `| @@)`
-	Alias    string     `["AS" @Ident]`
+	Alias    string               `["AS" @Ident]`
 }
 
 type Aggregate struct {
-	Select []AggregateTerm `"AGGREGATE" @@ { "," @@ }`
-	GroupBy []string       `["GROUP" "BY" @Ident { "," @Ident}]`
+	Select  []AggregateTerm `"AGGREGATE" @@ { "," @@ }`
+	GroupBy []string        `["GROUP" "BY" @Ident { "," @Ident}]`
 }
 
 //ArgumentMap is used to map the incoming engine.Message into
 //a slice of interface that is correct for a
 //Reducer.Reduce() method.
-type ArgumentMap func(args...interface{}) []interface{}
+type ArgumentMap func(args []interface{}) []interface{}
 
-//MapArguments is the default argument mapper. It selects the
-//arguments at the given indexes only ,so MapArguments(0,1,2)
-//will select the first 3 columns in that order.
-func MapArguments(indexes...int) ArgumentMap{
-	return func(args...interface{}) []interface{}{
-		var i []interface{}
-		for _, ix := range indexes {
-			i = append(i, args[ix])
-		}
-		return i
-	}
-}
-
-func groupBy(groupByColumns []string, actualColumns[]string) (func([]interface{}) string, error) {
+func groupBy(groupByColumns []string, actualColumns []string) (func([]interface{}) string, error) {
 	if groupByColumns == nil {
-		return func(i []interface{}) string {return NoGroupBy}, nil
+		return func(i []interface{}) string { return NoGroupBy }, nil
 	}
 	var indexes []int
 	for _, col := range groupByColumns {
@@ -94,26 +81,63 @@ func groupBy(groupByColumns []string, actualColumns[]string) (func([]interface{}
 
 }
 
-func digest(args ...interface{}) string {
-	return fmt.Sprintf("%v", args)
-}
-
 type Reducer interface {
-	ParameterLen() int               //ParameterLen returns the number of parameters the function takes (should be constant)
+	ParameterLen() int //ParameterLen returns the number of parameters the function takes (should be constant)
 	SetArgumentMap(ArgumentMap)
-	Reduce(arg ...interface{}) error
+	Reduce(arg []interface{}) error
 	Copy() Reducer //Returns a reducer with blank state
 	Return() float64
 }
 
+type sum struct {
+	result float64
+	am     ArgumentMap
+}
+
+func (s *sum) ParameterLen() int {
+	return 1
+}
+
+func (s *sum) SetArgumentMap(am ArgumentMap) {
+	s.am = am
+}
+
+func (s *sum) Reduce(arg []interface{}) error {
+	args := s.am(arg)
+	if len(args) != 1 {
+		return fmt.Errorf("SUM takes exactly 1 argument but %v were provided", len(args))
+	}
+	switch v := args[0].(type) {
+	case float64:
+		s.result += v
+	case int:
+		s.result += float64(v)
+	case int64:
+		s.result += float64(v)
+	case int32:
+		s.result += float64(v)
+	default:
+		return fmt.Errorf("SUM takes a single numerical argument, but %v was provided", args[0])
+	}
+	return nil
+}
+
+func (s *sum) Return() float64 {
+	return s.result
+}
+
+func (s *sum) Copy() Reducer {
+	return &sum{am: s.am}
+}
+
 type groupByRow struct {
-	key map[string]interface{} //map from column alias to value
-	aggregates map[string]Reducer //map from column alias to value
+	key        map[string]interface{} //map from column alias to value
+	aggregates map[string]Reducer     //map from column alias to value
 }
 
 func (gpr *groupByRow) Copy() *groupByRow {
 	var copy = groupByRow{
-		key: make(map[string]interface{}),
+		key:        make(map[string]interface{}),
 		aggregates: make(map[string]Reducer),
 	}
 	for k, v := range gpr.aggregates {
@@ -124,16 +148,17 @@ func (gpr *groupByRow) Copy() *groupByRow {
 
 type aggregate struct {
 	name       string
-	state      map[string]*groupByRow   //map from row key digest to entries
-	blank      groupByRow               //blank row to initialize new entries
-	aliasOrder []string                 //order of the columns/alias in the select statement
-	keyColumns []string                 //the input columns that make up the GROUP BY key
-	argMaker   map[string] func(cols []string) (ArgumentMap, error) //map from alias to arg maker
+	state      map[string]*groupByRow                              //map from row key digest to entries
+	blank      groupByRow                                          //blank row to initialize new entries
+	aliasOrder []string                                            //order of the columns/alias in the select statement
+	keyColumns []string                                            //the input columns that make up the GROUP BY key
+	argMaker   map[string]func(cols []string) (ArgumentMap, error) //map from alias to arg maker
+	keyMaker   map[string]func(cols []string) (ArgumentMap, error)
 }
 
 type columnIndex int
 
-func (a *aggregate) SetName(name string){
+func (a *aggregate) SetName(name string) {
 	a.name = name
 }
 
@@ -147,8 +172,7 @@ func (a *aggregate) fatalerr(err error, s engine.Stream, l engine.Logger) {
 	close(s.Chan(a.name))
 }
 
-
-func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, st engine.Stopper){
+func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, st engine.Stopper) {
 	cols := s.Columns()
 
 	if err := dest.SetColumns(a.name, a.aliasOrder); err != nil {
@@ -171,8 +195,6 @@ func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 		red.SetArgumentMap(argMakers[k])
 	}
 
-
-
 	inChan := s.Chan(a.name)
 	outChan := dest.Chan(a.name)
 
@@ -183,8 +205,23 @@ func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 		return
 	}
 
+	keyMakers := make(map[string]ArgumentMap)
+	for key, maker := range a.keyMaker {
+		var err error
+		keyMakers[key], err = maker(cols)
+		if err != nil {
+			a.fatalerr(err, s, l)
+			return
+		}
+	}
+
+	if err != nil {
+		a.fatalerr(err, s, l)
+		return
+	}
+
 	for msg := range inChan {
-		if st.Stopped(){
+		if st.Stopped() {
 			return
 		}
 		key := getKey(msg.Data)
@@ -196,28 +233,68 @@ func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 			a.state[key] = a.blank.Copy()
 			gbr = a.state[key]
 		}
-			for _, red := range gbr.aggregates {
-				if err := red.Reduce(msg.Data); err != nil {
-					a.fatalerr(err, s, l)
-					return
-				}
+		for _, red := range gbr.aggregates {
+			if err := red.Reduce(msg.Data); err != nil {
+				a.fatalerr(err, s, l)
+				return
 			}
+		}
+		for _, col := range a.keyColumns {
+			gbr.key[col] = keyMakers[col](msg.Data)[0]
+		}
+
 	}
 
-	//now get output from reducers and put ths into the output channel
+	//TODO: What if we need to sort the output?
+	for _, row := range a.state {
+		var msg engine.Message
+		var data []interface{}
+		msg.Source = a.name
+		msg.Destination = engine.DestinationWildcard
+		for _, col := range a.aliasOrder {
+			if g, ok := row.key[col]; ok {
+				data = append(data, g)
+				continue
+			}
+			if g, ok := row.aggregates[col]; ok {
+				data = append(data, g.Return())
+				continue
+			}
+			panic(fmt.Sprintf("column %s not found", col)) //should be unreachable
+		}
+		msg.Data = data
+		outChan <- msg
+	}
 	close(outChan)
-
 
 }
 
-
-func find(haystack []string, needle string) (int, bool){
+func find(haystack []string, needle string) (int, bool) {
 	for i := range haystack {
 		if strings.ToLower(haystack[i]) == strings.ToLower(needle) {
 			return i, true
 		}
 	}
 	return -1, false
+}
+
+func getKeyArgs(key string) func(cols []string) (ArgumentMap, error) {
+	return func(cols []string) (ArgumentMap, error) {
+		if cols == nil {
+			return func([]interface{}) []interface{} {
+				return nil
+			}, nil
+		}
+		index, ok := find(cols, key)
+
+		if !ok {
+			return nil, fmt.Errorf("column not found %s", key)
+		}
+
+		return func(msg []interface{}) []interface{} {
+			return []interface{}{msg[index]}
+		}, nil
+	}
 }
 
 //return a function that will generate the argument map at runtime given the columns.
@@ -247,14 +324,14 @@ func getFunctionArgs(a *Aggregate, fIx int) func(cols []string) (ArgumentMap, er
 		}
 
 		//dynamic params we work out at run-time.
-		return func(msg...interface{}) []interface{} {
-			var ret []interface{}
+		return func(msg []interface{}) []interface{} {
+			ret := make([]interface{}, len(params), len(params))
 			for i := range params {
-				switch v := params[i].(type){
+				switch v := params[i].(type) {
 				case columnIndex:
-					ret = append(ret, msg[v])
+					ret[i] = msg[v]
 				default:
-					ret = append(ret, v)
+					ret[i] = v
 				}
 			}
 			return ret
@@ -262,13 +339,13 @@ func getFunctionArgs(a *Aggregate, fIx int) func(cols []string) (ArgumentMap, er
 	}
 }
 
-func newAggregate(a *Aggregate) (*aggregate, error){
+func newAggregate(a *Aggregate) (*aggregate, error) {
 
 	var columnOrder []string
 	var aa aggregate
-	aa.argMaker = make(map[string] func(cols []string) (ArgumentMap, error))
+	aa.argMaker = make(map[string]func(cols []string) (ArgumentMap, error))
 	var blank = groupByRow{
-		key: make(map[string]interface{}),
+		key:        make(map[string]interface{}),
 		aggregates: make(map[string]Reducer),
 	}
 
@@ -287,7 +364,7 @@ func newAggregate(a *Aggregate) (*aggregate, error){
 		if term.Function != nil {
 			aa.argMaker[term.Alias] = getFunctionArgs(a, i)
 			var (
-				r Reducer
+				r  Reducer
 				ok bool
 			)
 			r, ok = Reducers[strings.ToLower(term.Function.Function)]
@@ -298,33 +375,39 @@ func newAggregate(a *Aggregate) (*aggregate, error){
 				return nil, fmt.Errorf("the reducer %s expects %v parameters but %v were provided", term.Function.Function, r.ParameterLen(), len(term.Function.Columns))
 			}
 			blank.aggregates[columnAlias] = r.Copy()
+		} else {
+			//check it is in group by
+			if _, ok := find(a.GroupBy, columnAlias); !ok {
+				return nil, fmt.Errorf("column %s not found in GROUP BY", columnAlias)
+			}
 		}
 	}
-
-
-
-
-
 
 	aa.aliasOrder = columnOrder
 	aa.blank = blank
 	aa.keyColumns = a.GroupBy
+	aa.state = make(map[string]*groupByRow)
+	aa.keyMaker = make(map[string]func(cols []string) (ArgumentMap, error))
+
+	for _, col := range aa.keyColumns {
+		aa.keyMaker[col] = getKeyArgs(col)
+	}
+
 	return &aa, nil
 }
 
- func NewAggregate(aqlBody string) (engine.Transform, error) {
-	 p, err := participle.Build(&Aggregate{}, aggregateLexer)
+func NewAggregate(aqlBody string) (*aggregate, error) {
+	p, err := participle.Build(&Aggregate{}, aggregateLexer)
 
-	 if err != nil {
-	 	panic(err)
-	 }
-	 var a Aggregate
-	 err = p.ParseString(aqlBody, &a)
+	if err != nil {
+		panic(err)
+	}
+	var a Aggregate
+	err = p.ParseString(aqlBody, &a)
 
-	 if err != nil {
-	 	return nil, err
-	 }
+	if err != nil {
+		return nil, err
+	}
 
-	 return newAggregate(&a)
- }
-
+	return newAggregate(&a)
+}
