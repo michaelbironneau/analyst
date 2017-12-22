@@ -408,6 +408,9 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 		if len(query.Sources) != 1 {
 			return fmt.Errorf("queries must have exactly one source but %s has %v", query.Name, len(query.Sources))
 		}
+		if query.Sources[0].Console {
+			return fmt.Errorf("console sources are not supported: %s", query.Name)
+		}
 		if query.Sources[0].Global {
 			g := engine.SQLSource{
 				Driver:           globalDbDriver,
@@ -778,6 +781,23 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 				}
 				continue
 			}
+			if dest.Console {
+				var d engine.Destination
+				var name string
+				if dest.Alias != nil {
+					name = *dest.Alias
+				} else {
+					name = engine.ConsoleDestinationName
+				}
+				d = &engine.ConsoleDestination{Name: name}
+				if err := dag.AddDestination(strings.ToLower(query.Name + destinationUniquifier + engine.ConsoleDestinationName), name, d); err != nil {
+					return err
+				}
+				if err := dag.Connect(strings.ToLower(query.Name), strings.ToLower(query.Name + destinationUniquifier + engine.ConsoleDestinationName)); err != nil {
+					return err
+				}
+				continue
+			}
 			if dest.Block != nil {
 				return fmt.Errorf("BLOCK destinations are not allowed because they create non-deterministic source orders: %s", query.Name)
 			}
@@ -816,6 +836,25 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 				}
 				continue
 			}
+
+			if dest.Console {
+				var d engine.Destination
+				var name string
+				if dest.Alias != nil {
+					name = *dest.Alias
+				} else {
+					name = engine.ConsoleDestinationName
+				}
+				d = &engine.ConsoleDestination{Name: name}
+				if err := dag.AddDestination(strings.ToLower(transform.Name + destinationUniquifier + engine.ConsoleDestinationName), name, d); err != nil {
+					return err
+				}
+				if err := dag.Connect(strings.ToLower(transform.Name), strings.ToLower(transform.Name + destinationUniquifier + engine.ConsoleDestinationName)); err != nil {
+					return err
+				}
+				continue
+			}
+
 			if dest.Database != nil && connMap[strings.ToLower(*dest.Database)] == nil {
 				return fmt.Errorf("destination %s not found for query %s", *dest.Database, transform.Name)
 			}
