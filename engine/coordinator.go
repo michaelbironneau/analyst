@@ -324,9 +324,9 @@ func (c *coordinator) AddConstraint(before, after string) error {
 
 	//Add additional constraint between 'before' destinations and 'after, to ensure
 	//that all destinations will complete before the 'after' node Open()s
-	for _, node := range c.g.From(c.nodeIds[before]){
+	for _, node := range c.g.From(c.nodeIds[before]) {
 		dnv := c.nodeIdsRev[node.ID()]
-		if dest, ok := dnv.(*destinationNode); ok{
+		if dest, ok := dnv.(*destinationNode); ok {
 			if _, ok := c.nodes[dest.name]; !ok {
 				panic(fmt.Errorf("destination constraint does not exist %s", dest.name))
 			}

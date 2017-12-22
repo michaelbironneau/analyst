@@ -55,3 +55,39 @@ func (s *stream) SetColumns(destination string, cols []string) error {
 func (s *stream) Chan(destination string) chan Message {
 	return s.msg
 }
+
+type sequencedStream struct {
+	s   Stream
+	seq Sequencer
+	in  map[string]chan Message
+	out map[string]chan Message
+}
+
+func NewSequencedStream(s Stream, sequence []string) Stream {
+	return &sequencedStream{s, NewSequencer(sequence), make(map[string]chan Message), make(map[string]chan Message)}
+}
+
+func (s *sequencedStream) Columns() []string {
+	return s.s.Columns()
+}
+
+func (s *sequencedStream) SetColumns(destination string, cols []string) error {
+	return s.s.SetColumns(destination, cols)
+}
+
+func (s *sequencedStream) Chan(dest string) chan Message {
+	s.in[dest] = s.Chan(dest)
+	s.out[dest] = make(chan Message, DefaultBufferSize)
+	go func(in chan Message, out chan Message) {
+		var source string
+		for msg := range in {
+			if source == "" {
+				source = msg.Source
+			}
+			s.seq.Wait(source)
+			out <- msg
+		}
+		s.seq.Done(source)
+	}(s.in[dest], s.out[dest])
+	return s.out[dest]
+}

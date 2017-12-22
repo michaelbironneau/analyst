@@ -85,6 +85,69 @@ func TestCompiler(t *testing.T) {
 	})
 }
 
+func TestCompilerWithBuiltinTransform(t *testing.T) {
+	script := `
+	GLOBAL 'Initialize' (
+		CREATE TABLE ContactStats (
+			id integer PRIMARY KEY,
+			first_name text NOT NULL,
+			number_of_calls real
+		);
+
+		INSERT INTO  ContactStats (id, first_name, number_of_calls) VALUES (1, 'Bob', 5);
+		INSERT INTO  ContactStats (id, first_name, number_of_calls) VALUES (2, 'Steven', 0);
+		INSERT INTO  ContactStats (id, first_name, number_of_calls) VALUES (3, 'Bob', 3);
+	);
+
+	GLOBAL 'Result' (
+		CREATE TABLE Result2 (
+			first_name text PRIMARY KEY,
+			calls real
+		);
+	)
+
+	QUERY 'Fetch' FROM GLOBAL (
+		SELECT * FROM ContactStats
+	)
+
+	TRANSFORM 'SumByFirstName' FROM BLOCK Fetch (
+		AGGREGATE "first_name", SUM(number_of_calls) As calls
+		GROUP BY first_name
+	) INTO GLOBAL WITH (Table = 'Result2');
+	`
+	Convey("Given a script that uses builtin transforms", t, func() {
+		l := &engine.ConsoleLogger{}
+		err := ExecuteString(script, nil, l)
+		So(err, ShouldBeNil)
+		db, err := sql.Open(globalDbDriver, globalDbConnString)
+		defer db.Close()
+		So(err, ShouldBeNil)
+		rows, err := db.Query("Select first_name, calls FROM Result2")
+		So(err, ShouldBeNil)
+		var res struct {
+			name string
+			sum  float64
+		}
+
+		defer rows.Close()
+		var count int
+		for rows.Next() {
+			count++
+			err := rows.Scan(&res.name, &res.sum)
+			So(err, ShouldBeNil)
+			if res.name == "Bob" {
+				So(res.sum, ShouldEqual, 8.0)
+			} else if res.name == "Steven" {
+				So(res.sum, ShouldEqual, 0.0)
+			} else {
+				So(res.name, ShouldBeIn, []string{"Bob", "Steven"}) //fails
+			}
+		}
+		So(count, ShouldEqual, 2)
+	})
+
+}
+
 func TestCompilerWithParameters(t *testing.T) {
 	script := `
 	DECLARE @Id;

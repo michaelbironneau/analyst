@@ -7,12 +7,13 @@ import (
 	"github.com/michaelbironneau/analyst/aql"
 	"github.com/michaelbironneau/analyst/engine"
 	"github.com/michaelbironneau/analyst/plugins"
+	builtins "github.com/michaelbironneau/analyst/transforms"
 	"strings"
 )
 
 const (
-	sourceUniquifier      = ": "
-	destinationUniquifier = ": "
+	sourceUniquifier      = " > "
+	destinationUniquifier = " > "
 	globalDbDriver        = "sqlite3"
 	globalDbConnString    = "file::memory:?mode=memory&cache=shared"
 	sqlSelectAll          = "SELECT * FROM %s"
@@ -178,13 +179,23 @@ func constraints(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 //  script transform -> SQL destination
 func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection) error {
 	for _, transform := range js.Transforms {
-		if !transform.Plugin {
-			return fmt.Errorf("%s: Only PLUGIN transformations are currently supported", transform.Name)
-		}
-		var plugin *plugins.Transform
 
-		//Create the plugin
-		plugin, err := addPlugin(js, dag, transform)
+		var (
+			plugin engine.SequenceableTransform
+			err    error
+		)
+
+		if !transform.Plugin {
+			plugin, err = builtins.Parse(transform.Content)
+			if err != nil {
+				return err
+			}
+			err = dag.AddTransform(strings.ToLower(transform.Name), strings.ToLower(transform.Name), plugin)
+			plugin.SetName(strings.ToLower(transform.Name))
+		} else {
+			//Create the plugin
+			plugin, err = addPlugin(js, dag, transform)
+		}
 
 		if err != nil {
 			return err
@@ -298,7 +309,7 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 	return nil
 }
 
-func sequenceSources(transform *plugins.Transform, block aql.Block, sourceSequence []string) error {
+func sequenceSources(transform engine.SequenceableTransform, block aql.Block, sourceSequence []string) error {
 	//Sequence sources, if required
 	var sequence bool
 
@@ -396,6 +407,9 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 	for _, query := range js.Queries {
 		if len(query.Sources) != 1 {
 			return fmt.Errorf("queries must have exactly one source but %s has %v", query.Name, len(query.Sources))
+		}
+		if query.Sources[0].Console {
+			return fmt.Errorf("console sources are not supported: %s", query.Name)
 		}
 		if query.Sources[0].Global {
 			g := engine.SQLSource{
@@ -767,6 +781,23 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 				}
 				continue
 			}
+			if dest.Console {
+				var d engine.Destination
+				var name string
+				if dest.Alias != nil {
+					name = *dest.Alias
+				} else {
+					name = engine.ConsoleDestinationName
+				}
+				d = &engine.ConsoleDestination{Name: name}
+				if err := dag.AddDestination(strings.ToLower(query.Name + destinationUniquifier + engine.ConsoleDestinationName), name, d); err != nil {
+					return err
+				}
+				if err := dag.Connect(strings.ToLower(query.Name), strings.ToLower(query.Name + destinationUniquifier + engine.ConsoleDestinationName)); err != nil {
+					return err
+				}
+				continue
+			}
 			if dest.Block != nil {
 				return fmt.Errorf("BLOCK destinations are not allowed because they create non-deterministic source orders: %s", query.Name)
 			}
@@ -805,6 +836,25 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 				}
 				continue
 			}
+
+			if dest.Console {
+				var d engine.Destination
+				var name string
+				if dest.Alias != nil {
+					name = *dest.Alias
+				} else {
+					name = engine.ConsoleDestinationName
+				}
+				d = &engine.ConsoleDestination{Name: name}
+				if err := dag.AddDestination(strings.ToLower(transform.Name + destinationUniquifier + engine.ConsoleDestinationName), name, d); err != nil {
+					return err
+				}
+				if err := dag.Connect(strings.ToLower(transform.Name), strings.ToLower(transform.Name + destinationUniquifier + engine.ConsoleDestinationName)); err != nil {
+					return err
+				}
+				continue
+			}
+
 			if dest.Database != nil && connMap[strings.ToLower(*dest.Database)] == nil {
 				return fmt.Errorf("destination %s not found for query %s", *dest.Database, transform.Name)
 			}
