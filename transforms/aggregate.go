@@ -123,13 +123,14 @@ func (a *aggregate) SetName(name string) {
 	a.name = name
 }
 
-func (a *aggregate) fatalerr(err error, s engine.Stream, l engine.Logger) {
+func (a *aggregate) fatalerr(err error, s engine.Stream, l engine.Logger, st engine.Stopper) {
 	l.Chan() <- engine.Event{
 		Level:   engine.Error,
 		Source:  a.name,
 		Time:    time.Now(),
 		Message: err.Error(),
 	}
+	st.Stop()
 	close(s.Chan(a.name))
 }
 
@@ -162,14 +163,14 @@ func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 			cols = s.Columns()
 
 			if err := dest.SetColumns(a.name, a.aliasOrder); err != nil {
-				a.fatalerr(err, dest, l)
+				a.fatalerr(err, dest, l, st)
 				return
 			}
 
 			for key, maker := range a.argMaker {
 				am, err := maker(cols)
 				if err != nil {
-					a.fatalerr(err, dest, l)
+					a.fatalerr(err, dest, l, st)
 					return
 				}
 				argMakers[key] = am
@@ -182,7 +183,7 @@ func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 			getKey, err = groupBy(a.keyColumns, cols)
 
 			if err != nil {
-				a.fatalerr(err, dest, l)
+				a.fatalerr(err, dest, l, st)
 				return
 			}
 
@@ -190,13 +191,13 @@ func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 				var err error
 				keyMakers[key], err = maker(cols)
 				if err != nil {
-					a.fatalerr(err, dest, l)
+					a.fatalerr(err, dest, l, st)
 					return
 				}
 			}
 
 			if err != nil {
-				a.fatalerr(err, dest, l)
+				a.fatalerr(err, dest, l, st)
 				return
 			}
 
@@ -212,7 +213,7 @@ func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 		}
 		for _, red := range gbr.aggregates {
 			if err := red.Reduce(msg.Data); err != nil {
-				a.fatalerr(err, s, l)
+				a.fatalerr(err, s, l, st)
 				return
 			}
 		}
