@@ -1,0 +1,27 @@
+GLOBAL 'CreateTables' (
+    CREATE TABLE Timeseries (
+        LoadId int not null,
+        Variable text not null,
+        Time  text not null,
+        Value real
+    );
+
+    INSERT INTO Timeseries (LoadId, Variable, Time, Value)
+     VALUES
+     (1, 'power', '2017-12-01T11:59:00Z', 10),
+     (1, 'power', '2017-12-01T12:13:01Z', 0),
+     (1, 'power', '2017-12-01T12:57:00Z', 1.1),
+     (2, 'power', '2017-12-01T11:52:00Z', 120),
+     (2, 'power', '2017-12-01T11:45:00Z', 100),
+     (3, 'power', '2017-12-01T12:33:00Z', 119),
+     (3, 'power', '2017-12-01T12:20:00Z', 50),
+     (3, 'power', '2017-12-01T11:59:00Z', 100),
+     (1, 'temperature', '2017-12-01T11:59:00Z', 129.5),
+     (1, 'temperature', '2017-12-01T12:13:01Z', 130.3);
+)
+
+TRANSFORM 'Resample' FROM GLOBAL (
+    AGGREGATE "LoadId", "Variable", ZOH(Time, Value, '{{ .Start }}', '{{ .Finish }}') As Value
+    GROUP BY LoadId, Variable
+) INTO CONSOLE
+    WITH (Table = 'Timeseries')

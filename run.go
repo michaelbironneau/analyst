@@ -14,7 +14,8 @@ func Run(c *cli.Context) error {
 		err  error
 	)
 	oString := c.String("params")
-	if len(opts) > 0 {
+
+	if len(oString) > 0 {
 		opts, err = aql.StrToOpts(oString)
 	}
 

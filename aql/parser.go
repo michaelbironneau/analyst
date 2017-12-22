@@ -145,21 +145,19 @@ func (opt Option) String() (string, bool) {
 //StrToOpts converts an option string of the form Key1:Val1,Key2:Val2
 //into a slice of Options.
 func StrToOpts(s string) ([]Option, error) {
-	var ret []Option
-	ss := strings.Split(s, ",")
-	for _, sss := range ss {
+	var (
+		ret []Option
+		cliOpts map[string]interface{}
+	)
+	err := json.Unmarshal([]byte(s), &cliOpts)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling JSON parameters: %v", err)
+	}
+
+	for k, v := range cliOpts {
 		var o Option
-		ssss := strings.Split(sss, ":")
-		if len(ssss) != 2 {
-			return nil, fmt.Errorf("expected key-value option pairs to be separated by ':': %s", sss)
-		}
-		o.Key = ssss[0]
-		var i interface{}
-		err := json.Unmarshal([]byte(ssss[1]), &i)
-		if err != nil {
-			return nil, fmt.Errorf("expected key-value option with the value either a JSON number of string type: %s", sss)
-		}
-		switch val := i.(type) {
+		o.Key = k
+		switch val := v.(type) {
 		case float64:
 			o.Value = &OptionValue{
 				Number: &val,
@@ -174,7 +172,7 @@ func StrToOpts(s string) ([]Option, error) {
 				Str: &val,
 			}
 		default:
-			return nil, fmt.Errorf("expected key-value option with the value either JSON number of string: %s", sss)
+			return nil, fmt.Errorf("expected key-value option with the value either JSON number of string: %v", v)
 		}
 		ret = append(ret, o)
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/michaelbironneau/analyst/plugins"
 	builtins "github.com/michaelbironneau/analyst/transforms"
 	"strings"
+	"time"
 )
 
 const (
@@ -19,7 +20,28 @@ const (
 	sqlSelectAll          = "SELECT * FROM %s"
 )
 
+func formatOptions(options []aql.Option) string {
+	var s []string
+	for _, opt := range options {
+		var ss string
+		ss = opt.Key + " -> "
+		if opt.Value.Str != nil {
+			ss += *opt.Value.Str
+		} else {
+			ss += fmt.Sprintf("%7.2f", *opt.Value.Number)
+		}
+		s = append(s, ss)
+	}
+	return fmt.Sprintf("%v", s)
+}
+
 func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, compileOnly bool) error {
+	logger.Chan() <- engine.Event {
+		Source: "Compiler",
+		Level: engine.Trace,
+		Time: time.Now(),
+		Message: fmt.Sprintf("Found globals %s", formatOptions(options)),
+	}
 	dag := engine.NewCoordinator(logger)
 	params := engine.NewParameterTable()
 	err := js.ResolveExternalContent()
