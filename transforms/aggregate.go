@@ -134,28 +134,15 @@ func (a *aggregate) fatalerr(err error, s engine.Stream, l engine.Logger) {
 }
 
 func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, st engine.Stopper) {
-	cols := s.Columns()
-
-	if err := dest.SetColumns(a.name, a.aliasOrder); err != nil {
-		a.fatalerr(err, dest, l)
-		return
-	}
-
-	var argMakers = make(map[string]ArgumentMap)
-
-	for key, maker := range a.argMaker {
-		am, err := maker(cols)
-		if err != nil {
-			a.fatalerr(err, dest, l)
-			return
-		}
-		argMakers[key] = am
-	}
-
-	for k, red := range a.blank.aggregates {
-		red.SetArgumentMap(argMakers[k])
-	}
-	var inChan chan engine.Message
+	var (
+		argMakers = make(map[string]ArgumentMap)
+		cols      []string
+		getKey    func([]interface{}) string
+		keyMakers = make(map[string]ArgumentMap)
+		inChan    chan engine.Message
+		outChan   chan engine.Message
+		err       error
+	)
 
 	if a.sourceSeq != nil {
 		seq := engine.NewSequencedStream(s, a.sourceSeq)
@@ -163,33 +150,56 @@ func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 	} else {
 		inChan = s.Chan(a.name)
 	}
-	outChan := dest.Chan(a.name)
+	outChan = dest.Chan(a.name)
 
-	getKey, err := groupBy(a.keyColumns, cols)
-
-	if err != nil {
-		a.fatalerr(err, dest, l)
-		return
-	}
-
-	keyMakers := make(map[string]ArgumentMap)
-	for key, maker := range a.keyMaker {
-		var err error
-		keyMakers[key], err = maker(cols)
-		if err != nil {
-			a.fatalerr(err, dest, l)
-			return
-		}
-	}
-
-	if err != nil {
-		a.fatalerr(err, dest, l)
-		return
-	}
-
+	var firstMessage = true
 	for msg := range inChan {
 		if st.Stopped() {
 			return
+		}
+		if firstMessage {
+			firstMessage = false
+			cols = s.Columns()
+
+			if err := dest.SetColumns(a.name, a.aliasOrder); err != nil {
+				a.fatalerr(err, dest, l)
+				return
+			}
+
+			for key, maker := range a.argMaker {
+				am, err := maker(cols)
+				if err != nil {
+					a.fatalerr(err, dest, l)
+					return
+				}
+				argMakers[key] = am
+			}
+
+			for k, red := range a.blank.aggregates {
+				red.SetArgumentMap(argMakers[k])
+			}
+
+			getKey, err = groupBy(a.keyColumns, cols)
+
+			if err != nil {
+				a.fatalerr(err, dest, l)
+				return
+			}
+
+			for key, maker := range a.keyMaker {
+				var err error
+				keyMakers[key], err = maker(cols)
+				if err != nil {
+					a.fatalerr(err, dest, l)
+					return
+				}
+			}
+
+			if err != nil {
+				a.fatalerr(err, dest, l)
+				return
+			}
+
 		}
 		key := getKey(msg.Data)
 		var gbr *groupByRow

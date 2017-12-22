@@ -100,7 +100,7 @@ func TestCompilerWithBuiltinTransform(t *testing.T) {
 	);
 
 	GLOBAL 'Result' (
-		CREATE TABLE Result (
+		CREATE TABLE Result2 (
 			first_name text PRIMARY KEY,
 			calls real
 		);
@@ -113,7 +113,7 @@ func TestCompilerWithBuiltinTransform(t *testing.T) {
 	TRANSFORM 'SumByFirstName' FROM BLOCK Fetch (
 		AGGREGATE "first_name", SUM(number_of_calls) As calls
 		GROUP BY first_name
-	) INTO GLOBAL WITH (Table = 'Result');
+	) INTO GLOBAL WITH (Table = 'Result2');
 	`
 	Convey("Given a script that uses builtin transforms", t, func() {
 		l := &engine.ConsoleLogger{}
@@ -122,7 +122,7 @@ func TestCompilerWithBuiltinTransform(t *testing.T) {
 		db, err := sql.Open(globalDbDriver, globalDbConnString)
 		defer db.Close()
 		So(err, ShouldBeNil)
-		rows, err := db.Query("Select * FROM Result")
+		rows, err := db.Query("Select first_name, calls FROM Result2")
 		So(err, ShouldBeNil)
 		var res struct {
 			name string
@@ -130,8 +130,10 @@ func TestCompilerWithBuiltinTransform(t *testing.T) {
 		}
 
 		defer rows.Close()
+		var count int
 		for rows.Next() {
-			err := rows.Scan(&res)
+			count++
+			err := rows.Scan(&res.name, &res.sum)
 			So(err, ShouldBeNil)
 			if res.name == "Bob" {
 				So(res.sum, ShouldEqual, 8.0)
@@ -141,6 +143,7 @@ func TestCompilerWithBuiltinTransform(t *testing.T) {
 				So(res.name, ShouldBeIn, []string{"Bob", "Steven"}) //fails
 			}
 		}
+		So(count, ShouldEqual, 2)
 	})
 
 }

@@ -191,6 +191,7 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 				return err
 			}
 			err = dag.AddTransform(strings.ToLower(transform.Name), strings.ToLower(transform.Name), plugin)
+			plugin.SetName(strings.ToLower(transform.Name))
 		} else {
 			//Create the plugin
 			plugin, err = addPlugin(js, dag, transform)
