@@ -74,6 +74,15 @@ func (sq *SQLSource) parameters() ([]interface{}, error) {
 	return params, nil
 }
 
+func (sq *SQLSource) log(l Logger, level LogLevel, msg string) {
+	l.Chan() <- Event{
+		Time:    time.Now(),
+		Source:  sq.Name,
+		Level:   level,
+		Message: msg,
+	}
+}
+
 func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 	if sq.db == nil {
 		err := sq.connect()
@@ -82,12 +91,17 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 			return
 		}
 	}
+	sq.log(l, Info, "SQL source opened")
 	params, err := sq.parameters()
 	if err != nil {
 		sq.fatalerr(err, s, l)
 		return
 	}
+	start := time.Now()
+	sq.log(l, Trace, fmt.Sprintf("Query: %s", sq.Query))
+	sq.log(l, Trace, fmt.Sprintf("Query Parameters: %v", params))
 	r, err := sq.db.Query(sq.Query, params...)
+	sq.log(l, Info, fmt.Sprintf("Query took %7.2f seconds", time.Now().Sub(start).Seconds()))
 	if err != nil {
 		sq.fatalerr(err, s, l)
 		return
@@ -99,15 +113,12 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 		return
 	}
 	sq.columns = cols
+	sq.log(l, Trace, fmt.Sprintf("Found columns %v", cols))
 	s.SetColumns(DestinationWildcard, cols)
-	l.Chan() <- Event{
-		Source:  sq.Name,
-		Level:   Trace,
-		Time:    time.Now(),
-		Message: "SQL source opened",
-	}
+
 	for r.Next() {
 		if st.Stopped() {
+			sq.log(l, Warning, fmt.Sprintf("SQL source aborted"))
 			close(s.Chan(sq.outgoingName))
 			return
 		}
@@ -119,8 +130,11 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 			sq.fatalerr(err, s, l)
 			return
 		}
+		sq.log(l, Trace, fmt.Sprintf("Row %v", rr))
 		s.Chan(sq.outgoingName) <- Message{Source: sq.outgoingName, Data: rr}
 	}
+
+	sq.log(l, Info, fmt.Sprintf("SQL source closed"))
 	close(s.Chan(sq.outgoingName))
 }
 

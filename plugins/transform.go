@@ -5,6 +5,7 @@ import (
 	"github.com/michaelbironneau/analyst/engine"
 	"sync"
 	"time"
+	"fmt"
 )
 
 //Transform is the default implementation of a Transform plugin
@@ -98,9 +99,18 @@ func (d *Transform) Sequence(sourceSeq []string) {
 	d.l.Unlock()
 }
 
+func (d *Transform) log(l engine.Logger, level engine.LogLevel, msg string){
+	l.Chan() <- engine.Event {
+		Source: d.Alias,
+		Level: level,
+		Time: time.Now(),
+		Message: msg,
+	}
+}
+
 func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, st engine.Stopper) {
 	outChan := dest.Chan(d.Alias)
-
+	d.log(l, engine.Info, "Transform plugin open")
 	//For later cleanup of the plugin - see note below
 	d.wg.Add(1)
 
@@ -117,8 +127,12 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 		//but only after the others have finished.
 		go func() {
 			d.wg.Wait()
+			d.log(l, engine.Info, "Transform plugin closed")
 			close(outChan)
-			d.Plugin.Close()
+			err := d.Plugin.Close()
+			if err != nil {
+				d.log(l, engine.Warning, fmt.Sprintf("Failed to close plugin: %v", err))
+			}
 
 		}()
 	}
@@ -136,12 +150,14 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 		d.fatalerr(err, s, l)
 		return
 	}
-
+	d.log(l, engine.Trace, "Set input columns")
 	cols, err := d.Plugin.GetOutputColumns()
+
 	if err != nil {
 		d.fatalerr(err, s, l)
 		return
 	}
+	d.log(l, engine.Trace, fmt.Sprintf("Found output columns %v", cols))
 	for destName, cs := range cols {
 		if err := dest.SetColumns(destName, cs); err != nil {
 			d.fatalerr(err, s, l)
@@ -152,22 +168,19 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 	logChan := l.Chan()
 	msgChan := s.Chan(d.Alias)
 
-	logChan <- engine.Event{
-		Level:   engine.Trace,
-		Source:  d.Alias,
-		Message: "TransformPlugin plugin opened",
-		Time:    time.Now(),
-	}
 	var seqTask string
 	for msg := range msgChan {
 		if st.Stopped() {
+			d.log(l, engine.Warning, "Transform plugin aborted")
 			return
 		}
 		if d.s != nil {
 			seqTask = msg.Source
+			d.log(l, engine.Trace, "Source sequence - waiting")
 			d.s.Wait(seqTask)
+			d.log(l, engine.Trace, "Source sequence - released")
 		}
-
+		d.log(l, engine.Trace, fmt.Sprintf("Row %v", msg.Data))
 		//TODO: Buffering
 		rows, logs, err := d.Plugin.Send([]InputRow{InputRow{Source: msg.Source, Data: msg.Data}})
 
@@ -210,7 +223,10 @@ func (d *Transform) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 		}
 	}
 	if d.s != nil {
+		d.log(l, engine.Trace, "Source sequence - releasing next source")
 		d.s.Done(seqTask)
 	}
+
+	d.log(l, engine.Info, "Transform plugin closed")
 
 }

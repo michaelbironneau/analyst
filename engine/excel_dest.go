@@ -37,6 +37,15 @@ func (ed *ExcelDestination) Ping() error {
 	return nil
 }
 
+func (ed *ExcelDestination) log(l Logger, level LogLevel, msg string) {
+	l.Chan() <- Event{
+		Time:    time.Now(),
+		Source:  ed.Name,
+		Message: msg,
+		Level:   level,
+	}
+}
+
 func (ed *ExcelDestination) fatalerr(err error, st Stream, l Logger) {
 	l.Chan() <- Event{
 		Level:   Error,
@@ -73,22 +82,22 @@ func (ed *ExcelDestination) Open(s Stream, l Logger, st Stopper) {
 			}
 		})
 	}
-
-	l.Chan() <- Event{
-		Level:   Trace,
-		Time:    time.Now(),
-		Message: "Excel destination opened",
-	}
+	ed.log(l, Info, "Excel destination opened")
 	var (
 		colMappers []func([]interface{}) interface{}
 	)
 
 	ed.posX = ed.Range.X1
 	ed.posY = ed.Range.Y1
+	var counter int
 	for msg := range s.Chan(ed.Alias) {
+		counter++
+		ed.log(l, Trace, fmt.Sprintf("Found columns %v", s.Columns()))
 		if st.Stopped() {
+			ed.log(l, Warning, "Excel destination aborted")
 			return
 		}
+		ed.log(l, Trace, fmt.Sprintf("Row %v", msg.Data))
 		if colMappers == nil {
 			for i := range ed.Cols {
 				cm, err := getValue(s.Columns(), ed.Cols[i])
@@ -152,4 +161,6 @@ func (ed *ExcelDestination) Open(s Stream, l Logger, st Stopper) {
 			ed.fatalerr(fmt.Errorf("error saving file %v", err), s, l)
 		}
 	})
+
+	ed.log(l, Info, "Excel destination closed")
 }

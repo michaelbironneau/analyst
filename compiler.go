@@ -80,6 +80,7 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 	if compileOnly {
 		return nil
 	}
+
 	return dag.Execute()
 }
 
@@ -230,6 +231,7 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 
 			if source.Global {
 				g := engine.SQLSource{
+					Name:             strings.ToLower(transform.Name) + sourceUniquifier + connectionAlias,
 					Driver:           globalDbDriver,
 					ConnectionString: globalDbConnString,
 					Query:            fmt.Sprintf(sqlSelectAll, sourceTable),
@@ -266,6 +268,7 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 				}
 
 				s := engine.SQLSource{
+					Name:             strings.ToLower(transform.Name) + sourceUniquifier + connectionAlias,
 					Driver:           conn.Driver,
 					ConnectionString: conn.ConnectionString,
 					Query:            fmt.Sprintf(sqlSelectAll, sourceTable),
@@ -413,6 +416,7 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 		}
 		if query.Sources[0].Global {
 			g := engine.SQLSource{
+				Name:             query.Name,
 				Driver:           globalDbDriver,
 				ConnectionString: globalDbConnString,
 				Query:            query.Content,
@@ -433,6 +437,7 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 		}
 		conn := connMap[strings.ToLower(*query.Sources[0].Database)]
 		s := engine.SQLSource{
+			Name:             query.Name,
 			Driver:           conn.Driver,
 			ConnectionString: conn.ConnectionString,
 			Query:            query.Content,
@@ -790,10 +795,10 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 					name = engine.ConsoleDestinationName
 				}
 				d = &engine.ConsoleDestination{Name: name}
-				if err := dag.AddDestination(strings.ToLower(query.Name + destinationUniquifier + engine.ConsoleDestinationName), name, d); err != nil {
+				if err := dag.AddDestination(strings.ToLower(query.Name+destinationUniquifier+engine.ConsoleDestinationName), name, d); err != nil {
 					return err
 				}
-				if err := dag.Connect(strings.ToLower(query.Name), strings.ToLower(query.Name + destinationUniquifier + engine.ConsoleDestinationName)); err != nil {
+				if err := dag.Connect(strings.ToLower(query.Name), strings.ToLower(query.Name+destinationUniquifier+engine.ConsoleDestinationName)); err != nil {
 					return err
 				}
 				continue
@@ -846,10 +851,10 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 					name = engine.ConsoleDestinationName
 				}
 				d = &engine.ConsoleDestination{Name: name}
-				if err := dag.AddDestination(strings.ToLower(transform.Name + destinationUniquifier + engine.ConsoleDestinationName), name, d); err != nil {
+				if err := dag.AddDestination(strings.ToLower(transform.Name+destinationUniquifier+engine.ConsoleDestinationName), name, d); err != nil {
 					return err
 				}
-				if err := dag.Connect(strings.ToLower(transform.Name), strings.ToLower(transform.Name + destinationUniquifier + engine.ConsoleDestinationName)); err != nil {
+				if err := dag.Connect(strings.ToLower(transform.Name), strings.ToLower(transform.Name+destinationUniquifier+engine.ConsoleDestinationName)); err != nil {
 					return err
 				}
 				continue

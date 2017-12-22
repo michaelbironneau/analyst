@@ -35,7 +35,11 @@ func main() {
 				},
 				cli.BoolFlag{
 					Name:  "v",
-					Usage: "verbose mode (display running time of queries)",
+					Usage: "verbose mode (display INFO events)",
+				},
+				cli.BoolFlag{
+					Name:  "vv",
+					Usage: "super-verbose mode (display TRACE events)",
 				},
 			},
 		},

@@ -51,6 +51,15 @@ func (sq *SQLDestination) fatalerr(err error, l Logger) {
 	}
 }
 
+func (sq *SQLDestination) log(l Logger, level LogLevel, msg string) {
+	l.Chan() <- Event{
+		Time:    time.Now(),
+		Source:  sq.Name,
+		Level:   level,
+		Message: msg,
+	}
+}
+
 func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 	if sq.db == nil {
 		err := sq.connect()
@@ -59,26 +68,30 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 			return
 		}
 	}
+	sq.log(l, Info, "SQL destination opened")
 
 	tx, err := sq.db.Begin()
+	sq.log(l, Trace, "Initiated transaction")
 	if err != nil {
 		sq.fatalerr(err, l)
 		return
 	}
-	l.Chan() <- Event{
-		Source:  sq.Name,
-		Level:   Trace,
-		Time:    time.Now(),
-		Message: "SQL destination opened",
-	}
+
 	var (
 		stmt *sql.Stmt
 	)
 	for msg := range s.Chan(sq.Alias) {
 		if st.Stopped() {
-			tx.Rollback()
+			sq.log(l, Warning, "SQL source aborted, rollin back transaction")
+			err := tx.Rollback()
+			if err == nil {
+				sq.log(l, Info, "Transaction rolled back")
+			} else {
+				sq.log(l, Error, fmt.Sprintf("Failed to roll back transaction: %v", err))
+			}
 			return
 		}
+		sq.log(l, Trace, fmt.Sprintf("Row %v", msg.Data))
 		if len(s.Columns()) != len(msg.Data) {
 			sq.fatalerr(fmt.Errorf("expected %v columns but got %v", len(s.Columns()), len(msg.Data)), l)
 			tx.Rollback() //discard error - best effort attempt
@@ -86,6 +99,7 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 		}
 		if stmt == nil {
 			sq.columns = s.Columns()
+			sq.log(l, Trace, fmt.Sprintf("Found columns %v", sq.columns))
 			insertQuery := sq.prepare(s, msg.Data)
 			stmt, err = tx.Prepare(insertQuery)
 			if err != nil {
@@ -101,6 +115,7 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 			return
 		}
 	}
+	sq.log(l, Info, "Done - committing transaction")
 	err = tx.Commit()
 	if err != nil {
 		sq.fatalerr(err, l)

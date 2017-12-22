@@ -2,8 +2,8 @@ package engine
 
 import (
 	"fmt"
-	"time"
 	colors "github.com/logrusorgru/aurora"
+	"time"
 )
 
 type LogLevel int
@@ -15,18 +15,20 @@ const (
 	Error
 )
 
+const timeFormat = "15:04:05"
+
 var eventTypeMap = map[LogLevel]string{
-	Trace: "[TRACE]",
-	Info: "[INFO]",
+	Trace:   "[TRACE]",
+	Info:    "[INFO]",
 	Warning: "[WARNING]",
-	Error: "[ERROR]",
+	Error:   "[ERROR]",
 }
 
 var eventTypeColors = map[LogLevel]func(interface{}) colors.Value{
-	Trace: colors.Gray,
-	Info:  colors.Cyan,
+	Trace:   colors.Gray,
+	Info:    colors.Cyan,
 	Warning: colors.Brown,
-	Error: colors.Red,
+	Error:   colors.Red,
 }
 
 type Event struct {
@@ -40,14 +42,18 @@ type Logger interface {
 	Chan() chan<- Event
 }
 
-type ConsoleLogger struct{}
+type ConsoleLogger struct {
+	MinLevel LogLevel
+}
 
 func (cl *ConsoleLogger) Chan() chan<- Event {
 
 	ch := make(chan Event, DefaultBufferSize)
 	go func() {
 		for event := range ch {
-			fmt.Println(eventTypeColors[event.Level](eventTypeMap[event.Level]), "-", event.Time.Format(time.Kitchen), "(" + event.Source + ")", event.Message)
+			if event.Level >= cl.MinLevel {
+				fmt.Println(eventTypeColors[event.Level](eventTypeMap[event.Level]), event.Time.Format(timeFormat), "- ("+event.Source+")", event.Message)
+			}
 		}
 	}()
 	return ch

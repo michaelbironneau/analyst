@@ -2,6 +2,7 @@ package engine
 
 import (
 	"errors"
+	"fmt"
 	xlsx "github.com/360EntSecGroup-Skylar/excelize"
 	"os"
 	"strconv"
@@ -69,6 +70,15 @@ func (e *excelFileManager) Register(filename string, create bool) error {
 	return nil
 }
 
+func (e *ExcelSource) log(l Logger, level LogLevel, msg string) {
+	l.Chan() <- Event{
+		Source:  e.Name,
+		Level:   level,
+		Time:    time.Now(),
+		Message: msg,
+	}
+}
+
 //Use applies the given func to the excel file, holding a lock while it does.
 func (e *excelFileManager) Use(filename string, f func(*xlsx.File)) {
 	e.RLock()
@@ -134,38 +144,33 @@ func (s *ExcelSource) fatalerr(err error, st Stream, l Logger) {
 	close(st.Chan(s.outgoingName))
 }
 
-func (s *ExcelSource) Open(dest Stream, logger Logger, stop Stopper) {
+func (s *ExcelSource) Open(dest Stream, l Logger, stop Stopper) {
 	err := fileManager.Register(s.Filename, false)
 	if err != nil {
-		s.fatalerr(err, dest, logger)
+		s.fatalerr(err, dest, l)
 		return
 	}
-	logger.Chan() <- Event{
-		Level:   Trace,
-		Time:    time.Now(),
-		Message: "Excel source opened",
-	}
+	s.log(l, Info, "Excel source opened")
 	s.posX = s.Range.X1
 	s.posY = s.Range.Y1
 	if s.RangeIncludesColumns {
 		s.Cols = s.scanColumns()
-		logger.Chan() <- Event{
-			Level:   Trace,
-			Time:    time.Now(),
-			Message: "Columns scanned",
-		}
+		s.log(l, Trace, fmt.Sprintf("Scanned columns %v", s.Cols))
+
 		//set position to first cell in second row of range
 		s.posY++
 		s.posX = s.Range.X1
 	} else if s.Cols == nil {
-		s.fatalerr(ErrColumnsNotSpecified, dest, logger)
+		s.fatalerr(ErrColumnsNotSpecified, dest, l)
 		return
 	}
 
 	dest.SetColumns(DestinationWildcard, s.Cols)
 	c := dest.Chan(s.outgoingName)
+	var counter int
 	for {
 		if stop.Stopped() {
+			s.log(l, Warning, "Excel source aborted")
 			break
 		}
 		var msg []interface{}
@@ -178,6 +183,8 @@ func (s *ExcelSource) Open(dest Stream, logger Logger, stop Stopper) {
 			})
 		}
 		if nonEmptyRow || !s.Range.Y2.N {
+			s.log(l, Trace, fmt.Sprintf("Row %v", msg))
+			counter++
 			c <- Message{Source: s.outgoingName, Data: msg}
 		}
 
@@ -189,6 +196,8 @@ func (s *ExcelSource) Open(dest Stream, logger Logger, stop Stopper) {
 			break //break on first out-of-range row or empty row (if range is dynamic)
 		}
 	}
+	s.log(l, Info, fmt.Sprintf("Emitted %v rows", counter))
+	s.log(l, Info, "Excel source closed")
 	close(c)
 }
 
