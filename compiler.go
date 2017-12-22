@@ -7,6 +7,7 @@ import (
 	"github.com/michaelbironneau/analyst/aql"
 	"github.com/michaelbironneau/analyst/engine"
 	"github.com/michaelbironneau/analyst/plugins"
+	builtins "github.com/michaelbironneau/analyst/transforms"
 	"strings"
 )
 
@@ -178,13 +179,22 @@ func constraints(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 //  script transform -> SQL destination
 func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection) error {
 	for _, transform := range js.Transforms {
-		if !transform.Plugin {
-			return fmt.Errorf("%s: Only PLUGIN transformations are currently supported", transform.Name)
-		}
-		var plugin *plugins.Transform
 
-		//Create the plugin
-		plugin, err := addPlugin(js, dag, transform)
+		var (
+			plugin engine.SequenceableTransform
+			err    error
+		)
+
+		if !transform.Plugin {
+			plugin, err = builtins.Parse(transform.Content)
+			if err != nil {
+				return err
+			}
+			err = dag.AddTransform(strings.ToLower(transform.Name), strings.ToLower(transform.Name), plugin)
+		} else {
+			//Create the plugin
+			plugin, err = addPlugin(js, dag, transform)
+		}
 
 		if err != nil {
 			return err
@@ -298,7 +308,7 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 	return nil
 }
 
-func sequenceSources(transform *plugins.Transform, block aql.Block, sourceSequence []string) error {
+func sequenceSources(transform engine.SequenceableTransform, block aql.Block, sourceSequence []string) error {
 	//Sequence sources, if required
 	var sequence bool
 

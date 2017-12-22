@@ -13,6 +13,10 @@ type Sequencer interface {
 	Done(task string)
 }
 
+type Sequenceable interface {
+	Sequence(seq []string)
+}
+
 //sequencer is the default implementation of Sequencer
 type sequencer struct {
 	tasks map[string]int

@@ -114,6 +114,7 @@ type aggregate struct {
 	keyColumns []string                                            //the input columns that make up the GROUP BY key
 	argMaker   map[string]func(cols []string) (ArgumentMap, error) //map from alias to arg maker
 	keyMaker   map[string]func(cols []string) (ArgumentMap, error)
+	sourceSeq  []string
 }
 
 type columnIndex int
@@ -154,8 +155,14 @@ func (a *aggregate) Open(s engine.Stream, dest engine.Stream, l engine.Logger, s
 	for k, red := range a.blank.aggregates {
 		red.SetArgumentMap(argMakers[k])
 	}
+	var inChan chan engine.Message
 
-	inChan := s.Chan(a.name)
+	if a.sourceSeq != nil {
+		seq := engine.NewSequencedStream(s, a.sourceSeq)
+		inChan = seq.Chan(a.name)
+	} else {
+		inChan = s.Chan(a.name)
+	}
 	outChan := dest.Chan(a.name)
 
 	getKey, err := groupBy(a.keyColumns, cols)
@@ -305,6 +312,10 @@ func getFunctionArgs(a *Aggregate, fIx int) func(cols []string) (ArgumentMap, er
 	}
 }
 
+func (a *aggregate) Sequence(seq []string) {
+	a.sourceSeq = seq
+}
+
 func newAggregate(a *Aggregate) (*aggregate, error) {
 
 	var columnOrder []string
@@ -354,7 +365,6 @@ func newAggregate(a *Aggregate) (*aggregate, error) {
 	aa.keyColumns = a.GroupBy
 	aa.state = make(map[string]*groupByRow)
 	aa.keyMaker = make(map[string]func(cols []string) (ArgumentMap, error))
-
 	for _, col := range aa.keyColumns {
 		aa.keyMaker[col] = getKeyArgs(col)
 	}
@@ -376,4 +386,8 @@ func NewAggregate(aqlBody string) (*aggregate, error) {
 	}
 
 	return newAggregate(&a)
+}
+
+func aggregateInitializer(aqlBody string) (engine.SequenceableTransform, error) {
+	return NewAggregate(aqlBody)
 }

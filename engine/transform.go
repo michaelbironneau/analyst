@@ -16,6 +16,11 @@ type Transform interface {
 	Open(source Stream, dest Stream, logger Logger, stop Stopper)
 }
 
+type SequenceableTransform interface {
+	Transform
+	Sequenceable
+}
+
 //Condition is a func that returns true if the message passes the test and false otherwise.
 type Condition func([]interface{}) bool
 
