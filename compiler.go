@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	sourceUniquifier      = ": "
-	destinationUniquifier = ": "
+	sourceUniquifier      = " > "
+	destinationUniquifier = " > "
 	globalDbDriver        = "sqlite3"
 	globalDbConnString    = "file::memory:?mode=memory&cache=shared"
 	sqlSelectAll          = "SELECT * FROM %s"
