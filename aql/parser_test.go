@@ -447,6 +447,19 @@ func TestVariables(t *testing.T) {
 
 }
 
+func TestGlobalOptions(t *testing.T){
+	Convey("Given a script that declares global options", t, func(){
+		s := "SET Opt1 = 1.1"
+		Convey("It should be correctly parsed", func(){
+			js, err := ParseString(s)
+			So(err, ShouldBeNil)
+			So(js.GlobalOptions, ShouldHaveLength, 1)
+			So(js.GlobalOptions[0].Key, ShouldEqual, "Opt1")
+			So(*js.GlobalOptions[0].Value.Number, ShouldEqual, 1.1)
+		})
+	})
+}
+
 func TestConnection(t *testing.T) {
 	parser, err := participle.Build(&UnparsedConnection{}, &definition{})
 	if err != nil {

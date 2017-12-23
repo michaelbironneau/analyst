@@ -23,6 +23,11 @@ type Block interface {
 	GetOptions() []Option
 }
 
+type GlobalOption struct {
+	Key string         `SET @IDENT '='`
+	Value *OptionValue `@@`
+}
+
 type OptionValue struct {
 	Str    *string  ` @QUOTED_STRING`
 	Number *float64 `| @NUMBER`
@@ -130,6 +135,7 @@ type JobScript struct {
 	Includes     []Include            `| @@ `
 	Tests        []Test               `| @@ `
 	Globals      []Global             `| @@ `
+	GlobalOptions []GlobalOption       `| @@ `
 	Transforms   []Transform          ` | @@ }`
 }
 

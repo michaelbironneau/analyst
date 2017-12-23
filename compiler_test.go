@@ -113,7 +113,7 @@ func TestCompilerWithBuiltinTransform(t *testing.T) {
 	TRANSFORM 'SumByFirstName' FROM BLOCK Fetch (
 		AGGREGATE "first_name", SUM(number_of_calls) As calls
 		GROUP BY first_name
-	) INTO GLOBAL WITH (Table = 'Result2');
+	) INTO GLOBAL WITH (Table = 'Result2')
 	`
 	Convey("Given a script that uses builtin transforms", t, func() {
 		l := &engine.ConsoleLogger{}

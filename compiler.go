@@ -36,6 +36,7 @@ func formatOptions(options []aql.Option) string {
 }
 
 func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, compileOnly bool) error {
+	options = mergeOptions(js, options)
 	logger.Chan() <- engine.Event {
 		Source: "Compiler",
 		Level: engine.Trace,
@@ -104,6 +105,37 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 	}
 
 	return dag.Execute()
+}
+
+//mergeOptions merges the CLI options and the global options in the job script.
+//The options in the job script override the CLI options with the same name.
+func mergeOptions(js *aql.JobScript, options []aql.Option) []aql.Option {
+
+	if js.GlobalOptions == nil {
+		return options
+	}
+
+	opts := make(map[string]bool)
+	for _, opt := range js.GlobalOptions {
+		opts[strings.ToLower(opt.Key)] = true
+	}
+
+	var ret []aql.Option
+	for _, opt := range options {
+		if opts[strings.ToLower(opt.Key)] {
+			continue //override the CLI option with the global one
+		}
+		ret = append(ret, opt)
+	}
+
+	for _, opt := range js.GlobalOptions {
+		var thisOpt aql.Option
+		thisOpt.Key = opt.Key
+		thisOpt.Value = opt.Value
+		ret = append(ret, thisOpt)
+	}
+
+	return ret
 }
 
 func ExecuteString(script string, options []aql.Option, logger engine.Logger) error {
