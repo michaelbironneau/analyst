@@ -578,7 +578,9 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 		sheet     string
 		template  string
 		rang      string
+		transpose bool
 		overwrite bool
+		cols      string
 	)
 	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options)
 	maybeScan := aql.MaybeOptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options)
@@ -636,24 +638,23 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 		yy2.P = *y2
 	}
 
-	var (
-		transpose bool
-		columns   []string
-	)
+	var columns   []string
 
-	trs, ok := aql.FindOverridableOption("TRANSPOSE", conn.Name, block.GetOptions(), conn.Options)
+	_, err = maybeScan("TRANSPOSE", &transpose)
 
-	if ok {
-		transpose = trs.Truthy()
+	if err != nil {
+		return err
 	}
 
-	colsOpt, ok := aql.FindOverridableOption("COLUMNS", conn.Name, block.GetOptions(), conn.Options)
+	var ok bool
+
+	ok, err = maybeScan("COLUMNS", &cols)
+
+	if err != nil {
+		return err
+	}
 
 	if ok {
-		cols, ok2 := colsOpt.String()
-		if !ok2 {
-			return fmt.Errorf("expected COLUMNS option to be a STRING for connection %s and query %s", conn.Name, block.GetName())
-		}
 		columns = strings.Split(cols, ",")
 		for i := range columns {
 			columns[i] = strings.TrimSpace(columns[i])
