@@ -5,12 +5,14 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"os"
 	"time"
+	"encoding/json"
 )
 
 const ConsoleDestinationName = "CONSOLE"
 
 type ConsoleDestination struct {
 	Name   string
+	FormatAsJSON bool
 	cols   []string
 	result [][]string
 }
@@ -47,6 +49,22 @@ func (cd *ConsoleDestination) Open(s Stream, l Logger, st Stopper) {
 		Time:    time.Now(),
 		Message: fmt.Sprintf("Processed %v rows", len(cd.result)),
 	}
+
+	if cd.FormatAsJSON {
+		s, err := cd.marshal()
+		if err != nil {
+			l.Chan() <- Event{
+				Source: cd.Name,
+				Level: Error,
+				Time: time.Now(),
+				Message: fmt.Sprintf("could not marshal %v", err),
+			}
+			return
+		}
+		fmt.Println(s)
+		return
+	}
+
 	table := tablewriter.NewWriter(os.Stdout)
 
 	table.SetHeader(cd.cols)
@@ -60,4 +78,17 @@ func (cd *ConsoleDestination) Open(s Stream, l Logger, st Stopper) {
 		Time:    time.Now(),
 		Message: "Console destination closed",
 	}
+}
+
+func (cd *ConsoleDestination) marshal() (string, error){
+	var ret []map[string]interface{}
+	for i := range cd.result {
+		r := make(map[string]interface{})
+		for j, col := range cd.result[i] {
+			r[cd.cols[j]] = col
+		}
+		ret = append(ret, r)
+	}
+	b, err := json.Marshal(ret)
+	return string(b), err
 }

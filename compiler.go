@@ -839,7 +839,26 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 				} else {
 					name = engine.ConsoleDestinationName
 				}
-				d = &engine.ConsoleDestination{Name: name}
+				maybeScan := aql.MaybeOptionScanner(query.Name, name, query.Options)
+				var (
+					outputFormat string
+					outputJSON bool
+				)
+				ok, err := maybeScan("OUTPUT_FORMAT", &outputFormat)
+
+				if err != nil {
+					return err
+				}
+
+				if ok && strings.ToLower(outputFormat) == "json" {
+					outputJSON = true
+				} else if ok && strings.ToLower(outputFormat) == "table" {
+					outputJSON = false
+				} else if ok {
+					return fmt.Errorf("unknown OUTPUT_FORMAT value %s", outputFormat)
+				}
+
+				d = &engine.ConsoleDestination{Name: name, FormatAsJSON: outputJSON}
 				if err := dag.AddDestination(strings.ToLower(query.Name+destinationUniquifier+engine.ConsoleDestinationName), name, d); err != nil {
 					return err
 				}
@@ -895,7 +914,26 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 				} else {
 					name = engine.ConsoleDestinationName
 				}
-				d = &engine.ConsoleDestination{Name: name}
+				maybeScan := aql.MaybeOptionScanner(transform.Name, name, transform.Options)
+				var (
+					outputFormat string
+					outputJSON bool
+				)
+				ok, err := maybeScan("OUTPUT_FORMAT", &outputFormat)
+
+				if err != nil {
+					return err
+				}
+
+				if ok && strings.ToLower(outputFormat) == "json" {
+					outputJSON = true
+				} else if ok && strings.ToLower(outputFormat) == "table" {
+					outputJSON = false
+				} else if ok {
+					return fmt.Errorf("unknown OUTPUT_FORMAT value %s", outputFormat)
+				}
+
+				d = &engine.ConsoleDestination{Name: name, FormatAsJSON: outputJSON}
 				if err := dag.AddDestination(strings.ToLower(transform.Name+destinationUniquifier+engine.ConsoleDestinationName), name, d); err != nil {
 					return err
 				}

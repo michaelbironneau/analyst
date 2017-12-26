@@ -24,4 +24,4 @@ TRANSFORM 'Resample' FROM GLOBAL (
     AGGREGATE LoadId, Variable, ZOH(Time, Value, '2017-12-01T12:00:00Z', '2017-12-01T12:30:00Z') As Value
     GROUP BY LoadId, Variable
 ) INTO CONSOLE
-    WITH (Table = 'Timeseries')
+    WITH (Table = 'Timeseries', CONSOLE_OUTPUT_FORMAT='JSON')
