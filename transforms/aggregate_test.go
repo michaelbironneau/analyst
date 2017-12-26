@@ -15,12 +15,12 @@ func TestAggregateParsing(t *testing.T) {
 	Convey("Given a valid aggregate", t, func() {
 		//1
 		s1 := `
-		AGGREGATE Func(A) AS Val, Func2(A, 'a') AS Val2, "Col2"
+		AGGREGATE Func(A) AS Val, Func2(A, 'a') AS Val2, Col2
 		GROUP BY cde`
 		a := Aggregate{}
 		err = parser.ParseString(s1, &a)
 		So(err, ShouldBeNil)
-		So(a.Select[0].Function.Function, ShouldEqual, "Func")
+		So(a.Select[0].Function.Function, ShouldEqual, "Func(")
 		So(a.Select[0].Function.Columns[0].Column, ShouldEqual, "A")
 		So(*a.Select[1].Function.Columns[1].String, ShouldEqual, "a")
 		So(a.Select[0].Alias, ShouldEqual, "Val")
@@ -130,7 +130,7 @@ func TestFunctionParameters(t *testing.T) {
 func TestGroupByAggregate(t *testing.T) {
 	Convey("Given a valid group-by aggregate", t, func() {
 		s := `
-			AGGREGATE SUM(A) As Val, "B"
+			AGGREGATE SUM(A) As Val, B
 			GROUP BY B
 			`
 		a, err := NewAggregate(s)

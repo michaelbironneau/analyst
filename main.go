@@ -26,7 +26,7 @@ func main() {
 				},
 				cli.StringFlag{
 					Name:  "params",
-					Value: ":",
+					Value: "",
 					Usage: "script parameters, written as \"name:value;name_2:value_2;...\"",
 				},
 				cli.BoolFlag{

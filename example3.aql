@@ -21,7 +21,7 @@ GLOBAL 'CreateTables' (
 )
 
 TRANSFORM 'Resample' FROM GLOBAL (
-    AGGREGATE "LoadId", "Variable", ZOH(Time, Value, '{{ .Start }}', '{{ .Finish }}') As Value
+    AGGREGATE LoadId, Variable, ZOH(Time, Value, '{{ .Start }}', '{{ .Finish }}') As Value
     GROUP BY LoadId, Variable
 ) INTO CONSOLE
     WITH (Table = 'Timeseries')

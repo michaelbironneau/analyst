@@ -13,15 +13,19 @@ const (
 	NoGroupBy = ""
 )
 
+//The reason that Function's have to include the opening ( is
+//because we can't parse these as Ident due the issue in
+//https://github.com/alecthomas/participle/issues/3
 var (
 	aggregateLexer = lexer.Unquote(lexer.Upper(lexer.Must(lexer.Regexp(`(\s+)`+
-		`|(?P<Keyword>(?i)AGGREGATE|GROUP|BY|AS)`+
+		`|(?P<Keyword>(?i)AGGREGATE\s|GROUP\s|BY\s|AS\s)`+
+		`|(?P<Function>[a-zA-Z0-9_]+\()` +
 		`|(?P<Ident>[a-zA-Z_][a-zA-Z0-9_]*)`+
 		`|(?P<Number>[-+]?\d*\.?\d+([eE][-+]?\d+)?)`+
 		`|(?P<String>'[^']*'|"[^"]*")`+
 		`|(?P<Operators><>|!=|<=|>=|[-+*/%,.()=<>])`,
 	)), "Keyword"), "String")
-	Reducers                  = map[string]Reducer{"sum": &sum{}, "min": &min{}, "max": &max{}, "avg": &avg{}, "zoh": &zoh{}}
+	Reducers                  = map[string]Reducer{"sum(": &sum{}, "min(": &min{}, "max(": &max{}, "avg(": &avg{}, "zoh(": &zoh{}}
 	DefaultArgMap ArgumentMap = func(i []interface{}) []interface{} { return i }
 )
 
@@ -32,25 +36,20 @@ type FunctionArgument struct {
 }
 
 type FunctionApplication struct {
-	Function string             `@Ident "("`
+	Function string             `@Function`
 	Columns  []FunctionArgument `@@ { "," @@ } ")"`
 }
 
 type AggregateTerm struct {
-
-	//Ideally I would want this to be @Ident, but a bug in Participle
-	//means that this is not currently possible as it will then fail
-	//to match Ident + "(" to a Function Application.
-	//https://github.com/alecthomas/participle/issues/3
-	Column string `(@String`
+	Column string `(@Ident`
 
 	Function *FunctionApplication `| @@)`
-	Alias    string               `["AS" @Ident]`
+	Alias    string               `["AS " @Ident]`
 }
 
 type Aggregate struct {
-	Select  []AggregateTerm `"AGGREGATE" @@ { "," @@ }`
-	GroupBy []string        `["GROUP" "BY" @Ident { "," @Ident}]`
+	Select  []AggregateTerm `"AGGREGATE " @@ { "," @@ }`
+	GroupBy []string        `["GROUP " "BY " @Ident { "," @Ident}]`
 }
 
 //ArgumentMap is used to map the incoming engine.Message into

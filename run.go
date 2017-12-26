@@ -20,12 +20,14 @@ func Run(c *cli.Context) error {
 	}
 
 	if err != nil {
+		fmt.Println("Error reading options", err)
 		return err
 	}
 
 	scriptFile := c.String("script")
 
 	if len(scriptFile) == 0 {
+		fmt.Println("Error - script file not set")
 		return fmt.Errorf("script file not set")
 	}
 
