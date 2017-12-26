@@ -70,19 +70,19 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 		return err
 	}
 
-	err = sources(js, dag, connMap, params)
+	err = sources(js, dag, connMap, params, options)
 
 	if err != nil {
 		return err
 	}
 
-	err = transforms(js, dag, connMap)
+	err = transforms(js, dag, connMap, options)
 
 	if err != nil {
 		return err
 	}
 
-	err = destinations(js, dag, connMap, params)
+	err = destinations(js, dag, connMap, params, options)
 
 	if err != nil {
 		return err
@@ -254,7 +254,7 @@ func constraints(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 //  [NOT YET IMPLEMENTED] script transform -> script destination
 //  script transform -> GLOBAL destination
 //  script transform -> SQL destination
-func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection) error {
+func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, globalOptions []aql.Option) error {
 	for _, transform := range js.Transforms {
 
 		var (
@@ -331,7 +331,7 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 				conn := connMap[strings.ToLower(*source.Database)]
 
 				if strings.ToLower(conn.Driver) == "excel" {
-					if err := excelSource(js, dag, connMap, transform, *conn, *source); err != nil {
+					if err := excelSource(js, dag, connMap, transform, *conn, *source, globalOptions); err != nil {
 						return err
 					}
 
@@ -476,7 +476,7 @@ func addPlugin(js *aql.JobScript, dag engine.Coordinator, transform aql.Transfor
 //As of current release:
 //	- Limited to SQL sources (Excel sources require scripts or built-ins to process data which won't come until vNext)
 //	- Queries limited to single source (this will probably remain a limitation for the foreseeable future)
-func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, params *engine.ParameterTable) error {
+func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, params *engine.ParameterTable, globalOptions []aql.Option) error {
 	for _, exec := range js.Execs {
 		if len(exec.Destinations) > 0 {
 			return fmt.Errorf("execs are queries that returns no results, and thus cannot have destinations: %s", exec.Name)
@@ -547,11 +547,11 @@ func alias(ss aql.SourceSink, conn *aql.Connection) string {
 }
 
 //TODO: refactor all this option parsing nonsense
-func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, dest aql.SourceSink) error {
+func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, dest aql.SourceSink, globalOptions []aql.Option) error {
 	driver := conn.Driver
 	connString := conn.ConnectionString
 	var table string
-	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options)
+	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
 	err := scan("TABLE", &table)
 	if err != nil {
 		return err
@@ -574,11 +574,11 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 
 }
 
-func globalDest(js *aql.JobScript, dag engine.Coordinator, block aql.Block, dest aql.SourceSink) error {
+func globalDest(js *aql.JobScript, dag engine.Coordinator, block aql.Block, dest aql.SourceSink, globalOptions []aql.Option) error {
 	driver := globalDbDriver
 	connString := globalDbConnString
 	var table string
-	scan := aql.OptionScanner(block.GetName(), "", block.GetOptions())
+	scan := aql.OptionScanner(block.GetName(), "", block.GetOptions(), globalOptions)
 
 	err := scan("TABLE", &table)
 
@@ -603,7 +603,7 @@ func globalDest(js *aql.JobScript, dag engine.Coordinator, block aql.Block, dest
 
 }
 
-func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, dest aql.SourceSink) error {
+func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, dest aql.SourceSink, globalOptions []aql.Option) error {
 	//register Excel destination
 	var (
 		file      string
@@ -614,8 +614,8 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 		overwrite bool
 		cols      string
 	)
-	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options)
-	maybeScan := aql.MaybeOptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options)
+	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
+	maybeScan := aql.MaybeOptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
 
 	err := scan("FILE", &file)
 
@@ -717,14 +717,14 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 
 }
 
-func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, transform aql.Transform, conn aql.Connection, source aql.SourceSink) error {
+func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, transform aql.Transform, conn aql.Connection, source aql.SourceSink, globalOptions []aql.Option) error {
 	var (
 		file  string
 		sheet string
 		rang  string
 	)
 
-	scan := aql.OptionScanner(transform.Name, conn.Name, transform.Options, conn.Options)
+	scan := aql.OptionScanner(transform.Name, conn.Name, transform.Options, conn.Options, globalOptions)
 	//maybeScan := aql.MaybeOptionScanner(transform.Name, conn.Name, transform.Options, conn.Options)
 
 	err := scan("FILE", &file)
@@ -822,7 +822,7 @@ func parameterDest(js *aql.JobScript, dag engine.Coordinator, query *aql.Query, 
 //  - Limited to SQL, parameter or Excel destinations
 //  - Multiple destinations supported for queries. The table for multiple destinations needs to be specified as TABLE_{DEST_NAME} = '{TABLE_NAME}'
 //  - GLOBAL, SCRIPT and BLOCK destinations not supported
-func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, p *engine.ParameterTable) error {
+func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, p *engine.ParameterTable, globalOptions []aql.Option) error {
 	for _, query := range js.Queries {
 		for _, dest := range query.Destinations {
 			if dest.Variables != nil {
@@ -839,7 +839,7 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 				} else {
 					name = engine.ConsoleDestinationName
 				}
-				maybeScan := aql.MaybeOptionScanner(query.Name, name, query.Options)
+				maybeScan := aql.MaybeOptionScanner(query.Name, name, query.Options, globalOptions)
 				var (
 					outputFormat string
 					outputJSON bool
@@ -872,7 +872,7 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 			}
 
 			if dest.Global {
-				if err := globalDest(js, dag, &query, dest); err != nil {
+				if err := globalDest(js, dag, &query, dest, globalOptions); err != nil {
 					return err
 				}
 				continue
@@ -883,9 +883,9 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 			conn := *connMap[strings.ToLower(*dest.Database)]
 			var err error
 			if strings.ToUpper(conn.Driver) == "EXCEL" {
-				err = excelDest(js, dag, connMap, &query, conn, dest)
+				err = excelDest(js, dag, connMap, &query, conn, dest, globalOptions)
 			} else {
-				err = sqlDest(js, dag, connMap, &query, conn, dest)
+				err = sqlDest(js, dag, connMap, &query, conn, dest, globalOptions)
 			}
 			if err != nil {
 				return err
@@ -900,7 +900,7 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 			}
 
 			if dest.Global {
-				if err := globalDest(js, dag, &transform, dest); err != nil {
+				if err := globalDest(js, dag, &transform, dest, globalOptions); err != nil {
 					return err
 				}
 				continue
@@ -914,7 +914,7 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 				} else {
 					name = engine.ConsoleDestinationName
 				}
-				maybeScan := aql.MaybeOptionScanner(transform.Name, name, transform.Options)
+				maybeScan := aql.MaybeOptionScanner(transform.Name, name, transform.Options, globalOptions)
 				var (
 					outputFormat string
 					outputJSON bool
@@ -949,9 +949,9 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 			conn := *connMap[strings.ToLower(*dest.Database)]
 			var err error
 			if strings.ToUpper(conn.Driver) == "EXCEL" {
-				err = excelDest(js, dag, connMap, &transform, conn, dest)
+				err = excelDest(js, dag, connMap, &transform, conn, dest, globalOptions)
 			} else {
-				err = sqlDest(js, dag, connMap, &transform, conn, dest)
+				err = sqlDest(js, dag, connMap, &transform, conn, dest, globalOptions)
 			}
 			if err != nil {
 				return err
