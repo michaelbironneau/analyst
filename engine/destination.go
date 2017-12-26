@@ -15,6 +15,20 @@ type Destination interface {
 	Open(Stream, Logger, Stopper)
 }
 
+type DevNull struct {
+	Name string
+}
+
+func (d *DevNull) Ping() error { return nil }
+func (d *DevNull) Open(s Stream, l Logger, st Stopper) {
+	c := s.Chan(d.Name)
+	for range c {
+		if st.Stopped() {
+			return
+		}
+	}
+}
+
 type SliceDestination struct {
 	Alias string
 	sync.Mutex

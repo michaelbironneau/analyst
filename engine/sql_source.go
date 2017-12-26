@@ -19,6 +19,7 @@ type SQLSource struct {
 	columns          []string
 	db               *sql.DB
 	outgoingName     string
+	ExecOnly         bool
 	ParameterNames   []string
 }
 
@@ -100,7 +101,29 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 	start := time.Now()
 	sq.log(l, Trace, fmt.Sprintf("Query: %s", sq.Query))
 	sq.log(l, Trace, fmt.Sprintf("Query Parameters: %v", params))
-	r, err := sq.db.Query(sq.Query, params...)
+	var (
+		r            *sql.Rows
+		res          sql.Result
+		rowsAffected int64
+	)
+
+	if sq.ExecOnly {
+		res, err = sq.db.Exec(sq.Query, params...)
+		if err != nil {
+			sq.fatalerr(err, s, l)
+			return
+		}
+		rowsAffected, err = res.RowsAffected()
+		if err != nil {
+			sq.log(l, Trace, fmt.Sprintf("Error retrieving rows affected: %v", err))
+		}
+		sq.log(l, Info, fmt.Sprintf("Rows affected: %v", rowsAffected))
+		close(s.Chan(sq.outgoingName))
+		return
+	} else {
+		r, err = sq.db.Query(sq.Query, params...)
+	}
+
 	sq.log(l, Info, fmt.Sprintf("Query took %7.2f seconds", time.Now().Sub(start).Seconds()))
 	if err != nil {
 		sq.fatalerr(err, s, l)

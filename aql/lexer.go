@@ -48,6 +48,7 @@ const (
 	PARAMETER
 	CONSOLE
 	SET
+	EXEC
 )
 
 var (
@@ -56,14 +57,14 @@ var (
 		RPAREN: ")", PAREN_BODY: "PAREN_BODY", WITH: "WITH",
 		EQUALS: "=", COMMA: ",", QUOTED_STRING: "QUOTED_STRING", IDENTIFIER: "IDENT", NUMBER: "NUMBER", GLOBAL: "GLOBAL",
 		CONNECTION: "CONNECTION", BLOCK: "BLOCK", AS: "AS", AFTER: "AFTER", PLUGIN: "PLUGIN", DECLARE: "DECLARE", USING: "USING", PARAMETER: "PARAMETER",
-		CONSOLE: "CONSOLE", SET: "SET"}
+		CONSOLE: "CONSOLE", SET: "SET", EXEC: "EXEC"}
 	whitespace = regexp.MustCompile(`\s`)
 	keywords   = map[tokenType]bool{TEST: true, QUERY: true, DESCRIPTION: true, TRANSFORM: true, FROM: true, INTO: true, EXTERN: true,
 		INCLUDE: true, WITH: true, GLOBAL: true, CONNECTION: true, BLOCK: true, AS: true, AFTER: true, PLUGIN: true, DECLARE: true, USING: true, PARAMETER: true,
-		CONSOLE: true, SET: true}
+		CONSOLE: true, SET: true, EXEC: true}
 	keywordReverse = map[string]tokenType{"TEST": TEST, "QUERY": QUERY, "DESCRIPTION": DESCRIPTION, "TRANSFORM": TRANSFORM, "FROM": FROM,
 		"INTO": INTO, "EXTERN": EXTERN, "INCLUDE": INCLUDE, "WITH": WITH, "GLOBAL": GLOBAL, "CONNECTION": CONNECTION, "BLOCK": BLOCK, "AS": AS, "AFTER": AFTER, "PLUGIN": PLUGIN, "DECLARE": DECLARE, "USING": USING, "PARAMETER": PARAMETER,
-		"CONSOLE": CONSOLE, "SET": SET}
+		"CONSOLE": CONSOLE, "SET": SET, "EXEC": EXEC}
 )
 
 type ForwardLexer struct {

@@ -48,7 +48,7 @@ type SourceSink struct {
 }
 
 type Query struct {
-	Name         string       `QUERY @QUOTED_STRING`
+	Name         string       `@QUOTED_STRING`
 	Extern       *string      `[EXTERN @QUOTED_STRING]`
 	Sources      []SourceSink `FROM @@ { "," @@ }`
 	Content      string       `['(' @PAREN_BODY ')' ]`
@@ -57,6 +57,16 @@ type Query struct {
 	Options      []Option     `[WITH '(' @@ {"," @@ } ')' ]`
 	Dependencies []string     `[AFTER @IDENT {"," @IDENT }]`
 }
+
+/*type Exec struct {
+	Name         string       `QUERY @QUOTED_STRING`
+	Extern       *string      `[EXTERN @QUOTED_STRING]`
+	Sources      []SourceSink `FROM @@ { "," @@ }`
+	Content      string       `['(' @PAREN_BODY ')' ]`
+	Parameters   []string     `[USING PARAMETER @IDENT { "," @IDENT }]`
+	Options      []Option     `[WITH '(' @@ {"," @@ } ')' ]`
+	Dependencies []string     `[AFTER @IDENT {"," @IDENT }]`
+}*/
 
 func (q *Query) GetName() string {
 	return q.Name
@@ -129,11 +139,12 @@ type Connection struct {
 
 type JobScript struct {
 	Description   *Description         `[@@]`
-	Queries       []Query              `{ @@`
+	Queries       []Query              `{QUERY @@`
 	Declarations  []Declaration        `| @@`
 	Connections   []UnparsedConnection `| @@`
 	Includes      []Include            `| @@ `
 	Tests         []Test               `| @@ `
+	Execs         []Query              `|EXEC @@ `
 	Globals       []Global             `| @@ `
 	GlobalOptions []GlobalOption       `| @@ `
 	Transforms    []Transform          ` | @@ }`
@@ -539,6 +550,16 @@ func (b *JobScript) ResolveExternalContent() error {
 
 func (b *JobScript) resolveExtern(cwd string) error {
 	for i, query := range b.Queries {
+		if query.Extern != nil {
+			s, err := getContent(cwd, *query.Extern)
+			if err != nil {
+				return err
+			}
+			b.Queries[i].Content = s
+			b.Queries[i].Extern = nil
+		}
+	}
+	for i, query := range b.Execs {
 		if query.Extern != nil {
 			s, err := getContent(cwd, *query.Extern)
 			if err != nil {

@@ -94,6 +94,12 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 		return err
 	}
 
+	err = terminateExecs(js, dag)
+
+	if err != nil {
+		return err
+	}
+
 	err = dag.Compile()
 
 	if err != nil {
@@ -199,9 +205,25 @@ func globalInit(js *aql.JobScript) error {
 	return nil
 }
 
+//terminateExecs adds a DevNull destination after the source to terminate the flow.
+//It should be invoked AFTER sources() so that the exec nodes are created first.
+func terminateExecs(js *aql.JobScript, dag engine.Coordinator) error {
+	for _, exec := range js.Execs {
+		name := exec.Name + destinationUniquifier + " dev/null"
+		if err := dag.AddDestination(name, "dev/null",
+			&engine.DevNull{"dev/null"}); err != nil {
+			return err
+		}
+		if err := dag.Connect(strings.ToLower(exec.Name), name); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 //constraints applies AFTER constraints.
 func constraints(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection) error {
-	for _, query := range js.Queries {
+	for _, query := range append(js.Queries, js.Execs...) {
 		for _, before := range query.Dependencies {
 			err := dag.AddConstraint(strings.ToLower(before), strings.ToLower(query.Name))
 			if err != nil {
@@ -455,7 +477,15 @@ func addPlugin(js *aql.JobScript, dag engine.Coordinator, transform aql.Transfor
 //	- Limited to SQL sources (Excel sources require scripts or built-ins to process data which won't come until vNext)
 //	- Queries limited to single source (this will probably remain a limitation for the foreseeable future)
 func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, params *engine.ParameterTable) error {
-	for _, query := range js.Queries {
+	for _, exec := range js.Execs {
+		if len(exec.Destinations) > 0 {
+			return fmt.Errorf("execs are queries that returns no results, and thus cannot have destinations: %s", exec.Name)
+		}
+	}
+	var index = -1
+	for _, query := range append(js.Queries, js.Execs...) {
+		index++
+		execOnly := index >= len(js.Queries)
 		if len(query.Sources) != 1 {
 			return fmt.Errorf("queries must have exactly one source but %s has %v", query.Name, len(query.Sources))
 		}
@@ -470,6 +500,7 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 				Query:            query.Content,
 				ParameterTable:   params,
 				ParameterNames:   query.Parameters,
+				ExecOnly:         execOnly,
 			}
 			//alias := alias(query.Sources[0], nil)
 			alias := query.Name //Queries can only have one source, so let's do away with this confusing alias nonsense
@@ -491,6 +522,7 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			Query:            query.Content,
 			ParameterTable:   params,
 			ParameterNames:   query.Parameters,
+			ExecOnly:         execOnly,
 		}
 		//alias := alias(query.Sources[0], conn)
 		alias := query.Name //Queries can only have one source, so let's do away with this confusing alias nonsense
@@ -638,7 +670,7 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 		yy2.P = *y2
 	}
 
-	var columns   []string
+	var columns []string
 
 	_, err = maybeScan("TRANSPOSE", &transpose)
 

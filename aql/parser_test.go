@@ -290,7 +290,7 @@ func TestQuery(t *testing.T) {
 	}
 	Convey("It should parse query blocks successfully", t, func() {
 		//1
-		s1 := `QUERY 'name' FROM CONNECTION source (
+		s1 := `'name' FROM CONNECTION source (
 			query_source()
 		) INTO CONNECTION destination, GLOBAL
 		AFTER dependency`
@@ -307,7 +307,7 @@ func TestQuery(t *testing.T) {
 		So(b.Dependencies, ShouldResemble, []string{"dependency"})
 
 		//2
-		s1 = `QUERY 'name' EXTERN 'sourcee'
+		s1 = `'name' EXTERN 'sourcee'
 		FROM GLOBAL, BLOCK asdf (
 			thing''
 		) INTO GLOBAL
@@ -326,7 +326,7 @@ func TestQuery(t *testing.T) {
 		So(b.Destinations[0].Global, ShouldBeTrue)
 
 		//3
-		s1 = `QUERY 'name' EXTERN 'sourcee'
+		s1 = `'name' EXTERN 'sourcee'
 		FROM GLOBAL AS 'source' (
 			thing''
 		) INTO CONNECTION destination

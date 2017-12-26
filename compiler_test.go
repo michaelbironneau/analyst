@@ -85,6 +85,54 @@ func TestCompiler(t *testing.T) {
 	})
 }
 
+func TestCompilerWithExecs(t *testing.T) {
+	script := `
+	GLOBAL 'Initialize' (
+		CREATE TABLE ContactStats2 (
+			id integer PRIMARY KEY,
+			first_name text NOT NULL,
+			calls real
+		);
+	);
+
+	EXEC 'InsertResults' FROM GLOBAL (
+		INSERT INTO  ContactStats2 (id, first_name, calls) VALUES (1, 'Bob', 8);
+		INSERT INTO ContactStats2 (id, first_name, calls) VALUES (2, 'Steven', 0);
+	)
+	`
+	Convey("Given a script that uses EXEC blocks", t, func() {
+		l := &engine.ConsoleLogger{}
+		err := ExecuteString(script, nil, l)
+		So(err, ShouldBeNil)
+		db, err := sql.Open(globalDbDriver, globalDbConnString)
+		defer db.Close()
+		So(err, ShouldBeNil)
+		rows, err := db.Query("Select first_name, calls FROM ContactStats2")
+		So(err, ShouldBeNil)
+		var res struct {
+			name string
+			sum  float64
+		}
+
+		defer rows.Close()
+		var count int
+		for rows.Next() {
+			count++
+			err := rows.Scan(&res.name, &res.sum)
+			So(err, ShouldBeNil)
+			if res.name == "Bob" {
+				So(res.sum, ShouldEqual, 8.0)
+			} else if res.name == "Steven" {
+				So(res.sum, ShouldEqual, 0.0)
+			} else {
+				So(res.name, ShouldBeIn, []string{"Bob", "Steven"}) //fails
+			}
+		}
+		So(count, ShouldEqual, 2)
+	})
+
+}
+
 func TestCompilerWithBuiltinTransform(t *testing.T) {
 	script := `
 	GLOBAL 'Initialize' (
