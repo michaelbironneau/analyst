@@ -154,6 +154,52 @@ func TestFindOverridableOption(t *testing.T) {
 	})
 }
 
+func TestOptionScanner(t *testing.T) {
+	Convey("Given some options", t, func() {
+		f := 1.0
+		f2 := 2.0
+		f3 := 3.0
+		f4 := 4.0
+		opts := []Option{
+			Option{
+				Key: "asdf_O1",
+				Value: &OptionValue{
+					Number: &f,
+				},
+			},
+			Option{
+				Key: "O2",
+				Value: &OptionValue{
+					Number: &f2,
+				},
+			},
+		}
+		opts2 := []Option{
+			Option{
+				Key: "O1",
+				Value: &OptionValue{
+					Number: &f3,
+				},
+			},
+			Option{
+				Key: "O3",
+				Value: &OptionValue{
+					Number: &f4,
+				},
+			},
+		}
+		scan := OptionScanner("", "", opts, opts2)
+		var num float64
+		err := scan("O3", &num)
+		So(err, ShouldBeNil)
+		So(num, ShouldEqual, f4)
+		scan = OptionScanner("", "ASDF", opts, opts2)
+		err = scan("O1", &num)
+		So(err, ShouldBeNil)
+		So(num, ShouldEqual, 1)
+	})
+}
+
 func TestTruthy(t *testing.T) {
 	Convey("Given some options that may or not be truthy", t, func() {
 		v1 := float64(1)
@@ -447,10 +493,10 @@ func TestVariables(t *testing.T) {
 
 }
 
-func TestGlobalOptions(t *testing.T){
-	Convey("Given a script that declares global options", t, func(){
+func TestGlobalOptions(t *testing.T) {
+	Convey("Given a script that declares global options", t, func() {
 		s := "SET Opt1 = 1.1"
-		Convey("It should be correctly parsed", func(){
+		Convey("It should be correctly parsed", func() {
 			js, err := ParseString(s)
 			So(err, ShouldBeNil)
 			So(js.GlobalOptions, ShouldHaveLength, 1)

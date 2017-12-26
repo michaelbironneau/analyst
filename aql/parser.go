@@ -24,7 +24,7 @@ type Block interface {
 }
 
 type GlobalOption struct {
-	Key string         `SET @IDENT '='`
+	Key   string       `SET @IDENT '='`
 	Value *OptionValue `@@`
 }
 
@@ -128,15 +128,69 @@ type Connection struct {
 }
 
 type JobScript struct {
-	Description  *Description         `[@@]`
-	Queries      []Query              `{ @@`
-	Declarations []Declaration        `| @@`
-	Connections  []UnparsedConnection `| @@`
-	Includes     []Include            `| @@ `
-	Tests        []Test               `| @@ `
-	Globals      []Global             `| @@ `
+	Description   *Description         `[@@]`
+	Queries       []Query              `{ @@`
+	Declarations  []Declaration        `| @@`
+	Connections   []UnparsedConnection `| @@`
+	Includes      []Include            `| @@ `
+	Tests         []Test               `| @@ `
+	Globals       []Global             `| @@ `
 	GlobalOptions []GlobalOption       `| @@ `
-	Transforms   []Transform          ` | @@ }`
+	Transforms    []Transform          ` | @@ }`
+}
+
+func OptionScanner(blockName, namespace string, scope ...[]Option) func(needle string, dest interface{}) error {
+	return func(needle string, dest interface{}) error {
+		opt, ok := FindOverridableOption(needle, namespace, scope...)
+		if !ok {
+			return fmt.Errorf("option for block %s not found: %s", blockName, needle)
+		}
+		switch v := dest.(type) {
+		case *float64:
+			if opt.Value == nil || opt.Value.Number == nil {
+				return fmt.Errorf("expected a number for option %s in block %s", needle, blockName)
+			}
+			*v = *opt.Value.Number
+		case *string:
+			if opt.Value == nil || opt.Value.Str == nil {
+				return fmt.Errorf("expected a string for option %s in block %s", needle, blockName)
+			}
+			*v = *opt.Value.Str
+		case *bool:
+			src := opt.Truthy()
+			*v = src
+		default:
+			panic(fmt.Errorf("OptionScanner found dest of unexpected type %T in block %s", dest, blockName))
+		}
+		return nil
+	}
+}
+
+func MaybeOptionScanner(blockName, namespace string, scope ...[]Option) func(needle string, dest interface{}) (bool, error) {
+	return func(needle string, dest interface{}) (bool, error) {
+		opt, ok := FindOverridableOption(needle, namespace, scope...)
+		if !ok {
+			return false, nil
+		}
+		switch v := dest.(type) {
+		case *float64:
+			if opt.Value == nil || opt.Value.Number == nil {
+				return true, fmt.Errorf("expected a number for option %s in block %s", needle, blockName)
+			}
+			*v = *opt.Value.Number
+		case *string:
+			if opt.Value == nil || opt.Value.Str == nil {
+				return true, fmt.Errorf("expected a string for option %s in block %s", needle, blockName)
+			}
+			*v = *opt.Value.Str
+		case *bool:
+			src := opt.Truthy()
+			*v = src
+		default:
+			panic(fmt.Errorf("OptionScanner found dest of unexpected type %T in block %s", dest, blockName))
+		}
+		return true, nil
+	}
 }
 
 //String returns the option value as a string. The boolean return parameter
@@ -152,7 +206,7 @@ func (opt Option) String() (string, bool) {
 //into a slice of Options.
 func StrToOpts(s string) ([]Option, error) {
 	var (
-		ret []Option
+		ret     []Option
 		cliOpts map[string]interface{}
 	)
 	err := json.Unmarshal([]byte(s), &cliOpts)

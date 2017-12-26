@@ -37,10 +37,10 @@ func formatOptions(options []aql.Option) string {
 
 func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, compileOnly bool) error {
 	options = mergeOptions(js, options)
-	logger.Chan() <- engine.Event {
-		Source: "Compiler",
-		Level: engine.Trace,
-		Time: time.Now(),
+	logger.Chan() <- engine.Event{
+		Source:  "Compiler",
+		Level:   engine.Trace,
+		Time:    time.Now(),
 		Message: fmt.Sprintf("Found globals %s", formatOptions(options)),
 	}
 	dag := engine.NewCoordinator(logger)
@@ -404,30 +404,24 @@ func sequenceSources(transform engine.SequenceableTransform, block aql.Block, so
 func addPlugin(js *aql.JobScript, dag engine.Coordinator, transform aql.Transform) (*plugins.Transform, error) {
 	opts := transform.Options
 
-	exec, ok := aql.FindOption(opts, "EXECUTABLE")
+	var (
+		execStr string
+		argStr  string
+		ok      bool
+	)
 
-	if !ok {
-		return nil, fmt.Errorf("expected EXECUTABLE option for transform %s", transform.Name)
+	scan := aql.OptionScanner(transform.Name, "", opts)
+	maybeScan := aql.MaybeOptionScanner(transform.Name, "", opts)
+
+	err := scan("EXECUTABLE", &execStr)
+
+	if err != nil {
+		return nil, err
 	}
 
-	execStr, ok := exec.String()
+	ok, err = maybeScan("ARGS", &argStr)
 
-	if !ok {
-		return nil, fmt.Errorf("expected EXECUTABLE option for transform %s to be a string", transform.Name)
-	}
-
-	args, ok := aql.FindOption(opts, "ARGS")
-
-	var argStr string
-
-	if ok {
-		argStr2, ok2 := args.String()
-
-		if !ok2 {
-			return nil, fmt.Errorf("expected ARGS option for transform %s to be a string", transform.Name)
-		}
-
-		argStr = argStr2
+	if err != nil {
 	}
 
 	var argList []string
@@ -524,18 +518,13 @@ func alias(ss aql.SourceSink, conn *aql.Connection) string {
 func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, dest aql.SourceSink) error {
 	driver := conn.Driver
 	connString := conn.ConnectionString
-
-	tableOpt, ok := aql.FindOverridableOption("TABLE", conn.Name, block.GetOptions(), conn.Options)
-
-	if !ok {
-		return fmt.Errorf("expected TABLE option for connection %s in the connection definition or the block %s options", conn.Name, block.GetName())
+	var table string
+	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options)
+	err := scan("TABLE", &table)
+	if err != nil {
+		return err
 	}
 
-	table, ok := tableOpt.String()
-
-	if !ok {
-		return fmt.Errorf("expected TABLE option to be a STRING for connection %s and block %s", conn.Name, block.GetName())
-	}
 	alias := alias(dest, &conn)
 
 	//Uniquify destination name
@@ -553,21 +542,16 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 
 }
 
-//TODO: refactor all this option parsing nonsense
 func globalDest(js *aql.JobScript, dag engine.Coordinator, block aql.Block, dest aql.SourceSink) error {
 	driver := globalDbDriver
 	connString := globalDbConnString
+	var table string
+	scan := aql.OptionScanner(block.GetName(), "", block.GetOptions())
 
-	tableOpt, ok := aql.FindOption(block.GetOptions(), "TABLE")
+	err := scan("TABLE", &table)
 
-	if !ok {
-		return fmt.Errorf("expected TABLE option for GLOBAL connection in the block %s options", block.GetName())
-	}
-
-	table, ok := tableOpt.String()
-
-	if !ok {
-		return fmt.Errorf("expected TABLE option to be a STRING for GLOBAL connection and block %s", block.GetName())
+	if err != nil {
+		return err
 	}
 
 	alias := alias(dest, nil)
@@ -587,62 +571,46 @@ func globalDest(js *aql.JobScript, dag engine.Coordinator, block aql.Block, dest
 
 }
 
-//TODO: refactor all this option parsing nonsense
 func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, dest aql.SourceSink) error {
 	//register Excel destination
+	var (
+		file      string
+		sheet     string
+		template  string
+		rang      string
+		overwrite bool
+	)
+	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options)
+	maybeScan := aql.MaybeOptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options)
 
-	fileOpt, ok := aql.FindOption(conn.Options, "FILE")
-	if !ok {
-		return fmt.Errorf("connection %s should specify FILE option", conn.Name)
+	err := scan("FILE", &file)
+
+	if err != nil {
+		return err
 	}
 
-	file, ok := fileOpt.String()
+	err = scan("SHEET", &sheet)
 
-	if !ok {
-		return fmt.Errorf("expected FILE option to be a STRING for connection %s and block %s", conn.Name, block.GetName())
+	if err != nil {
+		return err
 	}
 
-	sheetOpt, ok := aql.FindOverridableOption("SHEET", conn.Name, block.GetOptions(), conn.Options)
+	_, err = maybeScan("TEMPLATE", &template)
 
-	if !ok {
-		return fmt.Errorf("expected SHEET option for connection %s in the connection definition or the block %s options", conn.Name, block.GetName())
+	if err != nil {
+		return err
 	}
 
-	sheet, ok := sheetOpt.String()
+	err = scan("RANGE", &rang)
 
-	if !ok {
-		return fmt.Errorf("expected SHEET option to be a STRING for connection %s and block %s", conn.Name, block.GetName())
+	if err != nil {
+		return err
 	}
 
-	templateOpt, ok := aql.FindOverridableOption("TEMPLATE", conn.Name, block.GetOptions(), conn.Options)
+	_, err = maybeScan("OVERWRITE", &overwrite)
 
-	var template string
-	if ok {
-		var ok2 bool
-		template, ok2 = templateOpt.String()
-		if !ok2 {
-			return fmt.Errorf("expected TEMPLATE option to be a STRING for connection %s and query %s", conn.Name, block.GetName())
-		}
-
-	}
-
-	overwriteOpt, ok := aql.FindOverridableOption("OVERWRITE", conn.Name, block.GetOptions(), conn.Options)
-
-	var overwrite bool
-	if ok {
-		overwrite = overwriteOpt.Truthy()
-	}
-
-	rangOpt, ok := aql.FindOverridableOption("RANGE", conn.Name, block.GetOptions(), conn.Options)
-
-	if !ok {
-		return fmt.Errorf("expected RANGE option for connection %s in the connection definition or the query %s options", conn.Name, block.GetOptions())
-	}
-
-	rang, ok := rangOpt.String()
-
-	if !ok {
-		return fmt.Errorf("expected RANGE option to be a STRING for connection %s and query %s", conn.Name, block.GetName())
+	if err != nil {
+		return err
 	}
 
 	x1, x2, y1, y2, err := aql.ParseExcelRange(rang)
@@ -717,41 +685,31 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 }
 
 func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, transform aql.Transform, conn aql.Connection, source aql.SourceSink) error {
-	//register Excel destination
+	var (
+		file  string
+		sheet string
+		rang  string
+	)
 
-	fileOpt, ok := aql.FindOption(conn.Options, "FILE")
-	if !ok {
-		return fmt.Errorf("connection %s should specify FILE option", conn.Name)
+	scan := aql.OptionScanner(transform.Name, conn.Name, transform.Options, conn.Options)
+	//maybeScan := aql.MaybeOptionScanner(transform.Name, conn.Name, transform.Options, conn.Options)
+
+	err := scan("FILE", &file)
+
+	if err != nil {
+		return err
 	}
 
-	file, ok := fileOpt.String()
+	err = scan("SHEET", &sheet)
 
-	if !ok {
-		return fmt.Errorf("expected FILE option to be a STRING for connection %s and transform %s", conn.Name, transform.Name)
+	if err != nil {
+		return err
 	}
 
-	sheetOpt, ok := aql.FindOverridableOption("SHEET", conn.Name, transform.Options, conn.Options)
+	err = scan("RANGE", &rang)
 
-	if !ok {
-		return fmt.Errorf("expected SHEET option for connection %s in the connection definition or the transform %s options", conn.Name, transform.Name)
-	}
-
-	sheet, ok := sheetOpt.String()
-
-	if !ok {
-		return fmt.Errorf("expected SHEET option to be a STRING for connection %s and transform %s", conn.Name, transform.Name)
-	}
-
-	rangOpt, ok := aql.FindOverridableOption("RANGE", conn.Name, transform.Options, conn.Options)
-
-	if !ok {
-		return fmt.Errorf("expected RANGE option for connection %s in the connection definition or the transform %s options", conn.Name, transform.Name)
-	}
-
-	rang, ok := rangOpt.String()
-
-	if !ok {
-		return fmt.Errorf("expected RANGE option to be a STRING for connection %s and query %s", conn.Name, transform.Name)
+	if err != nil {
+		return err
 	}
 
 	x1, x2, y1, y2, err := aql.ParseExcelRange(rang)
