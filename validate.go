@@ -29,7 +29,7 @@ func Validate(c *cli.Context) error {
 
 	l := engine.ConsoleLogger{}
 
-	err = ValidateFile(scriptFile, opts, &l)
+	err = ValidateFile(scriptFile, &RuntimeOptions{Options: opts, Logger: &l})
 
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)

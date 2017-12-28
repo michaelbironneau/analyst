@@ -1,25 +1,30 @@
 package engine
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/olekukonko/tablewriter"
+	"io"
 	"os"
 	"time"
-	"encoding/json"
 )
 
 const ConsoleDestinationName = "CONSOLE"
 
 type ConsoleDestination struct {
-	Name   string
+	Name         string
 	FormatAsJSON bool
-	cols   []string
-	result [][]string
+	Writer       io.Writer
+	cols         []string
+	result       [][]string
 }
 
 func (cd *ConsoleDestination) Ping() error { return nil }
 
 func (cd *ConsoleDestination) Open(s Stream, l Logger, st Stopper) {
+	if cd.Writer == nil {
+		cd.Writer = os.Stdout
+	}
 	if cd.Name == "" {
 		cd.Name = ConsoleDestinationName
 	}
@@ -54,18 +59,17 @@ func (cd *ConsoleDestination) Open(s Stream, l Logger, st Stopper) {
 		s, err := cd.marshal()
 		if err != nil {
 			l.Chan() <- Event{
-				Source: cd.Name,
-				Level: Error,
-				Time: time.Now(),
+				Source:  cd.Name,
+				Level:   Error,
+				Time:    time.Now(),
 				Message: fmt.Sprintf("could not marshal %v", err),
 			}
 			return
 		}
-		fmt.Println(s)
+		cd.Writer.Write([]byte(s))
 		return
 	}
-
-	table := tablewriter.NewWriter(os.Stdout)
+	table := tablewriter.NewWriter(cd.Writer)
 
 	table.SetHeader(cd.cols)
 	for _, v := range cd.result {
@@ -80,7 +84,7 @@ func (cd *ConsoleDestination) Open(s Stream, l Logger, st Stopper) {
 	}
 }
 
-func (cd *ConsoleDestination) marshal() (string, error){
+func (cd *ConsoleDestination) marshal() (string, error) {
 	var ret []map[string]interface{}
 	for i := range cd.result {
 		r := make(map[string]interface{})

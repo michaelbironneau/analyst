@@ -8,7 +8,25 @@ import (
 	"sync"
 )
 
+//  Hooks are run at Compile() time. This means that the entire DAG has been computed.
+//  While we are not currently giving the hook access to graph functions (eg. neighbors),
+//  this may be necessary to satisfy future use cases.
+type (
+	//SourceHook takes the source name and interface and does something to it, possibly
+	//returning an error.
+	SourceHook func(string, Source) error
+
+	//TransformHook takes the transform name and interface and does something to it, possibly
+	//returning an error.
+	TransformHook func(string, Transform) error
+
+	//DestinationHook takes the destination name and interface and does something to it, possibly
+	//returning an error.
+	DestinationHook func(string, Destination) error
+)
+
 type Coordinator interface {
+	RegisterHooks(...interface{}) //arguments should be SourceHook, TransformHook or DestinationHook
 	AddSource(name string, alias string, s Source) error
 	AddDestination(name string, alias string, d Destination) error
 	AddTest(node string, name string, desc string, c Condition) error
@@ -29,6 +47,9 @@ type coordinator struct {
 	s                Stopper
 	l                Logger
 	g                *simple.DirectedGraph
+	sourceHooks      []SourceHook
+	transformHooks   []TransformHook
+	destHooks        []DestinationHook
 	nodes            map[string]interface{}
 	nodeIdsRev       map[int]interface{}
 	nodeIds          map[string]graph.Node
@@ -89,6 +110,35 @@ func (c *coordinator) makeConstraints() map[string]*sync.WaitGroup {
 	return ret
 }
 
+//runHooks runs all the hooks, failing on the first error
+func (c *coordinator) runHooks() error {
+	for name, source := range c.sources {
+		for _, hook := range c.sourceHooks {
+			if err := hook(name, source); err != nil {
+				return err
+			}
+		}
+	}
+
+	for name, transform := range c.transformations {
+		for _, hook := range c.transformHooks {
+			if err := hook(name, transform); err != nil {
+				return err
+			}
+		}
+	}
+
+	for name, destination := range c.destinations {
+		for _, hook := range c.destHooks {
+			if err := hook(name, destination); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 func (c *coordinator) Compile() error {
 	if err := c.checkConstraints(); err != nil {
 		return err
@@ -127,7 +177,22 @@ func (c *coordinator) Compile() error {
 		}
 	}
 
-	return nil
+	return c.runHooks()
+}
+
+func (c *coordinator) RegisterHooks(hooks ...interface{}) {
+	for i := range hooks {
+		switch v := hooks[i].(type) {
+		case SourceHook:
+			c.sourceHooks = append(c.sourceHooks, v)
+		case TransformHook:
+			c.transformHooks = append(c.transformHooks, v)
+		case DestinationHook:
+			c.destHooks = append(c.destHooks, v)
+		default:
+			panic(fmt.Errorf("unknown hook type %T %v", v, v))
+		}
+	}
 }
 
 func (c *coordinator) Execute() error {

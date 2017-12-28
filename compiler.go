@@ -20,6 +20,12 @@ const (
 	sqlSelectAll          = "SELECT * FROM %s"
 )
 
+type RuntimeOptions struct {
+	Options []aql.Option
+	Logger  engine.Logger
+	Hooks   []interface{}
+}
+
 func formatOptions(options []aql.Option) string {
 	var s []string
 	for _, opt := range options {
@@ -144,36 +150,48 @@ func mergeOptions(js *aql.JobScript, options []aql.Option) []aql.Option {
 	return ret
 }
 
-func ExecuteString(script string, options []aql.Option, logger engine.Logger, hooks []interface{}) error {
+func ExecuteString(script string, opts *RuntimeOptions) error {
+	if opts.Logger == nil {
+		opts.Logger = &engine.ConsoleLogger{}
+	}
 	js, err := aql.ParseString(script)
 	if err != nil {
 		return err
 	}
-	return execute(js, options, logger, false, hooks)
+	return execute(js, opts.Options, opts.Logger, false, opts.Hooks)
 }
 
-func ExecuteFile(filename string, options []aql.Option, logger engine.Logger, hooks []interface{}) error {
+func ExecuteFile(filename string, opts *RuntimeOptions) error {
+	if opts.Logger == nil {
+		opts.Logger = &engine.ConsoleLogger{}
+	}
 	js, err := aql.ParseFile(filename)
 	if err != nil {
 		return err
 	}
-	return execute(js, options, logger, false, hooks)
+	return execute(js, opts.Options, opts.Logger, false, opts.Hooks)
 }
 
-func ValidateString(script string, options []aql.Option, logger engine.Logger) error {
+func ValidateString(script string, opts *RuntimeOptions) error {
+	if opts.Logger == nil {
+		opts.Logger = &engine.ConsoleLogger{}
+	}
 	js, err := aql.ParseString(script)
 	if err != nil {
 		return err
 	}
-	return execute(js, options, logger, true, nil)
+	return execute(js, opts.Options, opts.Logger, true, opts.Hooks)
 }
 
-func ValidateFile(filename string, options []aql.Option, logger engine.Logger) error {
+func ValidateFile(filename string, opts *RuntimeOptions) error {
+	if opts.Logger == nil {
+		opts.Logger = &engine.ConsoleLogger{}
+	}
 	js, err := aql.ParseFile(filename)
 	if err != nil {
 		return err
 	}
-	return execute(js, options, logger, true, nil)
+	return execute(js, opts.Options, opts.Logger, true, opts.Hooks)
 }
 
 func declarations(js *aql.JobScript, p *engine.ParameterTable) error {
@@ -842,7 +860,7 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 				maybeScan := aql.MaybeOptionScanner(query.Name, name, query.Options, globalOptions)
 				var (
 					outputFormat string
-					outputJSON bool
+					outputJSON   bool
 				)
 				ok, err := maybeScan("OUTPUT_FORMAT", &outputFormat)
 
@@ -917,7 +935,7 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 				maybeScan := aql.MaybeOptionScanner(transform.Name, name, transform.Options, globalOptions)
 				var (
 					outputFormat string
-					outputJSON bool
+					outputJSON   bool
 				)
 				ok, err := maybeScan("OUTPUT_FORMAT", &outputFormat)
 
