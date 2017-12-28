@@ -35,7 +35,7 @@ func formatOptions(options []aql.Option) string {
 	return fmt.Sprintf("%v", s)
 }
 
-func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, compileOnly bool) error {
+func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, compileOnly bool, hooks []interface{}) error {
 	options = mergeOptions(js, options)
 	logger.Chan() <- engine.Event{
 		Source:  "Compiler",
@@ -144,20 +144,20 @@ func mergeOptions(js *aql.JobScript, options []aql.Option) []aql.Option {
 	return ret
 }
 
-func ExecuteString(script string, options []aql.Option, logger engine.Logger) error {
+func ExecuteString(script string, options []aql.Option, logger engine.Logger, hooks []interface{}) error {
 	js, err := aql.ParseString(script)
 	if err != nil {
 		return err
 	}
-	return execute(js, options, logger, false)
+	return execute(js, options, logger, false, hooks)
 }
 
-func ExecuteFile(filename string, options []aql.Option, logger engine.Logger) error {
+func ExecuteFile(filename string, options []aql.Option, logger engine.Logger, hooks []interface{}) error {
 	js, err := aql.ParseFile(filename)
 	if err != nil {
 		return err
 	}
-	return execute(js, options, logger, false)
+	return execute(js, options, logger, false, hooks)
 }
 
 func ValidateString(script string, options []aql.Option, logger engine.Logger) error {
@@ -165,7 +165,7 @@ func ValidateString(script string, options []aql.Option, logger engine.Logger) e
 	if err != nil {
 		return err
 	}
-	return execute(js, options, logger, true)
+	return execute(js, options, logger, true, nil)
 }
 
 func ValidateFile(filename string, options []aql.Option, logger engine.Logger) error {
@@ -173,7 +173,7 @@ func ValidateFile(filename string, options []aql.Option, logger engine.Logger) e
 	if err != nil {
 		return err
 	}
-	return execute(js, options, logger, true)
+	return execute(js, options, logger, true, nil)
 }
 
 func declarations(js *aql.JobScript, p *engine.ParameterTable) error {

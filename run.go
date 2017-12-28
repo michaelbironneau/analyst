@@ -43,7 +43,7 @@ func Run(c *cli.Context) error {
 		l.MinLevel = engine.Trace
 	}
 
-	err = ExecuteFile(scriptFile, opts, &l)
+	err = ExecuteFile(scriptFile, opts, &l, nil)
 	time.Sleep(time.Millisecond * 100) //give loggers time to flush
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)

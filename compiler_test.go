@@ -38,7 +38,7 @@ func TestGlobal(t *testing.T) {
 	Convey("Given a script making use of GLOBAL", t, func() {
 		Convey("It should be processed correctly and generate the expected results", func() {
 			So(err, ShouldBeNil)
-			err := ExecuteString(script, nil, &engine.ConsoleLogger{})
+			err := ExecuteString(script, nil, &engine.ConsoleLogger{}, nil)
 			So(err, ShouldBeNil)
 			var row struct {
 				ID   int
@@ -76,7 +76,7 @@ func TestCompiler(t *testing.T) {
 	`
 	Convey("Given a coordinator and an Excel data destination", t, func() {
 		l := &engine.ConsoleLogger{}
-		err := ExecuteString(script, nil, l)
+		err := ExecuteString(script, nil, l, nil)
 		So(err, ShouldBeNil)
 		_, err = os.Stat("./output.xlsx")
 		os.Remove("./output.xlsx") //best effort cleanup attempt
@@ -102,7 +102,7 @@ func TestCompilerWithExecs(t *testing.T) {
 	`
 	Convey("Given a script that uses EXEC blocks", t, func() {
 		l := &engine.ConsoleLogger{}
-		err := ExecuteString(script, nil, l)
+		err := ExecuteString(script, nil, l, nil)
 		So(err, ShouldBeNil)
 		db, err := sql.Open(globalDbDriver, globalDbConnString)
 		defer db.Close()
@@ -167,7 +167,7 @@ func TestCompilerWithBuiltinTransform(t *testing.T) {
 	`
 	Convey("Given a script that uses builtin transforms", t, func() {
 		l := &engine.ConsoleLogger{}
-		err := ExecuteString(script, nil, l)
+		err := ExecuteString(script, nil, l, nil)
 		So(err, ShouldBeNil)
 		db, err := sql.Open(globalDbDriver, globalDbConnString)
 		defer db.Close()
@@ -227,7 +227,7 @@ func TestCompilerWithParameters(t *testing.T) {
 	`
 	Convey("Given a script that uses parameters", t, func() {
 		l := &engine.ConsoleLogger{}
-		err := ExecuteString(script, nil, l)
+		err := ExecuteString(script, nil, l, nil)
 		So(err, ShouldBeNil)
 		db, err := sql.Open(globalDbDriver, globalDbConnString)
 		defer db.Close()
@@ -282,7 +282,7 @@ func TestCompilerWithTransform(t *testing.T) {
 	Convey("Given a script with a transform and an Excel data destination", t, func() {
 		l := &engine.ConsoleLogger{}
 		Convey("It should execute without error", func() {
-			err := ExecuteString(script, nil, l)
+			err := ExecuteString(script, nil, l, nil)
 			So(err, ShouldBeNil)
 			_, err = os.Stat("./output_transform.xlsx")
 			So(err, ShouldBeNil)
