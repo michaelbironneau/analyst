@@ -58,16 +58,6 @@ type Query struct {
 	Dependencies []string     `[AFTER @IDENT {"," @IDENT }]`
 }
 
-/*type Exec struct {
-	Name         string       `QUERY @QUOTED_STRING`
-	Extern       *string      `[EXTERN @QUOTED_STRING]`
-	Sources      []SourceSink `FROM @@ { "," @@ }`
-	Content      string       `['(' @PAREN_BODY ')' ]`
-	Parameters   []string     `[USING PARAMETER @IDENT { "," @IDENT }]`
-	Options      []Option     `[WITH '(' @@ {"," @@ } ')' ]`
-	Dependencies []string     `[AFTER @IDENT {"," @IDENT }]`
-}*/
-
 func (q *Query) GetName() string {
 	return q.Name
 }
@@ -680,8 +670,8 @@ func optsToConn(opts []Option, conn *Connection) error {
 			conn.Options = append(conn.Options, o)
 		}
 	}
-	if conn.ConnectionString == "" || conn.Driver == "" {
-		return fmt.Errorf("both ConnectionString and Driver are required properties")
+	if conn.Driver == "" {
+		return fmt.Errorf("Driver is a required property")
 	}
 	return nil
 }

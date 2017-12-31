@@ -63,7 +63,6 @@ func TestCompiler(t *testing.T) {
 
 	CONNECTION 'Workbook' (
 		Driver = 'Excel',
-		ConnectionString = 'hello, world',
 		File = './output.xlsx'
 	)
 
@@ -248,7 +247,6 @@ func TestCompilerWithTransform(t *testing.T) {
 	script := `
 	CONNECTION 'Workbook' (
 		Driver = 'Excel',
-		ConnectionString = 'hello, world',
 		File = './output_transform.xlsx'
 	)
 
@@ -306,7 +304,6 @@ func TestConnectionMap(t *testing.T) {
 
 	CONNECTION 'Workbook' (
 		Driver = 'Excel',
-		ConnectionString = 'hello, world',
 		File = './output.xlsx'
 	)
 
