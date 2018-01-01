@@ -78,3 +78,24 @@ func TestPagination(t *testing.T) {
 
 	})
 }
+
+func TestFetchChroniclingAmerica(t *testing.T){
+	Convey("Given an HTTP source pointing to Chronicling America", t, func(){
+		h := HTTPSource{
+			URL:                  "https://chroniclingamerica.loc.gov/awardees.json",
+			ColumnNames: []string{"URL", "Name"},
+			JSONPath: "awardees",
+		}
+		Convey("It should fetch the data correctly into a slice destination", func(){
+			d := SliceDestination{}
+			l := &ConsoleLogger{}
+			st := &stopper{}
+
+			sourceStream := NewStream(nil, DefaultBufferSize)
+
+			h.Open(sourceStream, l, st)
+			d.Open(sourceStream, l, st)
+			So(d.Results(), ShouldNotBeEmpty)
+		})
+	})
+}
