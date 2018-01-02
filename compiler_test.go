@@ -51,7 +51,6 @@ func TestGlobal(t *testing.T) {
 			So(row.Name, ShouldEqual, "Bob")
 		})
 	})
-
 }
 
 func TestCompiler(t *testing.T) {

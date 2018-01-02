@@ -361,6 +361,19 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 					continue
 				}
 
+				if strings.ToLower(conn.Driver) == "http" {
+					if err := httpSource(js, dag, connMap, transform, *conn, *source, globalOptions); err != nil {
+						return err
+					}
+
+					if err := dag.Connect(strings.ToLower(transform.Name)+sourceUniquifier+connectionAlias, strings.ToLower(transform.Name)); err != nil {
+						return err
+					}
+
+					sourceSequence = append(sourceSequence, connectionAlias)
+					continue
+				}
+
 				s := engine.SQLSource{
 					Name:             strings.ToLower(transform.Name) + sourceUniquifier + connectionAlias,
 					Driver:           conn.Driver,
@@ -815,6 +828,80 @@ func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 			Y2: yy2,
 		},
 		Cols: columns,
+	})
+
+	//dag.Connect(strings.ToLower(transform.Name+sourceUniquifier+alias), strings.ToLower(transform.Name))
+
+	return nil
+
+}
+
+func httpSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, transform aql.Transform, conn aql.Connection, source aql.SourceSink, globalOptions []aql.Option) error {
+	var (
+		url  string
+		paginationOffsetName string
+		paginationLimitName string
+		jsonPath string
+		cols []string
+		pageSize int
+	)
+
+	scan := aql.OptionScanner(transform.Name, conn.Name, transform.Options, conn.Options, globalOptions)
+	maybeScan := aql.MaybeOptionScanner(transform.Name, conn.Name, transform.Options, conn.Options)
+
+	err := scan("URL", &url)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = maybeScan("PAGINATION_OFFSET_PARAMETER", &paginationOffsetName)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = maybeScan("PAGINATION_LIMIT_PARAMETER", &paginationLimitName)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = maybeScan("JSON_PATH", &jsonPath)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = maybeScan("PAGE_SIZE", &pageSize)
+
+	if err != nil {
+		return err
+	}
+
+	var colString string
+	err = scan("COLUMNS", colString)
+
+	if err != nil {
+		return err
+	}
+
+	cols = strings.Split(colString, ",")
+	for i := range cols {
+		cols[i] = strings.TrimSpace(cols[i])
+	}
+
+	alias := alias(source, &conn)
+
+	//Make destination name unique
+	dag.AddSource(strings.ToLower(transform.Name+sourceUniquifier+alias), alias, &engine.HTTPSource{
+		Name:     transform.Name + sourceUniquifier + alias,
+		URL: url,
+		PaginationOffsetName: paginationOffsetName,
+		PaginationLimitName: paginationLimitName,
+		JSONPath: jsonPath,
+		ColumnNames: cols,
+		PageSize: pageSize,
 	})
 
 	//dag.Connect(strings.ToLower(transform.Name+sourceUniquifier+alias), strings.ToLower(transform.Name))
