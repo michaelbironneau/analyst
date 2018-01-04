@@ -109,7 +109,6 @@ func (h *HTTPSource) Open(s Stream, l Logger, st Stopper) {
 		h.log(l, Info, fmt.Sprintf("HTTP request took %7.2f seconds", duration.Seconds()))
 
 		if err != nil {
-			resp.Body.Close()
 			h.fatalerr(err, s, l)
 			return
 		}
