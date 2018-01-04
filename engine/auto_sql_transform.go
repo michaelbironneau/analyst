@@ -230,20 +230,25 @@ func (a *AutoSQLTransform) Open(source Stream, dest Stream, l Logger, st Stopper
 	a.log(l, Info, fmt.Sprintf("Inserted %d rowCount into staging table", rowCount))
 
 	//Run the user query on the staging table and send the result to the destination stream
-	rows, err := a.db.Query(a.Query, params)
-	defer rows.Close()
+	rows, err := a.db.Query(a.Query, params...)
+
 	if err != nil {
 		a.fatalerr(err, dest, l)
 		return
 	}
-
+	defer rows.Close()
+	outCols, err := rows.Columns()
+	if err != nil {
+		a.fatalerr(err, dest, l)
+		return
+	}
 	for rows.Next() {
 		if st.Stopped() {
 			a.log(l, Warning, fmt.Sprintf("Auto SQL source aborted"))
 			close(dest.Chan(a.outgoingName))
 			return
 		}
-		rr := make([]interface{}, len(cols))
+		rr := make([]interface{}, len(outCols))
 		rrp := makeRowPointers(rr)
 		err := rows.Scan(rrp...)
 		rr = convertRow(rr)

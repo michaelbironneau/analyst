@@ -53,6 +53,31 @@ func TestGlobal(t *testing.T) {
 	})
 }
 
+func TestCompilerHTTPAutoSQL(t *testing.T){
+	script := `
+	CONNECTION 'WebAPI' (
+		DRIVER = 'http',
+		URL = 'https://chroniclingamerica.loc.gov/awardees.json',
+		JSON_PATH = 'awardees',
+		COLUMNS = 'URL, Name'
+	)
+
+	QUERY 'Aggregate' FROM CONNECTION WebAPI (
+		--Select how many awardees are universities
+		SELECT 'The Magic Answer Is', COUNT(*) As NumberOfUniversityAwardees FROM WebAPI
+		WHERE Name LIKE '%university%'
+	) INTO CONSOLE
+	`
+	Convey("Given a script using an HTTP connection and a QUERY", t, func(){
+		Convey("It should run without errors", func(){
+			l := &engine.ConsoleLogger{}
+			err := ExecuteString(script, &RuntimeOptions{nil, l, nil})
+			So(err, ShouldBeNil)
+		})
+
+	})
+}
+
 func TestCompiler(t *testing.T) {
 	script := `
 	CONNECTION 'DB' (

@@ -161,7 +161,7 @@ func OptionScanner(blockName, namespace string, scope ...[]Option) func(needle s
 			src := opt.Truthy()
 			*v = src
 		default:
-			panic(fmt.Errorf("OptionScanner found dest of unexpected type %T in block %s", dest, blockName))
+			panic(fmt.Errorf("OptionScanner found dest of unexpected type %T in block %s for needle '%s'", dest, blockName, needle))
 		}
 		return nil
 	}

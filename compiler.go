@@ -349,7 +349,7 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 				conn := connMap[strings.ToLower(*source.Database)]
 
 				if strings.ToLower(conn.Driver) == "excel" {
-					if err := excelSource(js, dag, connMap, transform, *conn, *source, globalOptions); err != nil {
+					if err := excelSource(js, dag, connMap, &transform, *conn, *source, globalOptions); err != nil {
 						return err
 					}
 
@@ -362,7 +362,7 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 				}
 
 				if strings.ToLower(conn.Driver) == "http" {
-					if err := httpSource(js, dag, connMap, transform, *conn, *source, globalOptions); err != nil {
+					if err := httpSource(js, dag, connMap, &transform, *conn, *source, globalOptions); err != nil {
 						return err
 					}
 
@@ -546,6 +546,64 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			return fmt.Errorf("could not find connection %s for query %s", *query.Sources[0].Database, query.Name)
 		}
 		conn := connMap[strings.ToLower(*query.Sources[0].Database)]
+		var autoSQL bool
+		if strings.ToLower(conn.Driver) == "excel" && !execOnly {
+			if err := excelSource(js, dag, connMap, &query, *conn, query.Sources[0], globalOptions); err != nil {
+				return err
+			}
+			autoSQL = true
+		}
+		if strings.ToLower(conn.Driver) == "http" && !execOnly {
+			if err := httpSource(js, dag, connMap, &query, *conn, query.Sources[0], globalOptions); err != nil {
+				return err
+			}
+			autoSQL = true
+		}
+		if autoSQL {
+			maybeScanner := aql.MaybeOptionScanner(query.Name, "", query.Options, conn.Options, globalOptions)
+
+			var (
+				stagingTable string
+				stagingConnString string
+			)
+
+			if ok, err := maybeScanner("STAGING_TABLE", &stagingTable); err != nil {
+				return err
+			} else if !ok {
+				stagingTable = alias(query.Sources[0], conn)
+			}
+
+			if _, err := maybeScanner("STAGING_CONNECTION_STRING", &stagingConnString); err != nil {
+				return err
+			}
+
+
+			//create auto-sql transform
+			//(and wire up)
+			s := engine.AutoSQLTransform{
+				Name: query.Name,
+				Query: query.Content,
+				ParameterTable: params,
+				ParameterNames: query.Parameters,
+				Table: stagingTable,
+				StagingSQLConnString: stagingConnString,
+			}
+
+			s.SetName(query.Name)
+
+			if err := dag.AddTransform(strings.ToLower(query.Name), query.Name, &s); err != nil {
+				return err
+			}
+
+			sourceAlias := alias(query.Sources[0], conn)
+
+			if err := dag.Connect(strings.ToLower(query.Name + sourceUniquifier + sourceAlias), strings.ToLower(query.Name)); err != nil {
+				return err
+			}
+
+			continue
+		}
+
 		s := engine.SQLSource{
 			Name:             query.Name,
 			Driver:           conn.Driver,
@@ -748,15 +806,15 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 
 }
 
-func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, transform aql.Transform, conn aql.Connection, source aql.SourceSink, globalOptions []aql.Option) error {
+func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, source aql.SourceSink, globalOptions []aql.Option) error {
 	var (
 		file  string
 		sheet string
 		rang  string
 	)
 
-	scan := aql.OptionScanner(transform.Name, conn.Name, transform.Options, conn.Options, globalOptions)
-	//maybeScan := aql.MaybeOptionScanner(transform.Name, conn.Name, transform.Options, conn.Options)
+	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
+	//maybeScan := aql.MaybeOptionScanner(block.Name, conn.Name, block.Options, conn.Options)
 
 	err := scan("FILE", &file)
 
@@ -801,12 +859,12 @@ func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 
 	var columns []string
 
-	colsOpt, ok := aql.FindOverridableOption("COLUMNS", conn.Name, transform.Options, conn.Options)
+	colsOpt, ok := aql.FindOverridableOption("COLUMNS", conn.Name, block.GetOptions(), conn.Options)
 
 	if ok {
 		cols, ok2 := colsOpt.String()
 		if !ok2 {
-			return fmt.Errorf("expected COLUMNS option to be a STRING for connection %s and transform %s", conn.Name, transform.Name)
+			return fmt.Errorf("expected COLUMNS option to be a STRING for connection %s and block %s", conn.Name, block.GetName())
 		}
 		columns = strings.Split(cols, ",")
 		for i := range columns {
@@ -817,8 +875,8 @@ func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 	alias := alias(source, &conn)
 
 	//Make destination name unique
-	dag.AddSource(strings.ToLower(transform.Name+sourceUniquifier+alias), alias, &engine.ExcelSource{
-		Name:     transform.Name + sourceUniquifier + alias,
+	dag.AddSource(strings.ToLower(block.GetName()+sourceUniquifier+alias), alias, &engine.ExcelSource{
+		Name:     block.GetName() + sourceUniquifier + alias,
 		Filename: file,
 		Sheet:    sheet,
 		Range: engine.ExcelRange{
@@ -830,13 +888,13 @@ func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 		Cols: columns,
 	})
 
-	//dag.Connect(strings.ToLower(transform.Name+sourceUniquifier+alias), strings.ToLower(transform.Name))
+	//dag.Connect(strings.ToLower(block.Name+sourceUniquifier+alias), strings.ToLower(block.Name))
 
 	return nil
 
 }
 
-func httpSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, transform aql.Transform, conn aql.Connection, source aql.SourceSink, globalOptions []aql.Option) error {
+func httpSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, source aql.SourceSink, globalOptions []aql.Option) error {
 	var (
 		url  string
 		paginationOffsetName string
@@ -846,8 +904,8 @@ func httpSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 		pageSize int
 	)
 
-	scan := aql.OptionScanner(transform.Name, conn.Name, transform.Options, conn.Options, globalOptions)
-	maybeScan := aql.MaybeOptionScanner(transform.Name, conn.Name, transform.Options, conn.Options)
+	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
+	maybeScan := aql.MaybeOptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options)
 
 	err := scan("URL", &url)
 
@@ -880,7 +938,7 @@ func httpSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 	}
 
 	var colString string
-	err = scan("COLUMNS", colString)
+	err = scan("COLUMNS", &colString)
 
 	if err != nil {
 		return err
@@ -893,18 +951,20 @@ func httpSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 
 	alias := alias(source, &conn)
 
-	//Make destination name unique
-	dag.AddSource(strings.ToLower(transform.Name+sourceUniquifier+alias), alias, &engine.HTTPSource{
-		Name:     transform.Name + sourceUniquifier + alias,
-		URL: url,
+	ssource := &engine.HTTPSource{
+		Name:                 block.GetName() + sourceUniquifier + alias,
+		URL:                  url,
 		PaginationOffsetName: paginationOffsetName,
-		PaginationLimitName: paginationLimitName,
-		JSONPath: jsonPath,
-		ColumnNames: cols,
-		PageSize: pageSize,
-	})
+		PaginationLimitName:  paginationLimitName,
+		JSONPath:             jsonPath,
+		ColumnNames:          cols,
+		PageSize:             pageSize,
+	}
+	ssource.SetName(alias)
+	//Make destination name unique
+	dag.AddSource(strings.ToLower(block.GetName()+sourceUniquifier+alias), alias, ssource)
 
-	//dag.Connect(strings.ToLower(transform.Name+sourceUniquifier+alias), strings.ToLower(transform.Name))
+	//dag.Connect(strings.ToLower(block.Name+sourceUniquifier+alias), strings.ToLower(block.Name))
 
 	return nil
 
