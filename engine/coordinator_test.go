@@ -30,7 +30,9 @@ func TestWithoutCoordinator(t *testing.T) {
 
 func TestCoordinatorInvalidTermination(t *testing.T) {
 	Convey("Given a coordinator and a job that terminates on a transform", t, func() {
-		c := NewCoordinator(&ConsoleLogger{})
+		l := &ConsoleLogger{}
+		tx := NewTransactionManager(l)
+		c := NewCoordinator(l, tx)
 		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
 		cols := []string{"1", "2", "3"}
 		s := NewSliceSource(cols, msg)
@@ -50,7 +52,9 @@ func TestCoordinatorInvalidTermination(t *testing.T) {
 
 func TestCoordinator(t *testing.T) {
 	Convey("Given a coordinator and some data", t, func() {
-		c := NewCoordinator(&ConsoleLogger{})
+		l := &ConsoleLogger{}
+		tx := NewTransactionManager(l)
+		c := NewCoordinator(l, tx)
 		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
 		cols := []string{"1", "2", "3"}
 		Convey("It should execute a passthrough example correctly", func() {
@@ -77,7 +81,9 @@ func TestCoordinator(t *testing.T) {
 
 	})
 	Convey("Given a coordinator", t, func() {
-		c := NewCoordinator(&ConsoleLogger{})
+		l := &ConsoleLogger{}
+		tx := NewTransactionManager(l)
+		c := NewCoordinator(l, tx)
 		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
 		msg2 := [][]interface{}{[]interface{}{"g", "h", "i"}, []interface{}{"j", "k", "l"}}
 		cols := []string{"1", "2", "3"}
@@ -175,7 +181,9 @@ func TestCoordinator(t *testing.T) {
 
 func TestTester(t *testing.T) {
 	Convey("Given a coordinator and a failing test", t, func() {
-		c := NewCoordinator(&ConsoleLogger{})
+		l := &ConsoleLogger{}
+		tx := NewTransactionManager(l)
+		c := NewCoordinator(l, tx)
 		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
 		cols := []string{"1", "2", "3"}
 		failTester := func(msg []interface{}) bool {
@@ -222,7 +230,9 @@ func TestNamedStreams(t *testing.T) {
 		s.SetName("s")
 		d1 := SliceDestination{Alias: "d1"}
 		d2 := SliceDestination{Alias: "d2"}
-		c := NewCoordinator(&ConsoleLogger{})
+		l := &ConsoleLogger{}
+		tx := NewTransactionManager(l)
+		c := NewCoordinator(l, tx)
 		c.AddSource("slice source", "s", s)
 		c.AddDestination("slice destination 1", "d1", &d1)
 		c.AddDestination("slice destination 2", "d2", &d2)

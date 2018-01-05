@@ -27,7 +27,9 @@ func TestSQLite(t *testing.T) {
 	Convey("Given a coordinator and a SQLite data destination", t, func() {
 		err := setupInsertTest()
 		So(err, ShouldBeNil)
-		c := NewCoordinator(&ConsoleLogger{})
+		l := &ConsoleLogger{}
+		tx := NewTransactionManager(l)
+		c := NewCoordinator(l, tx)
 		sq := SQLDestination{
 			Driver:           "sqlite3",
 			ConnectionString: "./testing/test_insert.db",
@@ -59,7 +61,9 @@ func TestSQLite(t *testing.T) {
 			So(sq.Columns(), ShouldResemble, cols)
 
 			//TEST INSERTED RESULTS AND SQL DESTINATION
-			c = NewCoordinator(&ConsoleLogger{})
+			l := &ConsoleLogger{}
+			tx := NewTransactionManager(l)
+			c := NewCoordinator(l, tx)
 			d := SliceDestination{Alias: "console"}
 			err = c.AddSource("source", "sql-source", &sqs)
 			So(err, ShouldBeNil)

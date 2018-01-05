@@ -12,7 +12,9 @@ type SQLDestination struct {
 	Driver           string
 	ConnectionString string
 	Table            string
+	Tx               *sql.Tx
 	columns          []string
+	manageTx         bool
 	db               *sql.DB
 	Alias            string
 }
@@ -61,6 +63,7 @@ func (sq *SQLDestination) log(l Logger, level LogLevel, msg string) {
 }
 
 func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
+	sq.manageTx = sq.Tx == nil
 	if sq.db == nil {
 		err := sq.connect()
 		if err != nil {
@@ -69,20 +72,27 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 		}
 	}
 	sq.log(l, Info, "SQL destination opened")
-
-	tx, err := sq.db.Begin()
-	sq.log(l, Trace, "Initiated transaction")
-	if err != nil {
-		sq.fatalerr(err, l)
-		return
+	var (
+		tx  *sql.Tx
+		err error
+	)
+	if sq.Tx == nil {
+		tx, err = sq.db.Begin()
+		sq.log(l, Trace, "Initiated transaction")
+		if err != nil {
+			sq.fatalerr(err, l)
+			return
+		}
 	}
-
 	var (
 		stmt *sql.Stmt
 	)
 	for msg := range s.Chan(sq.Alias) {
 		if st.Stopped() {
 			sq.log(l, Warning, "SQL source aborted, rollin back transaction")
+			if !sq.manageTx {
+				return
+			}
 			err := tx.Rollback()
 			if err == nil {
 				sq.log(l, Info, "Transaction rolled back")
@@ -94,6 +104,9 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 		sq.log(l, Trace, fmt.Sprintf("Row %v", msg.Data))
 		if len(s.Columns()) != len(msg.Data) {
 			sq.fatalerr(fmt.Errorf("expected %v columns but got %v", len(s.Columns()), len(msg.Data)), l)
+			if !sq.manageTx {
+				return
+			}
 			tx.Rollback() //discard error - best effort attempt
 			return
 		}
@@ -104,6 +117,9 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 			stmt, err = tx.Prepare(insertQuery)
 			if err != nil {
 				sq.fatalerr(err, l)
+				if !sq.manageTx {
+					return
+				}
 				tx.Rollback()
 				return
 			}
@@ -111,9 +127,15 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 		_, err := stmt.Exec(msg.Data...)
 		if err != nil {
 			sq.fatalerr(err, l)
+			if !sq.manageTx {
+				return
+			}
 			tx.Rollback()
 			return
 		}
+	}
+	if !sq.manageTx {
+		return
 	}
 	sq.log(l, Info, "Done - committing transaction")
 	err = tx.Commit()

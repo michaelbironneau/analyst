@@ -16,6 +16,8 @@ type SQLSource struct {
 	ConnectionString string
 	Query            string
 	ParameterTable   *ParameterTable
+	Tx               *sql.Tx
+	manageTx         bool
 	columns          []string
 	db               *sql.DB
 	outgoingName     string
@@ -85,6 +87,7 @@ func (sq *SQLSource) log(l Logger, level LogLevel, msg string) {
 }
 
 func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
+	sq.manageTx = sq.Tx == nil
 	if sq.db == nil {
 		err := sq.connect()
 		if err != nil {
@@ -93,6 +96,18 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 		}
 	}
 	sq.log(l, Info, "SQL source opened")
+	var (
+		tx  *sql.Tx
+		err error
+	)
+	if sq.Tx == nil {
+		tx, err = sq.db.Begin()
+		sq.log(l, Trace, "Initiated transaction")
+		if err != nil {
+			sq.fatalerr(err, s, l)
+			return
+		}
+	}
 	params, err := sq.parameters()
 	if err != nil {
 		sq.fatalerr(err, s, l)
@@ -108,25 +123,48 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 	)
 
 	if sq.ExecOnly {
-		res, err = sq.db.Exec(sq.Query, params...)
+		res, err = tx.Exec(sq.Query, params...)
 		if err != nil {
 			sq.fatalerr(err, s, l)
+			if !sq.manageTx {
+				return
+			}
+			err := tx.Rollback()
+			if err == nil {
+				sq.log(l, Info, "Transaction rolled back")
+			} else {
+				sq.log(l, Error, fmt.Sprintf("Failed to roll back transaction: %v", err))
+			}
 			return
 		}
 		rowsAffected, err = res.RowsAffected()
 		if err != nil {
 			sq.log(l, Trace, fmt.Sprintf("Error retrieving rows affected: %v", err))
 		}
+		sq.log(l, Info, "Done - committing transaction")
+		err = tx.Commit()
+		if err != nil {
+			sq.fatalerr(err, s, l)
+		}
 		sq.log(l, Info, fmt.Sprintf("Rows affected: %v", rowsAffected))
 		close(s.Chan(sq.outgoingName))
 		return
 	} else {
-		r, err = sq.db.Query(sq.Query, params...)
+		r, err = tx.Query(sq.Query, params...)
 	}
 
 	sq.log(l, Info, fmt.Sprintf("Query took %7.2f seconds", time.Now().Sub(start).Seconds()))
 	if err != nil {
 		sq.fatalerr(err, s, l)
+		if !sq.manageTx {
+			return
+		}
+		err := tx.Rollback()
+		if err == nil {
+			sq.log(l, Info, "Transaction rolled back")
+		} else {
+			sq.log(l, Error, fmt.Sprintf("Failed to roll back transaction: %v", err))
+		}
 		return
 	}
 	defer r.Close()
@@ -156,7 +194,11 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 		sq.log(l, Trace, fmt.Sprintf("Row %v", rr))
 		s.Chan(sq.outgoingName) <- Message{Source: sq.outgoingName, Data: rr}
 	}
-
+	sq.log(l, Info, "Done - committing transaction")
+	err = tx.Commit()
+	if err != nil {
+		sq.fatalerr(err, s, l)
+	}
 	sq.log(l, Info, fmt.Sprintf("SQL source closed"))
 	close(s.Chan(sq.outgoingName))
 }

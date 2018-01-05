@@ -53,7 +53,7 @@ func TestGlobal(t *testing.T) {
 	})
 }
 
-func TestCompilerHTTPAutoSQL(t *testing.T){
+func TestCompilerHTTPAutoSQL(t *testing.T) {
 	script := `
 	CONNECTION 'WebAPI' (
 		DRIVER = 'http',
@@ -68,8 +68,8 @@ func TestCompilerHTTPAutoSQL(t *testing.T){
 		WHERE Name LIKE '%university%'
 	) INTO CONSOLE
 	`
-	Convey("Given a script using an HTTP connection and a QUERY", t, func(){
-		Convey("It should run without errors", func(){
+	Convey("Given a script using an HTTP connection and a QUERY", t, func() {
+		Convey("It should run without errors", func() {
 			l := &engine.ConsoleLogger{}
 			err := ExecuteString(script, &RuntimeOptions{nil, l, nil})
 			So(err, ShouldBeNil)

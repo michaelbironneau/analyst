@@ -62,6 +62,7 @@ type coordinator struct {
 	constraints      []constraint
 	constraintMap    map[string][]string //map after -> before
 	constraintMapRev map[string][]string //map before -> after
+	txManager        TransactionManager
 }
 
 type sourceNode struct {
@@ -292,7 +293,12 @@ func (c *coordinator) Execute() error {
 	}
 	wg.Wait()
 	close(c.l.Chan())
-	return nil
+	if c.s.Stopped() {
+		return c.txManager.Rollback()
+	} else {
+		return c.txManager.Commit()
+	}
+
 }
 
 func (c *coordinator) getNodeName(node graph.Node) string {
@@ -325,7 +331,7 @@ func (c *coordinator) getAliases(nodes []graph.Node) []string {
 	return aliases
 }
 
-func NewCoordinator(logger Logger) Coordinator {
+func NewCoordinator(logger Logger, txManager TransactionManager) Coordinator {
 	return &coordinator{
 		s:                &stopper{},
 		l:                logger,
@@ -341,6 +347,7 @@ func NewCoordinator(logger Logger) Coordinator {
 		testStreams:      make(map[string]Stream),
 		constraintMap:    make(map[string][]string),
 		constraintMapRev: make(map[string][]string),
+		txManager:        txManager,
 	}
 }
 

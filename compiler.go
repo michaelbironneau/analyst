@@ -49,7 +49,7 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 		Time:    time.Now(),
 		Message: fmt.Sprintf("Found globals %s", formatOptions(options)),
 	}
-	dag := engine.NewCoordinator(logger)
+
 	params := engine.NewParameterTable()
 	err := js.ResolveExternalContent()
 	if err != nil {
@@ -63,6 +63,14 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 	if err != nil {
 		return fmt.Errorf("error parsing connections: %v", err)
 	}
+
+	txManager, err := txManager(logger, connMap)
+
+	if err != nil {
+		return fmt.Errorf("error startin transaction manager: %v", err)
+	}
+
+	dag := engine.NewCoordinator(logger, txManager)
 
 	err = declarations(js, params)
 
@@ -117,6 +125,20 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 	}
 
 	return dag.Execute()
+}
+
+func txManager(l engine.Logger, connMap map[string]*aql.Connection) (engine.TransactionManager, error) {
+	tm := engine.NewTransactionManager(l)
+	for _, conn := range connMap {
+		if strings.ToLower(conn.Driver) == "excel" || strings.ToLower(conn.Driver) == "http" {
+			//these don't support transactions
+			continue
+		}
+		if err := tm.Register(*conn); err != nil {
+			return nil, err
+		}
+	}
+	return tm, nil
 }
 
 //mergeOptions merges the CLI options and the global options in the job script.
@@ -563,7 +585,7 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			maybeScanner := aql.MaybeOptionScanner(query.Name, "", query.Options, conn.Options, globalOptions)
 
 			var (
-				stagingTable string
+				stagingTable      string
 				stagingConnString string
 			)
 
@@ -577,15 +599,14 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 				return err
 			}
 
-
 			//create auto-sql transform
 			//(and wire up)
 			s := engine.AutoSQLTransform{
-				Name: query.Name,
-				Query: query.Content,
-				ParameterTable: params,
-				ParameterNames: query.Parameters,
-				Table: stagingTable,
+				Name:                 query.Name,
+				Query:                query.Content,
+				ParameterTable:       params,
+				ParameterNames:       query.Parameters,
+				Table:                stagingTable,
 				StagingSQLConnString: stagingConnString,
 			}
 
@@ -597,7 +618,7 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 
 			sourceAlias := alias(query.Sources[0], conn)
 
-			if err := dag.Connect(strings.ToLower(query.Name + sourceUniquifier + sourceAlias), strings.ToLower(query.Name)); err != nil {
+			if err := dag.Connect(strings.ToLower(query.Name+sourceUniquifier+sourceAlias), strings.ToLower(query.Name)); err != nil {
 				return err
 			}
 
@@ -896,12 +917,12 @@ func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 
 func httpSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, source aql.SourceSink, globalOptions []aql.Option) error {
 	var (
-		url  string
+		url                  string
 		paginationOffsetName string
-		paginationLimitName string
-		jsonPath string
-		cols []string
-		pageSize int
+		paginationLimitName  string
+		jsonPath             string
+		cols                 []string
+		pageSize             int
 	)
 
 	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
