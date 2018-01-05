@@ -156,7 +156,88 @@ func TestCompilerWithExecs(t *testing.T) {
 
 }
 
-func TestCompilerWithBuiltinTransform(t *testing.T) {
+func TestCompilerWithLookupTransform(t *testing.T){
+	script := `
+	GLOBAL 'CreateTables' (
+		CREATE TABLE LookupTable (
+			id INT PRIMARY KEY,
+			first_name TEXT
+		);
+
+		CREATE TABLE BaseTable (
+			lookup_id INT PRIMARY KEY,
+			last_name TEXT
+		);
+
+		CREATE TABLE JoinedTable (
+			first_name TEXT,
+			last_name TEXT
+		);
+	);
+
+	GLOBAL 'SeedTables' (
+		INSERT INTO LookupTable VALUES (1, 'Bob');
+		INSERT INTO LookupTable VALUES (2, 'John');
+		INSERT INTO LookupTable VALUES (3, 'Steve');
+
+		INSERT INTO BaseTable VALUES (1, 'Bobbertson');
+		INSERT INTO BaseTable VALUES (2, 'Johnson');
+	);
+
+	QUERY 'FirstNames' FROM GLOBAL (
+		SELECT id, first_name FROM LookupTable
+	);
+
+	QUERY 'LastNames' FROM GLOBAL (
+		SELECT lookup_id, last_name FROM BaseTable
+	);
+
+	TRANSFORM 'Join' FROM BLOCK FirstNames, BLOCK LastNames (
+		LOOKUP FirstNames.first_name, LastNames.last_name FROM FirstNames
+		INNER JOIN LastNames ON FirstNames.id = LastNames.lookup_id
+	) INTO GLOBAL WITH(Table = 'JoinedTable')
+	`
+	Convey("Given a script that uses builtin transforms", t, func() {
+		err := ExecuteString(script, &RuntimeOptions{})
+		So(err, ShouldBeNil)
+		db, err := sql.Open(globalDbDriver, globalDbConnString)
+		defer db.Close()
+		So(err, ShouldBeNil)
+		rows, err := db.Query("Select first_name, last_name from JoinedTable order by first_name")
+		So(err, ShouldBeNil)
+		var res struct {
+			first string
+			last string
+		}
+
+		defer rows.Close()
+		var count int
+		var (
+			haveBob bool
+			haveJohn bool
+		)
+		for rows.Next() {
+			count++
+			err := rows.Scan(&res.first, &res.last)
+			So(err, ShouldBeNil)
+			if res.first == "Bob" {
+				haveBob = true
+				So(res.last, ShouldEqual, "Bobbertson")
+			} else if res.first == "John" {
+				haveJohn = true
+				So(res.last, ShouldEqual, "Johnson")
+			} else {
+				So(res.first, ShouldBeIn, []string{"Bob", "John"}) //fails
+			}
+		}
+		So(haveBob, ShouldBeTrue)
+		So(haveJohn, ShouldBeTrue)
+		So(count, ShouldEqual, 2)
+	})
+
+}
+
+func TestCompilerWithAggregateTransform(t *testing.T) {
 	script := `
 	SET Table = 'Result2';
 
