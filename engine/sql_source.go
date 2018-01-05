@@ -88,7 +88,7 @@ func (sq *SQLSource) log(l Logger, level LogLevel, msg string) {
 }
 
 func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
-	if st.Stopped(){
+	if st.Stopped() {
 		close(s.Chan(sq.outgoingName))
 		return
 	}
