@@ -144,6 +144,7 @@ func (tm *transactionManager) Commit() error {
 				break
 			}
 			if err == sql.ErrTxDone {
+				tm.log(Warning, "transaction already committed for connection %s", name)
 				break
 			}
 			tm.log(Warning, "(retry attempt %d): error committing transaction for connection %s: %v", retries, name, err)
@@ -175,6 +176,7 @@ func (tm *transactionManager) Rollback() error {
 				break
 			}
 			if err == sql.ErrTxDone {
+				tm.log(Warning, "transaction already rolled back for %s", name)
 				break
 			}
 			tm.log(Warning, "(retry attempt %d): error rolling back transaction for connection %s: %v", retries, name, err)

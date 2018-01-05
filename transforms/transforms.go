@@ -11,6 +11,7 @@ type initializer func(string) (engine.SequenceableTransform, error)
 var (
 	types map[string]initializer = map[string]initializer{
 		"aggregate": aggregateInitializer,
+		"lookup":    lookupInitializer,
 	}
 )
 

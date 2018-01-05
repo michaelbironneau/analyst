@@ -10,7 +10,8 @@ import (
 )
 
 const (
-	NoGroupBy = ""
+	NoGroupBy        = ""
+	groupBySeparator = "||"
 )
 
 //The reason that Function's have to include the opening ( is
@@ -19,7 +20,7 @@ const (
 var (
 	aggregateLexer = lexer.Unquote(lexer.Upper(lexer.Must(lexer.Regexp(`(\s+)`+
 		`|(?P<Keyword>(?i)AGGREGATE\s|GROUP\s|BY\s|AS\s)`+
-		`|(?P<Function>[a-zA-Z0-9_]+\()` +
+		`|(?P<Function>[a-zA-Z0-9_]+\()`+
 		`|(?P<Ident>[a-zA-Z_][a-zA-Z0-9_]*)`+
 		`|(?P<Number>[-+]?\d*\.?\d+([eE][-+]?\d+)?)`+
 		`|(?P<String>'[^']*'|"[^"]*")`+
@@ -74,7 +75,7 @@ func groupBy(groupByColumns []string, actualColumns []string) (func([]interface{
 	return func(input []interface{}) string {
 		var s string
 		for _, ix := range indexes {
-			s += fmt.Sprintf("%v", input[ix])
+			s += fmt.Sprintf("%s%v", groupBySeparator, input[ix])
 		}
 		return s
 	}, nil
