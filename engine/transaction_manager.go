@@ -143,6 +143,9 @@ func (tm *transactionManager) Commit() error {
 			if err == nil {
 				break
 			}
+			if err == sql.ErrTxDone {
+				break
+			}
 			tm.log(Warning, "(retry attempt %d): error committing transaction for connection %s: %v", retries, name, err)
 			retries += 1
 			if retries > TxManagerMaxRetries {
@@ -169,6 +172,9 @@ func (tm *transactionManager) Rollback() error {
 		for {
 			err := tx.Rollback()
 			if err == nil {
+				break
+			}
+			if err == sql.ErrTxDone {
 				break
 			}
 			tm.log(Warning, "(retry attempt %d): error rolling back transaction for connection %s: %v", retries, name, err)
