@@ -52,7 +52,7 @@ func (sq *SQLSource) Ping() error {
 	return sq.db.Ping()
 }
 
-func (sq *SQLSource) fatalerr(err error, s Stream, l Logger) {
+func (sq *SQLSource) fatalerr(err error, s Stream, l Logger, st Stopper) {
 	l.Chan() <- Event{
 		Level:   Error,
 		Source:  sq.Name,
@@ -60,6 +60,7 @@ func (sq *SQLSource) fatalerr(err error, s Stream, l Logger) {
 		Message: err.Error(),
 	}
 	close(s.Chan(sq.outgoingName))
+	st.Stop()
 }
 
 func (sq *SQLSource) parameters() ([]interface{}, error) {
@@ -87,11 +88,15 @@ func (sq *SQLSource) log(l Logger, level LogLevel, msg string) {
 }
 
 func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
+	if st.Stopped(){
+		close(s.Chan(sq.outgoingName))
+		return
+	}
 	sq.manageTx = sq.Tx == nil
 	if sq.db == nil {
 		err := sq.connect()
 		if err != nil {
-			sq.fatalerr(err, s, l)
+			sq.fatalerr(err, s, l, st)
 			return
 		}
 	}
@@ -104,13 +109,15 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 		tx, err = sq.db.Begin()
 		sq.log(l, Trace, "Initiated transaction")
 		if err != nil {
-			sq.fatalerr(err, s, l)
+			sq.fatalerr(err, s, l, st)
 			return
 		}
+	} else {
+		tx = sq.Tx
 	}
 	params, err := sq.parameters()
 	if err != nil {
-		sq.fatalerr(err, s, l)
+		sq.fatalerr(err, s, l, st)
 		return
 	}
 	start := time.Now()
@@ -125,7 +132,7 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 	if sq.ExecOnly {
 		res, err = tx.Exec(sq.Query, params...)
 		if err != nil {
-			sq.fatalerr(err, s, l)
+			sq.fatalerr(err, s, l, st)
 			if !sq.manageTx {
 				return
 			}
@@ -141,13 +148,18 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 		if err != nil {
 			sq.log(l, Trace, fmt.Sprintf("Error retrieving rows affected: %v", err))
 		}
+
+		sq.log(l, Info, fmt.Sprintf("Rows affected: %v", rowsAffected))
+		close(s.Chan(sq.outgoingName))
+
+		if !sq.manageTx {
+			return
+		}
 		sq.log(l, Info, "Done - committing transaction")
 		err = tx.Commit()
 		if err != nil {
-			sq.fatalerr(err, s, l)
+			sq.fatalerr(err, s, l, st)
 		}
-		sq.log(l, Info, fmt.Sprintf("Rows affected: %v", rowsAffected))
-		close(s.Chan(sq.outgoingName))
 		return
 	} else {
 		r, err = tx.Query(sq.Query, params...)
@@ -155,7 +167,7 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 
 	sq.log(l, Info, fmt.Sprintf("Query took %7.2f seconds", time.Now().Sub(start).Seconds()))
 	if err != nil {
-		sq.fatalerr(err, s, l)
+		sq.fatalerr(err, s, l, st)
 		if !sq.manageTx {
 			return
 		}
@@ -170,7 +182,7 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 	defer r.Close()
 	cols, err := r.Columns()
 	if err != nil {
-		sq.fatalerr(err, s, l)
+		sq.fatalerr(err, s, l, st)
 		return
 	}
 	sq.columns = cols
@@ -188,17 +200,20 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 		err := r.Scan(rrp...)
 		rr = convertRow(rr)
 		if err != nil {
-			sq.fatalerr(err, s, l)
+			sq.fatalerr(err, s, l, st)
 			return
 		}
 		sq.log(l, Trace, fmt.Sprintf("Row %v", rr))
 		s.Chan(sq.outgoingName) <- Message{Source: sq.outgoingName, Data: rr}
 	}
-	sq.log(l, Info, "Done - committing transaction")
-	err = tx.Commit()
-	if err != nil {
-		sq.fatalerr(err, s, l)
+	if sq.manageTx {
+		sq.log(l, Info, "Done - committing transaction")
+		err = tx.Commit()
+		if err != nil {
+			sq.fatalerr(err, s, l, st)
+		}
 	}
+
 	sq.log(l, Info, fmt.Sprintf("SQL source closed"))
 	close(s.Chan(sq.outgoingName))
 }

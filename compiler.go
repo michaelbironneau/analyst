@@ -84,19 +84,19 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 		return err
 	}
 
-	err = sources(js, dag, connMap, params, options)
+	err = sources(js, dag, connMap, params, options, txManager)
 
 	if err != nil {
 		return err
 	}
 
-	err = transforms(js, dag, connMap, options)
+	err = transforms(js, dag, connMap, options, txManager)
 
 	if err != nil {
 		return err
 	}
 
-	err = destinations(js, dag, connMap, params, options)
+	err = destinations(js, dag, connMap, params, options, txManager)
 
 	if err != nil {
 		return err
@@ -294,7 +294,7 @@ func constraints(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 //  [NOT YET IMPLEMENTED] script transform -> script destination
 //  script transform -> GLOBAL destination
 //  script transform -> SQL destination
-func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, globalOptions []aql.Option) error {
+func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, globalOptions []aql.Option, txManager engine.TransactionManager) error {
 	for _, transform := range js.Transforms {
 
 		var (
@@ -529,7 +529,7 @@ func addPlugin(js *aql.JobScript, dag engine.Coordinator, transform aql.Transfor
 //As of current release:
 //	- Limited to SQL sources (Excel sources require scripts or built-ins to process data which won't come until vNext)
 //	- Queries limited to single source (this will probably remain a limitation for the foreseeable future)
-func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, params *engine.ParameterTable, globalOptions []aql.Option) error {
+func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, params *engine.ParameterTable, globalOptions []aql.Option, txManager engine.TransactionManager) error {
 	for _, exec := range js.Execs {
 		if len(exec.Destinations) > 0 {
 			return fmt.Errorf("execs are queries that returns no results, and thus cannot have destinations: %s", exec.Name)
@@ -624,7 +624,10 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 
 			continue
 		}
-
+		tx, err := txManager.Tx(conn.Name)
+		if err != nil {
+			return err
+		}
 		s := engine.SQLSource{
 			Name:             query.Name,
 			Driver:           conn.Driver,
@@ -633,6 +636,7 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			ParameterTable:   params,
 			ParameterNames:   query.Parameters,
 			ExecOnly:         execOnly,
+			Tx:               tx,
 		}
 		//alias := alias(query.Sources[0], conn)
 		alias := query.Name //Queries can only have one source, so let's do away with this confusing alias nonsense
@@ -657,7 +661,7 @@ func alias(ss aql.SourceSink, conn *aql.Connection) string {
 }
 
 //TODO: refactor all this option parsing nonsense
-func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, dest aql.SourceSink, globalOptions []aql.Option) error {
+func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, dest aql.SourceSink, globalOptions []aql.Option, txManager engine.TransactionManager) error {
 	driver := conn.Driver
 	connString := conn.ConnectionString
 	var table string
@@ -668,7 +672,10 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 	}
 
 	alias := alias(dest, &conn)
-
+	tx, err := txManager.Tx(conn.Name)
+	if err != nil {
+		return err
+	}
 	//Uniquify destination name
 	dag.AddDestination(strings.ToLower(block.GetName()+destinationUniquifier+conn.Name), alias, &engine.SQLDestination{
 		Name:             block.GetName() + destinationUniquifier + conn.Name,
@@ -676,6 +683,7 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 		ConnectionString: connString,
 		Table:            table,
 		Alias:            alias,
+		Tx:               tx,
 	})
 
 	dag.Connect(strings.ToLower(block.GetName()), strings.ToLower(block.GetName()+destinationUniquifier+conn.Name))
@@ -1008,7 +1016,7 @@ func parameterDest(js *aql.JobScript, dag engine.Coordinator, query *aql.Query, 
 //  - Limited to SQL, parameter or Excel destinations
 //  - Multiple destinations supported for queries. The table for multiple destinations needs to be specified as TABLE_{DEST_NAME} = '{TABLE_NAME}'
 //  - GLOBAL, SCRIPT and BLOCK destinations not supported
-func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, p *engine.ParameterTable, globalOptions []aql.Option) error {
+func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, p *engine.ParameterTable, globalOptions []aql.Option, txManager engine.TransactionManager) error {
 	for _, query := range js.Queries {
 		for _, dest := range query.Destinations {
 			if dest.Variables != nil {
@@ -1071,7 +1079,7 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 			if strings.ToUpper(conn.Driver) == "EXCEL" {
 				err = excelDest(js, dag, connMap, &query, conn, dest, globalOptions)
 			} else {
-				err = sqlDest(js, dag, connMap, &query, conn, dest, globalOptions)
+				err = sqlDest(js, dag, connMap, &query, conn, dest, globalOptions, txManager)
 			}
 			if err != nil {
 				return err
@@ -1137,7 +1145,7 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 			if strings.ToUpper(conn.Driver) == "EXCEL" {
 				err = excelDest(js, dag, connMap, &transform, conn, dest, globalOptions)
 			} else {
-				err = sqlDest(js, dag, connMap, &transform, conn, dest, globalOptions)
+				err = sqlDest(js, dag, connMap, &transform, conn, dest, globalOptions, txManager)
 			}
 			if err != nil {
 				return err

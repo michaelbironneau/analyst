@@ -29,16 +29,6 @@ type AutoSQLTransform struct {
 	ParameterNames       []string
 }
 
-/**
-type Transform interface {
-	//SetName sets the alias of the transform for outgoing messages
-	SetName(name string)
-
-	//Open gives the transform a stream to start pulling from
-	Open(source Stream, dest Stream, logger Logger, stop Stopper)
-}
-*/
-
 func (a *AutoSQLTransform) parameters() ([]interface{}, error) {
 	if a.ParameterTable == nil && a.ParameterNames != nil {
 		panic("parameter table uninitialized!") //if this gets reached it is a big-time bug

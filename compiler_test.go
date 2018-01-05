@@ -2,6 +2,7 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	xlsx "github.com/360EntSecGroup-Skylar/excelize"
 	"github.com/michaelbironneau/analyst/aql"
 	"github.com/michaelbironneau/analyst/engine"
@@ -347,5 +348,58 @@ func TestConnectionMap(t *testing.T) {
 			So(c["workbook"].Driver, ShouldEqual, "Excel")
 			So(c["db"].Driver, ShouldEqual, "sqlite3")
 		})
+	})
+}
+
+func TestTxManagerRollback(t *testing.T) {
+	script := `
+	CONNECTION 'DB' (
+		Driver = 'sqlite3',
+	    ConnectionString = 'tx_manager_rollback_test.db'
+	)
+
+	EXEC 'CreateTables' FROM CONNECTION DB (
+		CREATE TABLE Test (
+			id INT PRIMARY KEY
+		);
+	)
+
+	EXEC 'InsertOne' FROM CONNECTION DB (
+		INSERT INTO Test VALUES (1);
+	) AFTER CreateTables;
+
+	EXEC 'InsertTwo' FROM CONNECTION DB (
+		INSERT INTO Test VALUES (2);
+		INSERT INTO Test VALUES (1); --violates primary key
+	) AFTER InsertOne;
+
+	QUERY 'Dump' FROM CONNECTION DB (
+		SELECT * FROM Test
+	)
+	INTO CONSOLE
+	AFTER InsertTwo
+	`
+	l := &engine.ConsoleLogger{}
+	Convey("Given a script with EXECs one of which violates PK constraint", t, func() {
+		err := ExecuteString(script, &RuntimeOptions{nil, l, nil})
+		Convey("All writes should get rolled back", func() {
+			So(err, ShouldBeNil)
+			db, err := sql.Open(globalDbDriver, "tx_manager_rollback_test.db")
+			So(err, ShouldBeNil)
+			rows, err := db.Query("SELECT * FROM Test")
+			db.Close()
+			os.Remove("tx_manager_rollback_test.db")
+			So(err, ShouldNotBeNil) //DDL ops are transactional in sqlite3 so CREATE TABLE should have been rolled back
+			if rows == nil {
+				return
+			}
+			defer rows.Close()
+			for rows.Next() {
+				var id int
+				rows.Scan(&id)
+				fmt.Printf("Found id %v\n", id)
+			}
+		})
+
 	})
 }

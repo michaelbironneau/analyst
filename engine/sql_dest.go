@@ -44,13 +44,14 @@ func (sq *SQLDestination) Ping() error {
 	return sq.db.Ping()
 }
 
-func (sq *SQLDestination) fatalerr(err error, l Logger) {
+func (sq *SQLDestination) fatalerr(err error, l Logger, st Stopper) {
 	l.Chan() <- Event{
 		Level:   Error,
 		Source:  sq.Name,
 		Time:    time.Now(),
 		Message: err.Error(),
 	}
+	st.Stop()
 }
 
 func (sq *SQLDestination) log(l Logger, level LogLevel, msg string) {
@@ -67,7 +68,7 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 	if sq.db == nil {
 		err := sq.connect()
 		if err != nil {
-			sq.fatalerr(err, l)
+			sq.fatalerr(err, l, st)
 			return
 		}
 	}
@@ -80,16 +81,18 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 		tx, err = sq.db.Begin()
 		sq.log(l, Trace, "Initiated transaction")
 		if err != nil {
-			sq.fatalerr(err, l)
+			sq.fatalerr(err, l, st)
 			return
 		}
+	} else {
+		tx = sq.Tx
 	}
 	var (
 		stmt *sql.Stmt
 	)
 	for msg := range s.Chan(sq.Alias) {
 		if st.Stopped() {
-			sq.log(l, Warning, "SQL source aborted, rollin back transaction")
+			sq.log(l, Warning, "SQL destination aborted")
 			if !sq.manageTx {
 				return
 			}
@@ -103,7 +106,7 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 		}
 		sq.log(l, Trace, fmt.Sprintf("Row %v", msg.Data))
 		if len(s.Columns()) != len(msg.Data) {
-			sq.fatalerr(fmt.Errorf("expected %v columns but got %v", len(s.Columns()), len(msg.Data)), l)
+			sq.fatalerr(fmt.Errorf("expected %v columns but got %v", len(s.Columns()), len(msg.Data)), l, st)
 			if !sq.manageTx {
 				return
 			}
@@ -116,7 +119,7 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 			insertQuery := sq.prepare(s, msg.Data)
 			stmt, err = tx.Prepare(insertQuery)
 			if err != nil {
-				sq.fatalerr(err, l)
+				sq.fatalerr(err, l, st)
 				if !sq.manageTx {
 					return
 				}
@@ -126,7 +129,7 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 		}
 		_, err := stmt.Exec(msg.Data...)
 		if err != nil {
-			sq.fatalerr(err, l)
+			sq.fatalerr(err, l, st)
 			if !sq.manageTx {
 				return
 			}
@@ -140,7 +143,7 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 	sq.log(l, Info, "Done - committing transaction")
 	err = tx.Commit()
 	if err != nil {
-		sq.fatalerr(err, l)
+		sq.fatalerr(err, l, st)
 	}
 }
 
