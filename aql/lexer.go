@@ -49,6 +49,7 @@ const (
 	CONSOLE
 	SET
 	EXEC
+	DATA
 )
 
 var (
@@ -57,14 +58,14 @@ var (
 		RPAREN: ")", PAREN_BODY: "PAREN_BODY", WITH: "WITH",
 		EQUALS: "=", COMMA: ",", QUOTED_STRING: "QUOTED_STRING", IDENTIFIER: "IDENT", NUMBER: "NUMBER", GLOBAL: "GLOBAL",
 		CONNECTION: "CONNECTION", BLOCK: "BLOCK", AS: "AS", AFTER: "AFTER", PLUGIN: "PLUGIN", DECLARE: "DECLARE", USING: "USING", PARAMETER: "PARAMETER",
-		CONSOLE: "CONSOLE", SET: "SET", EXEC: "EXEC"}
+		CONSOLE: "CONSOLE", SET: "SET", EXEC: "EXEC", DATA: "DATA"}
 	whitespace = regexp.MustCompile(`\s`)
 	keywords   = map[tokenType]bool{TEST: true, QUERY: true, DESCRIPTION: true, TRANSFORM: true, FROM: true, INTO: true, EXTERN: true,
 		INCLUDE: true, WITH: true, GLOBAL: true, CONNECTION: true, BLOCK: true, AS: true, AFTER: true, PLUGIN: true, DECLARE: true, USING: true, PARAMETER: true,
-		CONSOLE: true, SET: true, EXEC: true}
+		CONSOLE: true, SET: true, EXEC: true, DATA: true}
 	keywordReverse = map[string]tokenType{"TEST": TEST, "QUERY": QUERY, "DESCRIPTION": DESCRIPTION, "TRANSFORM": TRANSFORM, "FROM": FROM,
 		"INTO": INTO, "EXTERN": EXTERN, "INCLUDE": INCLUDE, "WITH": WITH, "GLOBAL": GLOBAL, "CONNECTION": CONNECTION, "BLOCK": BLOCK, "AS": AS, "AFTER": AFTER, "PLUGIN": PLUGIN, "DECLARE": DECLARE, "USING": USING, "PARAMETER": PARAMETER,
-		"CONSOLE": CONSOLE, "SET": SET, "EXEC": EXEC}
+		"CONSOLE": CONSOLE, "SET": SET, "EXEC": EXEC, "DATA": DATA}
 )
 
 type ForwardLexer struct {
@@ -269,7 +270,7 @@ func Lex(s string) ([]Item, error) {
 			continue
 		}
 
-		if t, ss, ok := getKeyword(s, index); ok {
+		if t, ss, ok := getKeyword(s, index); ok && len(identifier) == 0 {
 			ret = append(ret, Item{t, lineNumber, ss})
 			index = index + len(ss)
 			continue

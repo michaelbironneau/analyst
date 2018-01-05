@@ -100,6 +100,13 @@ type Test struct {
 	Options      []Option     `[WITH '(' @@ {"," @@ } ')' ]`
 }
 
+type Data struct {
+	Name    string   `DATA @QUOTED_STRING`
+	Extern  *string  `[EXTERN @QUOTED_STRING]`
+	Content string   `['(' @PAREN_BODY ')']`
+	Options []Option `[WITH '(' @@ {"," @@} ')' ]`
+}
+
 type Global struct {
 	Name    string   `GLOBAL @QUOTED_STRING`
 	Content string   `'(' @PAREN_BODY ')'`
@@ -130,6 +137,7 @@ type Connection struct {
 type JobScript struct {
 	Description   *Description         `[@@]`
 	Queries       []Query              `{QUERY @@`
+	Data          []Data               `| @@`
 	Declarations  []Declaration        `| @@`
 	Connections   []UnparsedConnection `| @@`
 	Includes      []Include            `| @@ `
@@ -490,6 +498,13 @@ func (b *JobScript) EvaluateParametrizedContent(globals []Option) error {
 
 	for i := range b.Tests {
 		b.Tests[i].Content, err = evaluateContent(b.Tests[i].Content, b.Tests[i].Options, globals)
+		if err != nil {
+			return err
+		}
+	}
+
+	for i := range b.Data {
+		b.Data[i].Content, err = evaluateContent(b.Data[i].Content, b.Data[i].Options, globals)
 		if err != nil {
 			return err
 		}
