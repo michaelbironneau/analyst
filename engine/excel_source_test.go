@@ -28,7 +28,7 @@ func TestSourceBasic(t *testing.T) {
 		Convey("It should be able to recover the messages", func() {
 
 			d := SliceDestination{}
-			l := &ConsoleLogger{}
+			l := NewConsoleLogger(Trace)
 			st := &stopper{}
 
 			sourceStream := NewStream(e.Columns(), DefaultBufferSize)

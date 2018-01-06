@@ -107,7 +107,7 @@ func TestLookup(t *testing.T) {
 			inA := engine.NewStream(aCols, 100)
 			inB := engine.NewStream(bCols, 100)
 			out := engine.NewStream(nil, 100)
-			logger := engine.ConsoleLogger{}
+			logger := engine.NewConsoleLogger(engine.Trace)
 			st := engine.NewStopper()
 			for i := range aMsgs {
 				var msg engine.Message
@@ -129,11 +129,11 @@ func TestLookup(t *testing.T) {
 			wg.Add(2)
 
 			go func() {
-				l.Open(inA, out, &logger, st)
+				l.Open(inA, out, logger, st)
 				wg.Done()
 			}()
 			go func() {
-				l.Open(inB, out, &logger, st)
+				l.Open(inB, out, logger, st)
 				wg.Done()
 			}()
 			wg.Wait()

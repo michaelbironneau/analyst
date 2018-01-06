@@ -13,7 +13,7 @@ func TestWithoutCoordinator(t *testing.T) {
 			s := NewSliceSource(cols, msg)
 			t := Passthrough{}
 			d := SliceDestination{}
-			l := &ConsoleLogger{}
+			l := NewConsoleLogger(Trace)
 			st := &stopper{}
 
 			sourceStream := NewStream(cols, DefaultBufferSize)
@@ -30,7 +30,7 @@ func TestWithoutCoordinator(t *testing.T) {
 
 func TestCoordinatorInvalidTermination(t *testing.T) {
 	Convey("Given a coordinator and a job that terminates on a transform", t, func() {
-		l := &ConsoleLogger{}
+		l := NewConsoleLogger(Trace)
 		tx := NewTransactionManager(l)
 		c := NewCoordinator(l, tx)
 		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
@@ -52,7 +52,7 @@ func TestCoordinatorInvalidTermination(t *testing.T) {
 
 func TestCoordinator(t *testing.T) {
 	Convey("Given a coordinator and some data", t, func() {
-		l := &ConsoleLogger{}
+		l := NewConsoleLogger(Trace)
 		tx := NewTransactionManager(l)
 		c := NewCoordinator(l, tx)
 		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
@@ -81,7 +81,7 @@ func TestCoordinator(t *testing.T) {
 
 	})
 	Convey("Given a coordinator", t, func() {
-		l := &ConsoleLogger{}
+		l := NewConsoleLogger(Trace)
 		tx := NewTransactionManager(l)
 		c := NewCoordinator(l, tx)
 		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
@@ -181,7 +181,7 @@ func TestCoordinator(t *testing.T) {
 
 func TestTester(t *testing.T) {
 	Convey("Given a coordinator and a failing test", t, func() {
-		l := &ConsoleLogger{}
+		l := NewConsoleLogger(Trace)
 		tx := NewTransactionManager(l)
 		c := NewCoordinator(l, tx)
 		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
@@ -230,7 +230,7 @@ func TestNamedStreams(t *testing.T) {
 		s.SetName("s")
 		d1 := SliceDestination{Alias: "d1"}
 		d2 := SliceDestination{Alias: "d2"}
-		l := &ConsoleLogger{}
+		l := NewConsoleLogger(Trace)
 		tx := NewTransactionManager(l)
 		c := NewCoordinator(l, tx)
 		c.AddSource("slice source", "s", s)

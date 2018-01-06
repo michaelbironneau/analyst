@@ -21,7 +21,7 @@ func TestLiteralSourceArray(t *testing.T) {
 			}
 			l.SetName("Outgoing name")
 			s := NewStream(nil, 100)
-			logger := &ConsoleLogger{}
+			logger := NewConsoleLogger(Trace)
 			st := NewStopper()
 			l.Open(s, logger, st)
 			var index int
@@ -60,7 +60,7 @@ func TestLiteralSourceObjects(t *testing.T) {
 			}
 			l.SetName("Outgoing name")
 			s := NewStream(nil, 100)
-			logger := &ConsoleLogger{}
+			logger := NewConsoleLogger(Trace)
 			st := NewStopper()
 			l.Open(s, logger, st)
 			var index int
@@ -98,7 +98,7 @@ func TestCSVSourceArray(t *testing.T) {
 			}
 			l.SetName("Outgoing name")
 			s := NewStream(nil, 100)
-			logger := &ConsoleLogger{}
+			logger := NewConsoleLogger(Trace)
 			st := NewStopper()
 			l.Open(s, logger, st)
 			var index int

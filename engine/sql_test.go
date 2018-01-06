@@ -27,7 +27,7 @@ func TestSQLite(t *testing.T) {
 	Convey("Given a coordinator and a SQLite data destination", t, func() {
 		err := setupInsertTest()
 		So(err, ShouldBeNil)
-		l := &ConsoleLogger{}
+		l := NewConsoleLogger(Trace)
 		tx := NewTransactionManager(l)
 		c := NewCoordinator(l, tx)
 		sq := SQLDestination{
@@ -61,7 +61,7 @@ func TestSQLite(t *testing.T) {
 			So(sq.Columns(), ShouldResemble, cols)
 
 			//TEST INSERTED RESULTS AND SQL DESTINATION
-			l := &ConsoleLogger{}
+			l := NewConsoleLogger(Trace)
 			tx := NewTransactionManager(l)
 			c := NewCoordinator(l, tx)
 			d := SliceDestination{Alias: "console"}

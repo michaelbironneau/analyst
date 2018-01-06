@@ -88,7 +88,7 @@ func TestFetchChroniclingAmerica(t *testing.T) {
 		}
 		Convey("It should fetch the data correctly into a slice destination", func() {
 			d := SliceDestination{}
-			l := &ConsoleLogger{}
+			l := NewConsoleLogger(Trace)
 			st := &stopper{}
 
 			sourceStream := NewStream(nil, DefaultBufferSize)

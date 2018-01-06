@@ -174,7 +174,7 @@ func mergeOptions(js *aql.JobScript, options []aql.Option) []aql.Option {
 
 func ExecuteString(script string, opts *RuntimeOptions) error {
 	if opts.Logger == nil {
-		opts.Logger = &engine.ConsoleLogger{}
+		opts.Logger = engine.NewConsoleLogger(engine.Trace)
 	}
 	js, err := aql.ParseString(script)
 	if err != nil {
@@ -185,7 +185,7 @@ func ExecuteString(script string, opts *RuntimeOptions) error {
 
 func ExecuteFile(filename string, opts *RuntimeOptions) error {
 	if opts.Logger == nil {
-		opts.Logger = &engine.ConsoleLogger{}
+		opts.Logger = engine.NewConsoleLogger(engine.Trace)
 	}
 	js, err := aql.ParseFile(filename)
 	if err != nil {
@@ -423,6 +423,79 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 					sourceSequence = append(sourceSequence, *source.Block)
 				}
 
+
+				dataBlock, ok := findDataBlock(js, *source.Block)
+
+				if !ok {
+					//query is already created, so connect it
+					if err := dag.Connect(strings.ToLower(*source.Block), strings.ToLower(transform.Name)); err != nil {
+						return err
+					}
+					continue
+				}
+
+				var columns []string
+
+				colsOpt, ok := aql.FindOption(dataBlock.Options, "COLUMNS" )
+
+				if !ok {
+					return fmt.Errorf("expected COLUMNS option for data block %s", dataBlock.Name)
+				}
+
+				cols, ok2 := colsOpt.String()
+				if !ok2 {
+					return fmt.Errorf("expected COLUMNS option to be a STRING for data block %s", dataBlock.Name)
+				}
+				columns = strings.Split(cols, ",")
+				for i := range columns {
+					columns[i] = strings.TrimSpace(columns[i])
+				}
+
+				var dataFormat engine.LiteralSourceFormat
+
+				format, ok := aql.FindOption(dataBlock.Options, "FORMAT")
+
+				if !ok {
+					dataFormat = engine.JSONArray
+				} else {
+					fStr, ok2 := format.String()
+
+					if !ok2 {
+						return fmt.Errorf("expected FORMAT option to be a STRING in data block %s", dataBlock.Name)
+					}
+
+					f, ok := engine.LiteralSourceFormats[strings.ToUpper(fStr)]
+					if !ok {
+						return fmt.Errorf("expected FORMAT option to be one of JSON_ARRAY, JSON_OBJECTS or CSV but got %s", format)
+					}
+					dataFormat = f
+				}
+
+
+
+				if ok {
+					//create new literal source before attempting to connect
+					ls := engine.LiteralSource{
+						Name: dataBlock.Name,
+						Content: dataBlock.Content,
+						Columns: columns,
+						Format: dataFormat,
+					}
+					var err error
+					if source.Alias != nil {
+						ls.SetName(*source.Alias)
+						err = dag.AddSource(strings.ToLower(*source.Block), *source.Alias, &ls)
+					} else {
+						ls.SetName(dataBlock.Name)
+						err = dag.AddSource(strings.ToLower(*source.Block), *source.Block, &ls)
+					}
+
+					if err != nil {
+						return err
+					}
+
+				}
+
 				//query is already created, so connect it
 				if err := dag.Connect(strings.ToLower(*source.Block), strings.ToLower(transform.Name)); err != nil {
 					return err
@@ -439,6 +512,17 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 
 	}
 	return nil
+}
+
+//findDataBlock attempts to find the data block with the given name, if it exists.
+func findDataBlock(js *aql.JobScript, blockName string) (*aql.Data, bool){
+	b := strings.ToLower(blockName)
+	for _, block := range js.Data {
+		if strings.ToLower(block.Name) == b {
+			return &block, true
+		}
+	}
+	return nil, false
 }
 
 func sequenceSources(transform engine.SequenceableTransform, block aql.Block, sourceSequence []string) error {

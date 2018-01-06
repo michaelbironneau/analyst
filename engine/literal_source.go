@@ -47,6 +47,12 @@ var unmarshallers = map[LiteralSourceFormat]unmarshaller{
 	CSVWithoutHeader: unmarshalCSV,
 }
 
+var LiteralSourceFormats = map[string]LiteralSourceFormat{
+	"JSON_ARRAY": JSONArray,
+	"JSON_OBJECTS": JSONObjects,
+	"CSV": CSVWithoutHeader,
+}
+
 func unmarshalJSONArray(s string, cols []string) ([][]interface{}, error) {
 	var array [][]interface{}
 	if err := json.Unmarshal([]byte(s), &array); err != nil {

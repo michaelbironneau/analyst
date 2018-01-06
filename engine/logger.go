@@ -44,17 +44,27 @@ type Logger interface {
 
 type ConsoleLogger struct {
 	MinLevel LogLevel
+	c chan Event
 }
 
-func (cl *ConsoleLogger) Chan() chan<- Event {
+func NewConsoleLogger(minLevel LogLevel) *ConsoleLogger {
+	cl := ConsoleLogger{
+		MinLevel: minLevel,
+		c: make(chan Event, DefaultBufferSize),
+	}
 
-	ch := make(chan Event, DefaultBufferSize)
 	go func() {
-		for event := range ch {
+		for event := range cl.c {
 			if event.Level >= cl.MinLevel {
 				fmt.Println(eventTypeColors[event.Level](eventTypeMap[event.Level]), event.Time.Format(timeFormat), "- ("+event.Source+")", event.Message)
 			}
 		}
 	}()
-	return ch
+
+	return &cl
+
+}
+
+func (cl *ConsoleLogger) Chan() chan<- Event {
+	return cl.c
 }

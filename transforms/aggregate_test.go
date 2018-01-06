@@ -65,7 +65,7 @@ func TestSuperAggregate(t *testing.T) {
 		Convey("It should process messages correctly", func() {
 			in := engine.NewStream([]string{"val", "A", "B"}, 100)
 			out := engine.NewStream(nil, 100)
-			l := engine.ConsoleLogger{}
+			l := engine.NewConsoleLogger(engine.Trace)
 			st := engine.NewStopper()
 			a.SetName("Agg")
 			for i := 0; i < 5; i++ {
@@ -76,7 +76,7 @@ func TestSuperAggregate(t *testing.T) {
 				in.Chan("Agg") <- msg
 			}
 			close(in.Chan("Agg"))
-			a.Open(in, out, &l, st)
+			a.Open(in, out, l, st)
 			var count int
 			for msg := range out.Chan(engine.DestinationWildcard) {
 				So(out.Columns(), ShouldResemble, []string{"Val"})

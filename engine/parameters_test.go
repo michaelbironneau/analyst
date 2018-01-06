@@ -43,7 +43,7 @@ func TestParameterTableAsDestination(t *testing.T) {
 		pp.Declare("Aa")
 		pp.Declare("Bb")
 		st := NewStopper()
-		l := &ConsoleLogger{}
+		l := NewConsoleLogger(Trace)
 		s := NewStream([]string{"CC", "DD"}, 100)
 		Convey("It should correctly populate the parameter table from valid messages", func() {
 			s.Chan("") <- Message{Data: []interface{}{1, 2}}

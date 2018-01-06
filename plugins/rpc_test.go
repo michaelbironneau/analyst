@@ -55,10 +55,10 @@ func TestSourceRPCWithWrapper(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			st := engine.NewStream([]string{"a", "b", "c"}, 100)
-			l := engine.ConsoleLogger{}
+			l := engine.NewConsoleLogger(engine.Trace)
 			stop := engine.NewStopper()
 
-			s.Open(st, &l, stop)
+			s.Open(st, l, stop)
 
 			msg := <-st.Chan("")
 
@@ -99,14 +99,14 @@ func TestDestinationRPCWithWrapper(t *testing.T) {
 			So(err, ShouldBeNil)
 
 			st := engine.NewStream([]string{"a", "b", "c"}, 100)
-			l := engine.ConsoleLogger{}
+			l := engine.NewConsoleLogger(engine.Trace)
 			stop := engine.NewStopper()
 			var m engine.Message
 			m.Source = "Source"
 			m.Data = []interface{}{"a", "b", "c"}
 			st.Chan("") <- m
 			close(st.Chan(""))
-			s.Open(st, &l, stop)
+			s.Open(st, l, stop)
 
 		})
 	})
@@ -142,14 +142,14 @@ func TestTransformRPCWithWrapper(t *testing.T) {
 
 			st := engine.NewStream([]string{"a", "b", "c"}, 100)
 			out := engine.NewStream([]string{"a", "b", "c"}, 100)
-			l := engine.ConsoleLogger{}
+			l := engine.NewConsoleLogger(engine.Trace)
 			stop := engine.NewStopper()
 			var m engine.Message
 			m.Source = "Source"
 			m.Data = []interface{}{1, 2, 3}
 			st.Chan("") <- m
 			go func() {
-				s.Open(st, out, &l, stop)
+				s.Open(st, out, l, stop)
 			}()
 
 			msg := <-out.Chan("")

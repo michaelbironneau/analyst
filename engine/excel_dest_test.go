@@ -15,7 +15,7 @@ func TestExcel(t *testing.T) {
 	Convey("Given a coordinator and an Excel data destination", t, func() {
 		err := setupInsertTest()
 		So(err, ShouldBeNil)
-		l := &ConsoleLogger{}
+		l := NewConsoleLogger(Trace)
 		tx := NewTransactionManager(l)
 		c := NewCoordinator(l, tx)
 		d := ExcelDestination{
@@ -72,7 +72,7 @@ func TestExcel(t *testing.T) {
 			//fmt.Printf("%T, %T, %T", d.Results()[0][0], d.Results()[0][1], d.Results()[0][2])
 
 			//TEST INSERTED RESULTS AND SQL DESTINATION
-			l := &ConsoleLogger{}
+			l := NewConsoleLogger(Trace)
 			tx := NewTransactionManager(l)
 			c := NewCoordinator(l, tx)
 			e.SetName("slice")

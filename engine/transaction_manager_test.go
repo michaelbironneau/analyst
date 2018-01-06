@@ -14,7 +14,7 @@ func TestSingleConn(t *testing.T) {
 			Driver:           "sqlite3",
 			ConnectionString: "file::memory:?mode=memory&cache=shared",
 		}
-		l := &ConsoleLogger{}
+		l := NewConsoleLogger(Trace)
 		Convey("We should be able to register, use and commit", func() {
 			tm := NewTransactionManager(l)
 			err := tm.Register(conn)

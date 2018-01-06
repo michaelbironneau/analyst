@@ -30,20 +30,22 @@ func Run(c *cli.Context) error {
 		fmt.Println("Error - script file not set")
 		return fmt.Errorf("script file not set")
 	}
+	var lev engine.LogLevel
 
-	l := engine.ConsoleLogger{
-		MinLevel: engine.Warning,
-	}
+	lev = engine.Warning
 
 	if c.Bool("v") {
-		l.MinLevel = engine.Info
+		lev = engine.Info
 	}
 
 	if c.Bool("vv") {
-		l.MinLevel = engine.Trace
+		lev = engine.Trace
 	}
 
-	err = ExecuteFile(scriptFile, &RuntimeOptions{opts, &l, nil})
+	l := engine.NewConsoleLogger(lev)
+
+
+	err = ExecuteFile(scriptFile, &RuntimeOptions{opts, l, nil})
 	time.Sleep(time.Millisecond * 100) //give loggers time to flush
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)

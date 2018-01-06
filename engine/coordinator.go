@@ -292,13 +292,14 @@ func (c *coordinator) Execute() error {
 		}
 	}
 	wg.Wait()
-	close(c.l.Chan())
+	var endErr error
 	if c.s.Stopped() {
-		return c.txManager.Rollback()
+		endErr = c.txManager.Rollback()
 	} else {
-		return c.txManager.Commit()
+		endErr = c.txManager.Commit()
 	}
-
+	close(c.l.Chan())
+	return endErr
 }
 
 func (c *coordinator) getNodeName(node graph.Node) string {

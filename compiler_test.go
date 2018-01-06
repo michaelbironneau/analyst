@@ -71,8 +71,9 @@ func TestCompilerHTTPAutoSQL(t *testing.T) {
 	`
 	Convey("Given a script using an HTTP connection and a QUERY", t, func() {
 		Convey("It should run without errors", func() {
-			l := &engine.ConsoleLogger{}
+			l := engine.NewConsoleLogger(engine.Trace)
 			err := ExecuteString(script, &RuntimeOptions{nil, l, nil})
+			//l.Close()
 			So(err, ShouldBeNil)
 		})
 
@@ -99,7 +100,7 @@ func TestCompiler(t *testing.T) {
 
 	`
 	Convey("Given a coordinator and an Excel data destination", t, func() {
-		l := &engine.ConsoleLogger{}
+		l := engine.NewConsoleLogger(engine.Trace)
 		err := ExecuteString(script, &RuntimeOptions{nil, l, nil})
 		So(err, ShouldBeNil)
 		_, err = os.Stat("./output.xlsx")
@@ -381,7 +382,7 @@ func TestCompilerWithTransform(t *testing.T) {
 	)
 	`
 	Convey("Given a script with a transform and an Excel data destination", t, func() {
-		l := &engine.ConsoleLogger{}
+		l := engine.NewConsoleLogger(engine.Trace)
 		Convey("It should execute without error", func() {
 			err := ExecuteString(script, &RuntimeOptions{nil, l, nil})
 			So(err, ShouldBeNil)
@@ -460,7 +461,7 @@ func TestTxManagerRollback(t *testing.T) {
 	INTO CONSOLE
 	AFTER InsertTwo
 	`
-	l := &engine.ConsoleLogger{}
+	l := engine.NewConsoleLogger(engine.Trace)
 	Convey("Given a script with EXECs one of which violates PK constraint", t, func() {
 		err := ExecuteString(script, &RuntimeOptions{nil, l, nil})
 		Convey("All writes should get rolled back", func() {
