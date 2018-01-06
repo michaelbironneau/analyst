@@ -16,7 +16,7 @@ const (
 	sourceUniquifier      = " > "
 	destinationUniquifier = " > "
 	globalDbDriver        = "sqlite3"
-	globalDbConnString    = "file::memory:?mode=memory&cache=shared"
+	globalDbConnString    = "file::memory:?mode=memory&cache=shared&_busy_timeout=5000"
 	sqlSelectAll          = "SELECT * FROM %s"
 )
 
