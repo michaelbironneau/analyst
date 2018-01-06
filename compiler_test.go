@@ -9,6 +9,7 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"testing"
+	"bytes"
 )
 
 func TestGlobal(t *testing.T) {
@@ -50,6 +51,32 @@ func TestGlobal(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(row.ID, ShouldEqual, 1)
 			So(row.Name, ShouldEqual, "Bob")
+		})
+	})
+}
+
+func TestCompilerDataLiteralAndHooks(t *testing.T){
+	script := `
+		DATA 'Values' EXTERN 'test.json'
+			WITH (FORMAT = 'JSON_ARRAY',
+                  COLUMNS = 'Number,Letter');
+
+		TRANSFORM 'Total' FROM BLOCK Values (
+			AGGREGATE SUM(Number) AS Total
+		) INTO CONSOLE WITH (OUTPUT_FORMAT = 'JSON')
+	`
+	Convey("Given a literal data source and a query", t, func(){
+		Convey("It should run without errors", func(){
+			l := engine.NewConsoleLogger(engine.Trace)
+			buf := bytes.NewBufferString("")
+			replaceReaderHook := engine.DestinationHook(func(s string, d engine.Destination) error {
+				cd, _ := d.(*engine.ConsoleDestination)
+				cd.Writer = buf
+				return nil
+			})
+			err := ExecuteString(script, &RuntimeOptions{nil, l, []interface{}{replaceReaderHook}})
+			So(err, ShouldBeNil)
+			So(buf.String(), ShouldEqual, "[{\"Total\":3}]")
 		})
 	})
 }

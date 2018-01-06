@@ -17,6 +17,7 @@ type ConsoleDestination struct {
 	Writer       io.Writer
 	cols         []string
 	result       [][]string
+	resultInt    [][]interface{}
 }
 
 func (cd *ConsoleDestination) Ping() error { return nil }
@@ -41,6 +42,12 @@ func (cd *ConsoleDestination) Open(s Stream, l Logger, st Stopper) {
 			firstTime = false
 			cd.cols = s.Columns()
 		}
+
+		if cd.FormatAsJSON {
+			cd.resultInt = append(cd.resultInt, msg.Data)
+			continue
+		}
+
 		var s []string
 		for _, i := range msg.Data {
 			s = append(s, fmt.Sprintf("%v", i))
@@ -86,9 +93,9 @@ func (cd *ConsoleDestination) Open(s Stream, l Logger, st Stopper) {
 
 func (cd *ConsoleDestination) marshal() (string, error) {
 	var ret []map[string]interface{}
-	for i := range cd.result {
+	for i := range cd.resultInt {
 		r := make(map[string]interface{})
-		for j, col := range cd.result[i] {
+		for j, col := range cd.resultInt[i] {
 			r[cd.cols[j]] = col
 		}
 		ret = append(ret, r)

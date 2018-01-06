@@ -596,6 +596,16 @@ func (b *JobScript) resolveExtern(cwd string) error {
 			b.Tests[i].Extern = nil
 		}
 	}
+	for i, data := range b.Data {
+		if data.Extern != nil {
+			s, err := getContent(cwd, *data.Extern)
+			if err != nil {
+				return err
+			}
+			b.Data[i].Content = s
+			b.Data[i].Extern = nil
+		}
+	}
 
 	return nil
 }

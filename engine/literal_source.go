@@ -155,7 +155,6 @@ func (ls *LiteralSource) Open(s Stream, l Logger, st Stopper) {
 
 	if st.Stopped() {
 		ls.log(l, Warning, "literal source interrupted")
-		close(outChan)
 		return
 	}
 

@@ -72,6 +72,8 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 
 	dag := engine.NewCoordinator(logger, txManager)
 
+	dag.RegisterHooks(hooks...)
+
 	err = declarations(js, params)
 
 	if err != nil {
