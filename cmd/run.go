@@ -6,6 +6,7 @@ import (
 	"github.com/michaelbironneau/analyst/engine"
 	"github.com/urfave/cli"
 	"time"
+	"github.com/michaelbironneau/analyst"
 )
 
 func Run(c *cli.Context) error {
@@ -45,7 +46,7 @@ func Run(c *cli.Context) error {
 	l := engine.NewConsoleLogger(lev)
 
 
-	err = ExecuteFile(scriptFile, &RuntimeOptions{opts, l, nil})
+	err = analyst.ExecuteFile(scriptFile, &analyst.RuntimeOptions{opts, l, nil})
 	time.Sleep(time.Millisecond * 100) //give loggers time to flush
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
