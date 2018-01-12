@@ -24,7 +24,7 @@ func (cd *ConsoleDestination) Ping() error { return nil }
 
 func (cd *ConsoleDestination) Open(s Stream, l Logger, st Stopper) {
 	if cd.Writer == nil {
-		cd.Writer = os.Stdout
+		cd.Writer = os.Stderr
 	}
 	if cd.Name == "" {
 		cd.Name = ConsoleDestinationName
