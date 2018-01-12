@@ -1,6 +1,7 @@
 package analyst
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	xlsx "github.com/360EntSecGroup-Skylar/excelize"
@@ -9,7 +10,6 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 	"os"
 	"testing"
-	"bytes"
 )
 
 func TestGlobal(t *testing.T) {
@@ -55,7 +55,7 @@ func TestGlobal(t *testing.T) {
 	})
 }
 
-func TestCompilerDataLiteralAndHooks(t *testing.T){
+func TestCompilerDataLiteralAndHooks(t *testing.T) {
 	script := `
 		DATA 'Values' EXTERN 'test.json'
 			WITH (FORMAT = 'JSON_ARRAY',
@@ -65,8 +65,8 @@ func TestCompilerDataLiteralAndHooks(t *testing.T){
 			AGGREGATE SUM(Number) AS Total
 		) INTO CONSOLE WITH (OUTPUT_FORMAT = 'JSON')
 	`
-	Convey("Given a literal data source and a query", t, func(){
-		Convey("It should run without errors", func(){
+	Convey("Given a literal data source and a query", t, func() {
+		Convey("It should run without errors", func() {
 			l := engine.NewConsoleLogger(engine.Trace)
 			buf := bytes.NewBufferString("")
 			replaceReaderHook := engine.DestinationHook(func(s string, d engine.Destination) error {
@@ -184,7 +184,7 @@ func TestCompilerWithExecs(t *testing.T) {
 
 }
 
-func TestCompilerWithLookupTransform(t *testing.T){
+func TestCompilerWithLookupTransform(t *testing.T) {
 	script := `
 	GLOBAL 'CreateTables' (
 		CREATE TABLE LookupTable (
@@ -235,13 +235,13 @@ func TestCompilerWithLookupTransform(t *testing.T){
 		So(err, ShouldBeNil)
 		var res struct {
 			first string
-			last string
+			last  string
 		}
 
 		defer rows.Close()
 		var count int
 		var (
-			haveBob bool
+			haveBob  bool
 			haveJohn bool
 		)
 		for rows.Next() {

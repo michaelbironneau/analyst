@@ -1,6 +1,7 @@
 package analyst
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -10,7 +11,6 @@ import (
 	builtins "github.com/michaelbironneau/analyst/transforms"
 	"strings"
 	"time"
-	"context"
 )
 
 const (
@@ -428,7 +428,6 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 					sourceSequence = append(sourceSequence, *source.Block)
 				}
 
-
 				dataBlock, ok := findDataBlock(js, *source.Block)
 
 				if !ok {
@@ -441,7 +440,7 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 
 				var columns []string
 
-				colsOpt, ok := aql.FindOption(dataBlock.Options, "COLUMNS" )
+				colsOpt, ok := aql.FindOption(dataBlock.Options, "COLUMNS")
 
 				if !ok {
 					return fmt.Errorf("expected COLUMNS option for data block %s", dataBlock.Name)
@@ -476,15 +475,13 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 					dataFormat = f
 				}
 
-
-
 				if ok {
 					//create new literal source before attempting to connect
 					ls := engine.LiteralSource{
-						Name: dataBlock.Name,
+						Name:    dataBlock.Name,
 						Content: dataBlock.Content,
 						Columns: columns,
-						Format: dataFormat,
+						Format:  dataFormat,
 					}
 					var err error
 					if source.Alias != nil {
@@ -520,7 +517,7 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 }
 
 //findDataBlock attempts to find the data block with the given name, if it exists.
-func findDataBlock(js *aql.JobScript, blockName string) (*aql.Data, bool){
+func findDataBlock(js *aql.JobScript, blockName string) (*aql.Data, bool) {
 	b := strings.ToLower(blockName)
 	for _, block := range js.Data {
 		if strings.ToLower(block.Name) == b {

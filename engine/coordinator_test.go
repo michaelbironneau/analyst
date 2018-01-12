@@ -212,7 +212,7 @@ func TestTester(t *testing.T) {
 }
 
 func TestCancellation(t *testing.T) {
-	Convey("Given a coordinator and test that cancels straight away", t, func() {
+	Convey("Given a coordinator and context that cancels straight away", t, func() {
 		l := NewConsoleLogger(Trace)
 		tx := NewTransactionManager(l)
 		c := NewCoordinator(l, tx)
@@ -220,16 +220,11 @@ func TestCancellation(t *testing.T) {
 		c.UseContext(ctx)
 		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
 		cols := []string{"1", "2", "3"}
-		failTester := func(msg []interface{}) bool {
-			return false
-		}
 		Convey("It should return an error and stop straight away", func() {
 			s := NewSliceSource(cols, msg)
 			s.SetName("s")
 			d := SliceDestination{Alias: "d"}
 			err := c.AddSource("source", "s", s)
-			So(err, ShouldBeNil)
-			err = c.AddTest("source", "failed test", "always failing test", failTester)
 			So(err, ShouldBeNil)
 			err = c.AddDestination("destination", "d", &d)
 			err = c.Connect("source", "destination")
