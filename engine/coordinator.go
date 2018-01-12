@@ -1,12 +1,17 @@
 package engine
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"github.com/gonum/graph"
 	"github.com/gonum/graph/simple"
 	"github.com/gonum/graph/topo"
 	"sync"
+	"time"
 )
+
+var ErrInterrupted = errors.New("The execution was interrupted by a context cancellation")
 
 //  Hooks are run at Compile() time. This means that the entire DAG has been computed.
 //  While we are not currently giving the hook access to graph functions (eg. neighbors),
@@ -33,6 +38,7 @@ type Coordinator interface {
 	AddTransform(name string, alias string, t Transform) error
 	AddConstraint(before, after string) error
 	Connect(from string, to string) error
+	UseContext(ctx context.Context)
 	Compile() error
 	Execute() error
 	Stop()
@@ -44,6 +50,7 @@ type constraint struct {
 }
 
 type coordinator struct {
+	ctx              context.Context
 	s                Stopper
 	l                Logger
 	g                *simple.DirectedGraph
@@ -97,6 +104,10 @@ func (c *coordinator) checkConstraints() error {
 		}
 	}
 	return nil
+}
+
+func (c *coordinator) UseContext(ctx context.Context) {
+	c.ctx = ctx
 }
 
 //makeConstraints returns a configured waitgroup if the node has dependencies,
@@ -198,11 +209,25 @@ func (c *coordinator) RegisterHooks(hooks ...interface{}) {
 
 func (c *coordinator) Execute() error {
 	var wg sync.WaitGroup
+	var interrupted bool
 	executionOrder, err := topo.Sort(c.g)
 	if err != nil {
 		panic(err) //this should be unreachable as we checked for cycles in Compile()
 	}
 	constraints := c.makeConstraints()
+	if c.ctx != nil {
+		go func() {
+			<-c.ctx.Done()
+			c.l.Chan() <- Event{
+				Source:  "Coordinator",
+				Level:   Warning,
+				Message: "Received external signal through context - aborting",
+				Time:    time.Now(),
+			}
+			c.Stop()
+			interrupted = true
+		}()
+	}
 	for _, node := range executionOrder {
 		var upstream string
 		nv := c.nodeIdsRev[node.ID()]
@@ -299,7 +324,13 @@ func (c *coordinator) Execute() error {
 		endErr = c.txManager.Commit()
 	}
 	close(c.l.Chan())
-	return endErr
+	if endErr != nil {
+		return endErr
+	}
+	if interrupted {
+		return ErrInterrupted
+	}
+	return nil
 }
 
 func (c *coordinator) getNodeName(node graph.Node) string {

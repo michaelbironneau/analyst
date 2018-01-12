@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"context"
 	. "github.com/smartystreets/goconvey/convey"
 	"testing"
 )
@@ -204,6 +205,40 @@ func TestTester(t *testing.T) {
 			So(err, ShouldBeNil)
 			err = c.Execute()
 			So(err, ShouldBeNil)
+			So(d.Results(), ShouldHaveLength, 0)
+		})
+
+	})
+}
+
+func TestCancellation(t *testing.T) {
+	Convey("Given a coordinator and test that cancels straight away", t, func() {
+		l := NewConsoleLogger(Trace)
+		tx := NewTransactionManager(l)
+		c := NewCoordinator(l, tx)
+		ctx, cancel := context.WithCancel(context.Background())
+		c.UseContext(ctx)
+		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
+		cols := []string{"1", "2", "3"}
+		failTester := func(msg []interface{}) bool {
+			return false
+		}
+		Convey("It should return an error and stop straight away", func() {
+			s := NewSliceSource(cols, msg)
+			s.SetName("s")
+			d := SliceDestination{Alias: "d"}
+			err := c.AddSource("source", "s", s)
+			So(err, ShouldBeNil)
+			err = c.AddTest("source", "failed test", "always failing test", failTester)
+			So(err, ShouldBeNil)
+			err = c.AddDestination("destination", "d", &d)
+			err = c.Connect("source", "destination")
+			So(err, ShouldBeNil)
+			err = c.Compile()
+			So(err, ShouldBeNil)
+			cancel()
+			err = c.Execute()
+			So(err, ShouldEqual, ErrInterrupted)
 			So(d.Results(), ShouldHaveLength, 0)
 		})
 

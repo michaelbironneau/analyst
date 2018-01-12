@@ -10,6 +10,7 @@ import (
 	builtins "github.com/michaelbironneau/analyst/transforms"
 	"strings"
 	"time"
+	"context"
 )
 
 const (
@@ -24,6 +25,7 @@ type RuntimeOptions struct {
 	Options []aql.Option
 	Logger  engine.Logger
 	Hooks   []interface{}
+	Context context.Context
 }
 
 func formatOptions(options []aql.Option) string {
@@ -41,7 +43,7 @@ func formatOptions(options []aql.Option) string {
 	return fmt.Sprintf("%v", s)
 }
 
-func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, compileOnly bool, hooks []interface{}) error {
+func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, compileOnly bool, hooks []interface{}, ctx context.Context) error {
 	options = mergeOptions(js, options)
 	logger.Chan() <- engine.Event{
 		Source:  "Compiler",
@@ -71,6 +73,7 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 	}
 
 	dag := engine.NewCoordinator(logger, txManager)
+	dag.UseContext(ctx)
 
 	dag.RegisterHooks(hooks...)
 
@@ -182,7 +185,7 @@ func ExecuteString(script string, opts *RuntimeOptions) error {
 	if err != nil {
 		return err
 	}
-	return execute(js, opts.Options, opts.Logger, false, opts.Hooks)
+	return execute(js, opts.Options, opts.Logger, false, opts.Hooks, opts.Context)
 }
 
 func ExecuteFile(filename string, opts *RuntimeOptions) error {
@@ -193,7 +196,7 @@ func ExecuteFile(filename string, opts *RuntimeOptions) error {
 	if err != nil {
 		return err
 	}
-	return execute(js, opts.Options, opts.Logger, false, opts.Hooks)
+	return execute(js, opts.Options, opts.Logger, false, opts.Hooks, opts.Context)
 }
 
 func ValidateString(script string, opts *RuntimeOptions) error {
@@ -204,7 +207,7 @@ func ValidateString(script string, opts *RuntimeOptions) error {
 	if err != nil {
 		return err
 	}
-	return execute(js, opts.Options, opts.Logger, true, opts.Hooks)
+	return execute(js, opts.Options, opts.Logger, true, opts.Hooks, opts.Context)
 }
 
 func ValidateFile(filename string, opts *RuntimeOptions) error {
@@ -215,7 +218,7 @@ func ValidateFile(filename string, opts *RuntimeOptions) error {
 	if err != nil {
 		return err
 	}
-	return execute(js, opts.Options, opts.Logger, true, opts.Hooks)
+	return execute(js, opts.Options, opts.Logger, true, opts.Hooks, opts.Context)
 }
 
 func declarations(js *aql.JobScript, p *engine.ParameterTable) error {

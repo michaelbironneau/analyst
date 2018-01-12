@@ -44,13 +44,13 @@ type Logger interface {
 
 type ConsoleLogger struct {
 	MinLevel LogLevel
-	c chan Event
+	c        chan Event
 }
 
 func NewConsoleLogger(minLevel LogLevel) *ConsoleLogger {
 	cl := ConsoleLogger{
 		MinLevel: minLevel,
-		c: make(chan Event, DefaultBufferSize),
+		c:        make(chan Event, DefaultBufferSize),
 	}
 
 	go func() {

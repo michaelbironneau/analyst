@@ -74,7 +74,7 @@ func TestCompilerDataLiteralAndHooks(t *testing.T){
 				cd.Writer = buf
 				return nil
 			})
-			err := ExecuteString(script, &RuntimeOptions{nil, l, []interface{}{replaceReaderHook}})
+			err := ExecuteString(script, &RuntimeOptions{nil, l, []interface{}{replaceReaderHook}, nil})
 			So(err, ShouldBeNil)
 			So(buf.String(), ShouldEqual, "[{\"Total\":3}]")
 		})
@@ -99,7 +99,7 @@ func TestCompilerHTTPAutoSQL(t *testing.T) {
 	Convey("Given a script using an HTTP connection and a QUERY", t, func() {
 		Convey("It should run without errors", func() {
 			l := engine.NewConsoleLogger(engine.Trace)
-			err := ExecuteString(script, &RuntimeOptions{nil, l, nil})
+			err := ExecuteString(script, &RuntimeOptions{nil, l, nil, nil})
 			//l.Close()
 			So(err, ShouldBeNil)
 		})
@@ -128,7 +128,7 @@ func TestCompiler(t *testing.T) {
 	`
 	Convey("Given a coordinator and an Excel data destination", t, func() {
 		l := engine.NewConsoleLogger(engine.Trace)
-		err := ExecuteString(script, &RuntimeOptions{nil, l, nil})
+		err := ExecuteString(script, &RuntimeOptions{nil, l, nil, nil})
 		So(err, ShouldBeNil)
 		_, err = os.Stat("./output.xlsx")
 		os.Remove("./output.xlsx") //best effort cleanup attempt
@@ -411,7 +411,7 @@ func TestCompilerWithTransform(t *testing.T) {
 	Convey("Given a script with a transform and an Excel data destination", t, func() {
 		l := engine.NewConsoleLogger(engine.Trace)
 		Convey("It should execute without error", func() {
-			err := ExecuteString(script, &RuntimeOptions{nil, l, nil})
+			err := ExecuteString(script, &RuntimeOptions{nil, l, nil, nil})
 			So(err, ShouldBeNil)
 			_, err = os.Stat("./output_transform.xlsx")
 			So(err, ShouldBeNil)
@@ -490,7 +490,7 @@ func TestTxManagerRollback(t *testing.T) {
 	`
 	l := engine.NewConsoleLogger(engine.Trace)
 	Convey("Given a script with EXECs one of which violates PK constraint", t, func() {
-		err := ExecuteString(script, &RuntimeOptions{nil, l, nil})
+		err := ExecuteString(script, &RuntimeOptions{nil, l, nil, nil})
 		Convey("All writes should get rolled back", func() {
 			So(err, ShouldBeNil)
 			db, err := sql.Open(globalDbDriver, "tx_manager_rollback_test.db")
