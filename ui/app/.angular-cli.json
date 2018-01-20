@@ -8,7 +8,11 @@
     {
       "root": "src",
       "outDir": "dist",
-      "assets": ["assets"],
+      "assets": ["assets", {
+        "glob": "**/*",
+      	"input": "../node_modules/monaco-editor/min/vs",
+	      "output": "libs/vs"
+      }],
       "index": "index.html",
       "main": "main.ts",
       "polyfills": "polyfills.ts",
