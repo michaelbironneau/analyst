@@ -480,6 +480,68 @@ func FindOverridableOption(needle string, namespace string, hierarchy ...[]Optio
 	return nil, false
 }
 
+func (b *JobScript) EvaluateParametrizedExtern(globals []Option) error {
+	var err error
+	for i := range b.Queries {
+		if b.Queries[i].Extern == nil {
+			continue
+		}
+		*b.Queries[i].Extern, err = evaluateContent(*b.Queries[i].Extern, b.Queries[i].Options, globals)
+		if err != nil {
+			return err
+		}
+	}
+
+	for i := range b.Transforms {
+		if b.Transforms[i].Extern == nil {
+			continue
+		}
+		*b.Transforms[i].Extern, err = evaluateContent(*b.Transforms[i].Extern, b.Transforms[i].Options, globals)
+		if err != nil {
+			return err
+		}
+	}
+
+	for i := range b.Data {
+		if b.Data[i].Extern == nil {
+			continue
+		}
+		*b.Data[i].Extern, err = evaluateContent(*b.Data[i].Extern, b.Data[i].Options, globals)
+		if err != nil {
+			return err
+		}
+	}
+
+	for i := range b.Execs {
+		if b.Execs[i].Extern == nil {
+			continue
+		}
+		*b.Execs[i].Extern, err = evaluateContent(*b.Execs[i].Extern, b.Execs[i].Options, globals)
+		if err != nil {
+			return err
+		}
+	}
+
+	for i := range b.Tests {
+		if b.Tests[i].Extern == nil {
+			continue
+		}
+		*b.Tests[i].Extern, err = evaluateContent(*b.Tests[i].Extern, b.Tests[i].Options, globals)
+		if err != nil {
+			return err
+		}
+	}
+
+	for i := range b.Includes {
+		b.Includes[i].Source, err = evaluateContent(b.Includes[i].Source, nil, globals)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (b *JobScript) EvaluateParametrizedContent(globals []Option) error {
 	var err error
 	for i := range b.Queries {

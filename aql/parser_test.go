@@ -363,6 +363,16 @@ func TestInclude(t *testing.T) {
 		So(b.Source, ShouldEqual, "source.txt")
 
 	})
+	Convey("It should parse Include with parameters successfully", t, func() {
+		s1 := `INCLUDE '{{ .Source }}.txt'`
+		js, err := ParseString(s1)
+		So(err, ShouldBeNil)
+		v := "source"
+		opt := Option{Key: "Source", Value: &OptionValue{Str: &v}}
+		err = js.EvaluateParametrizedExtern([]Option{opt})
+		So(err, ShouldBeNil)
+		So(js.Includes[0].Source, ShouldEqual, "source.txt")
+	})
 }
 
 func TestScript(t *testing.T) {
