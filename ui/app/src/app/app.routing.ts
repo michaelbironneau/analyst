@@ -10,7 +10,7 @@ import {
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: 'dashboard',
+    redirectTo: 'editor',
     pathMatch: 'full',
   },
   {
@@ -21,8 +21,8 @@ export const routes: Routes = [
     },
     children: [
       {
-        path: 'dashboard',
-        loadChildren: './views/dashboard/dashboard.module#DashboardModule'
+        path: 'editor',
+        loadChildren: './views/editor/editor.module#EditorModule'
       }
     ]
   }

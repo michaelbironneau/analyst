@@ -1,11 +1,7 @@
 export const navigation = [
   {
-    name: 'Dashboard',
+    name: 'Editor',
     url: '/dashboard',
-    icon: 'icon-speedometer',
-    badge: {
-      variant: 'info',
-      text: 'NEW'
-    }
+    icon: 'icon-pencil'
   }
 ];
