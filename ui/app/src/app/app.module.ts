@@ -64,7 +64,6 @@ import { AppRoutingModule } from './app.routing';
 import { BsDropdownModule } from 'ngx-bootstrap/dropdown';
 import { TabsModule } from 'ngx-bootstrap/tabs';
 import { ChartsModule } from 'ng2-charts/ng2-charts';
-import { MonacoEditorModule } from 'ngx-monaco';
 
 @NgModule({
   imports: [
@@ -72,9 +71,7 @@ import { MonacoEditorModule } from 'ngx-monaco';
     AppRoutingModule,
     BsDropdownModule.forRoot(),
     TabsModule.forRoot(),
-    ChartsModule,
-    MonacoEditorModule,
-    MonacoEditorModule.forRoot()
+    ChartsModule
   ],
   declarations: [
     AppComponent,
