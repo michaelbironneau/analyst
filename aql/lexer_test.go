@@ -38,6 +38,31 @@ func TestLiterals(t *testing.T) {
 	})
 }
 
+func TestComments(t *testing.T) {
+	Convey("When lexing a script containing inline comments", t, func() {
+		s := "QUERY -- QUERY QUERY QUERY "
+		Convey("It should ignore everything after the comment token", func() {
+			tt, err := Lex(s)
+			So(tt, ShouldHaveLength, 1)
+			So(err, ShouldBeNil)
+		})
+	})
+	Convey("When lexing a script containing multiline comments", t, func() {
+		s := `QUERY /**
+				QUERY QUERY QUERY
+			  **/ TEST
+
+			`
+		Convey("It should ignore everything after the comment token", func() {
+			tt, err := Lex(s)
+			So(tt, ShouldHaveLength, 2)
+			So(tt[0].ID, ShouldEqual, QUERY)
+			So(tt[1].ID, ShouldEqual, TEST)
+			So(err, ShouldBeNil)
+		})
+	})
+}
+
 func TestKeywords(t *testing.T) {
 	Convey("When lexing a script with keywords", t, func() {
 		s := "QUERY TEST FROM\n INTO  DESCRIPTION  TRANSFORM EXTERN INCLUDE   \t WITH"
