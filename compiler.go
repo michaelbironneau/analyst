@@ -86,11 +86,14 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 		return err
 	}
 
-	err = globalInit(js)
+	if !compileOnly {
+		err = globalInit(js)
 
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
 	}
+
 
 	err = sources(js, dag, connMap, params, options, txManager)
 

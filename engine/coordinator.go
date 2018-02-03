@@ -9,6 +9,7 @@ import (
 	"github.com/gonum/graph/topo"
 	"sync"
 	"time"
+	"reflect"
 )
 
 var ErrInterrupted = errors.New("The execution was interrupted by a context cancellation")
@@ -72,10 +73,23 @@ type coordinator struct {
 	txManager        TransactionManager
 }
 
+type GraphNode interface {
+	Name() string
+	Type() string
+}
+
 type sourceNode struct {
 	name  string
 	alias string
 	s     Source
+}
+
+func (sn *sourceNode) Name() string {
+	return sn.name
+}
+
+func (sn *sourceNode) Type() string {
+	return "<Source> " + reflect.TypeOf(sn.s).Name()
 }
 
 type transformNode struct {
@@ -84,10 +98,26 @@ type transformNode struct {
 	t     Transform
 }
 
+func (tn *transformNode) Name() string {
+	return tn.name
+}
+
+func (tn *transformNode) Type() string {
+	return "<Transform> " + reflect.TypeOf(tn.t).Name()
+}
+
 type destinationNode struct {
 	name  string
 	alias string
 	d     Destination
+}
+
+func (dn *destinationNode) Name() string {
+	return dn.name
+}
+
+func (dn *destinationNode) Type() string {
+	return "<Destination> " + reflect.TypeOf(dn.d).Name()
 }
 
 //Stop interrupts the job immediately.

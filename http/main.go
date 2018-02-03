@@ -13,6 +13,7 @@ import (
 const (
 	MsgLog = "LOG"
 	MsgRunScript = "RUN"
+	MsgResult = "RESULT"
 	MsgCompileScript = "COMPILE"
 	MsgOutput = "OUTPUT"
 
@@ -37,12 +38,11 @@ type Message struct {
 func receiveMessages(ws *websocket.Conn, c echo.Context){
 	fmt.Println("Starting to receive")
 	for {
-
 		var b []byte
 		err := websocket.Message.Receive(ws, &b)
 		if err != nil {
 			c.Logger().Error(err)
-			continue
+			break
 		}
 		var m Message
 		err = json.Unmarshal(b, &m)

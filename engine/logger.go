@@ -25,6 +25,13 @@ var eventTypeMap = map[LogLevel]string{
 	Error:   "[ERROR]",
 }
 
+var htmlTypeMap = map[LogLevel] string{
+	Trace: "<div><small>[TRACE]</small>",
+	Info: "<div><small>[INFO]</small>",
+	Warning: "<div class='alert alert-warning'><small>[WARNING]</small>",
+	Error: "<div class='alert alert-danger'><small>[ERROR]</small>",
+}
+
 var eventTypeColors = map[LogLevel]func(interface{}) colors.Value{
 	Trace:   colors.Gray,
 	Info:    colors.Cyan,
@@ -64,7 +71,7 @@ func NewGenericLogger(minLevel LogLevel, writer io.Writer) *GenericLogger {
 	go func() {
 		for event := range gl.c {
 			if event.Level >= gl.MinLevel {
-				msg := fmt.Sprint("<p>" + eventTypeMap[event.Level] + " " + event.Time.Format(timeFormat), "- ("+event.Source+")</p>", event.Message)
+				msg := fmt.Sprint(htmlTypeMap[event.Level] + " " + event.Time.Format(timeFormat), "- ("+event.Source+")" + "<p>" + event.Message + "</p></div></p>")
 				writer.Write([]byte(msg))
 			}
 		}

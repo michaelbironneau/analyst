@@ -45,7 +45,7 @@ func redirectOutputHook(ws *websocket.Conn, msgType string) engine.DestinationHo
 
 func outputHooks(ws *websocket.Conn) analyst.RuntimeOptions {
 	var opts analyst.RuntimeOptions
-	opts.Logger = engine.NewGenericLogger(engine.Trace, &websocketWriter{ws, MsgLog})
-	opts.Hooks = []interface{}{redirectOutputHook(ws, MsgLog)}
+	opts.Logger = engine.NewGenericLogger(engine.Info, &websocketWriter{ws, MsgLog})
+	opts.Hooks = []interface{}{redirectOutputHook(ws, MsgResult)}
 	return opts
 }
