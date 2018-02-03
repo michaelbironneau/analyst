@@ -64,7 +64,7 @@ func NewGenericLogger(minLevel LogLevel, writer io.Writer) *GenericLogger {
 	go func() {
 		for event := range gl.c {
 			if event.Level >= gl.MinLevel {
-				msg := fmt.Sprint(eventTypeColors[event.Level](eventTypeMap[event.Level]), event.Time.Format(timeFormat), "- ("+event.Source+")", event.Message)
+				msg := fmt.Sprint("<p>" + eventTypeMap[event.Level] + " " + event.Time.Format(timeFormat), "- ("+event.Source+")</p>", event.Message)
 				writer.Write([]byte(msg))
 			}
 		}

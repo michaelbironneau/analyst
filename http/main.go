@@ -60,7 +60,10 @@ func receiveMessages(ws *websocket.Conn, c echo.Context){
 			err := analyst.ExecuteString(payload.Script, &opts)
 			var response RunResponse
 			response.Success = err == nil
-			response.Error = err.Error()
+			if err != nil {
+				response.Error = err.Error()
+			}
+
 			send(ws, MsgRunScript, response)
 		case MsgCompileScript:
 			var payload RunMessagePayload

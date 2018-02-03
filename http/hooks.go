@@ -13,15 +13,23 @@ type websocketWriter struct {
 }
 
 func (w *websocketWriter) Write(p []byte) (n int, err error){
-	msg := Message{
-		Type: w.msgType,
-		Data: json.RawMessage(p),
+	var entry  struct {
+		Entry string `json:"entry"`
 	}
-	b, err := json.Marshal(msg)
+	entry.Entry = string(p)
+	b, err := json.Marshal(entry)
 	if err != nil {
 		return 0, err
 	}
-	return w.ws.Write(b)
+	msg := Message{
+		Type: w.msgType,
+		Data: json.RawMessage(b),
+	}
+	bb, err := json.Marshal(msg)
+	if err != nil {
+		return 0, err
+	}
+	return w.ws.Write(bb)
 }
 
 func redirectOutputHook(ws *websocket.Conn, msgType string) engine.DestinationHook {
@@ -38,6 +46,6 @@ func redirectOutputHook(ws *websocket.Conn, msgType string) engine.DestinationHo
 func outputHooks(ws *websocket.Conn) analyst.RuntimeOptions {
 	var opts analyst.RuntimeOptions
 	opts.Logger = engine.NewGenericLogger(engine.Trace, &websocketWriter{ws, MsgLog})
-	opts.Hooks = []interface{}{redirectOutputHook}
+	opts.Hooks = []interface{}{redirectOutputHook(ws, MsgLog)}
 	return opts
 }
