@@ -4,6 +4,7 @@ import (
 	"fmt"
 	colors "github.com/logrusorgru/aurora"
 	"time"
+	"io"
 )
 
 type LogLevel int
@@ -46,6 +47,37 @@ type ConsoleLogger struct {
 	MinLevel LogLevel
 	c        chan Event
 }
+
+type GenericLogger struct {
+	MinLevel LogLevel
+	Writer io.Writer
+	c chan Event
+}
+
+func NewGenericLogger(minLevel LogLevel, writer io.Writer) *GenericLogger {
+	gl := GenericLogger{
+		Writer: writer,
+		MinLevel: minLevel,
+		c:        make(chan Event, DefaultBufferSize),
+	}
+
+	go func() {
+		for event := range gl.c {
+			if event.Level >= gl.MinLevel {
+				msg := fmt.Sprint(eventTypeColors[event.Level](eventTypeMap[event.Level]), event.Time.Format(timeFormat), "- ("+event.Source+")", event.Message)
+				writer.Write([]byte(msg))
+			}
+		}
+	}()
+
+	return &gl
+
+}
+
+func (gl *GenericLogger) Chan() chan<- Event {
+	return gl.c
+}
+
 
 func NewConsoleLogger(minLevel LogLevel) *ConsoleLogger {
 	cl := ConsoleLogger{

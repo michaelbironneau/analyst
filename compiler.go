@@ -204,7 +204,7 @@ func ExecuteFile(filename string, opts *RuntimeOptions) error {
 
 func ValidateString(script string, opts *RuntimeOptions) error {
 	if opts.Logger == nil {
-		opts.Logger = &engine.ConsoleLogger{}
+		opts.Logger = engine.NewConsoleLogger(engine.Error)
 	}
 	js, err := aql.ParseString(script)
 	if err != nil {
