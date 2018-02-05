@@ -26,6 +26,7 @@ type RuntimeOptions struct {
 	Logger  engine.Logger
 	Hooks   []interface{}
 	Context context.Context
+	ScriptDirectory string
 }
 
 func formatOptions(options []aql.Option) string {
@@ -43,7 +44,7 @@ func formatOptions(options []aql.Option) string {
 	return fmt.Sprintf("%v", s)
 }
 
-func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, compileOnly bool, hooks []interface{}, ctx context.Context) error {
+func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, compileOnly bool, hooks []interface{}, ctx context.Context, cwd string) error {
 	options = mergeOptions(js, options)
 	logger.Chan() <- engine.Event{
 		Source:  "Compiler",
@@ -59,7 +60,7 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 		return fmt.Errorf("error evaluating parametrized external sources: %v", err)
 	}
 
-	err = js.ResolveExternalContent()
+	err = js.ResolveExternalContent(cwd)
 	if err != nil {
 		return fmt.Errorf("error resolving external content: %v", err)
 	}
@@ -196,7 +197,7 @@ func ExecuteString(script string, opts *RuntimeOptions) error {
 	if err != nil {
 		return err
 	}
-	return execute(js, opts.Options, opts.Logger, false, opts.Hooks, opts.Context)
+	return execute(js, opts.Options, opts.Logger, false, opts.Hooks, opts.Context, opts.ScriptDirectory)
 }
 
 func ExecuteFile(filename string, opts *RuntimeOptions) error {
@@ -207,7 +208,7 @@ func ExecuteFile(filename string, opts *RuntimeOptions) error {
 	if err != nil {
 		return err
 	}
-	return execute(js, opts.Options, opts.Logger, false, opts.Hooks, opts.Context)
+	return execute(js, opts.Options, opts.Logger, false, opts.Hooks, opts.Context, opts.ScriptDirectory)
 }
 
 func ValidateString(script string, opts *RuntimeOptions) error {
@@ -218,7 +219,7 @@ func ValidateString(script string, opts *RuntimeOptions) error {
 	if err != nil {
 		return err
 	}
-	return execute(js, opts.Options, opts.Logger, true, opts.Hooks, opts.Context)
+	return execute(js, opts.Options, opts.Logger, true, opts.Hooks, opts.Context, opts.ScriptDirectory)
 }
 
 func ValidateFile(filename string, opts *RuntimeOptions) error {
@@ -229,7 +230,7 @@ func ValidateFile(filename string, opts *RuntimeOptions) error {
 	if err != nil {
 		return err
 	}
-	return execute(js, opts.Options, opts.Logger, true, opts.Hooks, opts.Context)
+	return execute(js, opts.Options, opts.Logger, true, opts.Hooks, opts.Context, opts.ScriptDirectory)
 }
 
 func declarations(js *aql.JobScript, p *engine.ParameterTable) error {

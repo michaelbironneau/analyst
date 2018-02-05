@@ -603,12 +603,12 @@ func evaluateContent(content string, locals []Option, globals []Option) (string,
 	return b.String(), nil
 }
 
-func (b *JobScript) ResolveExternalContent() error {
-	if err := b.resolveExtern(""); err != nil {
+func (b *JobScript) ResolveExternalContent(cwd string) error {
+	if err := b.resolveExtern(cwd); err != nil {
 		return err
 	}
 	for i := range b.Includes {
-		if err := b.resolveInclude(i, 0, ""); err != nil {
+		if err := b.resolveInclude(i, 0, cwd); err != nil {
 			return err
 		}
 	}

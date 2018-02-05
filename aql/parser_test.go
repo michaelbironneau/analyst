@@ -560,7 +560,7 @@ func TestResolveIncludes(t *testing.T) {
 		b, err := ParseString(q)
 		So(err, ShouldBeNil)
 		Convey("It should correctly resolve the included resources", func() {
-			err = b.ResolveExternalContent()
+			err = b.ResolveExternalContent("")
 			So(err, ShouldBeNil)
 			So(b.Queries, ShouldHaveLength, 2)
 			So(b.Description, ShouldNotBeNil)
