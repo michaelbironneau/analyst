@@ -206,6 +206,15 @@ func Lex(s string) ([]Item, error) {
 			continue
 		}
 
+		//inline comment
+		if s[index] == '-' && len(s) > index+1 && s[index+1] == '-' {
+			index = scanInlineComment(s, index)
+		}
+
+		if len(s) > index+3 && s[index:index+3] == "/**" {
+			index = scanMultilineComment(s, index)
+		}
+
 		if s[index] == ',' {
 			if len(identifier) > 0 {
 				_, err := strconv.ParseFloat(identifier, 64)
@@ -296,6 +305,30 @@ func Lex(s string) ([]Item, error) {
 		}
 	}
 	return ret, nil
+}
+
+//scanComment returns the index of the next character outside the inline comment
+func scanInlineComment(s string, i int) int {
+	var j = i
+	for {
+		if j >= len(s)-1 || s[j] == '\n' {
+			break
+		}
+		j++
+	}
+	return j
+}
+
+//scanMultilineComment returns the index of the next character outside multiline comment
+func scanMultilineComment(s string, i int) int {
+	var j = i
+	for {
+		if j >= len(s)-3 || s[j:j+3] == "**/" {
+			break
+		}
+		j++
+	}
+	return j + 3
 }
 
 func isWhitespace(s string, i int) bool {

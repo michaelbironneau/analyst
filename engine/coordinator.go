@@ -9,6 +9,7 @@ import (
 	"github.com/gonum/graph/topo"
 	"sync"
 	"time"
+	"reflect"
 )
 
 var ErrInterrupted = errors.New("The execution was interrupted by a context cancellation")
@@ -72,10 +73,23 @@ type coordinator struct {
 	txManager        TransactionManager
 }
 
+type GraphNode interface {
+	Name() string
+	Type() string
+}
+
 type sourceNode struct {
 	name  string
 	alias string
 	s     Source
+}
+
+func (sn *sourceNode) Name() string {
+	return sn.name
+}
+
+func (sn *sourceNode) Type() string {
+	return "<Source> " + reflect.TypeOf(sn.s).Name()
 }
 
 type transformNode struct {
@@ -84,10 +98,26 @@ type transformNode struct {
 	t     Transform
 }
 
+func (tn *transformNode) Name() string {
+	return tn.name
+}
+
+func (tn *transformNode) Type() string {
+	return "<Transform> " + reflect.TypeOf(tn.t).Name()
+}
+
 type destinationNode struct {
 	name  string
 	alias string
 	d     Destination
+}
+
+func (dn *destinationNode) Name() string {
+	return dn.name
+}
+
+func (dn *destinationNode) Type() string {
+	return "<Destination> " + reflect.TypeOf(dn.d).Name()
 }
 
 //Stop interrupts the job immediately.
@@ -210,6 +240,7 @@ func (c *coordinator) RegisterHooks(hooks ...interface{}) {
 func (c *coordinator) Execute() error {
 	var wg sync.WaitGroup
 	var interrupted bool
+	var done = make(chan bool, 1)
 	executionOrder, err := topo.Sort(c.g)
 	if err != nil {
 		panic(err) //this should be unreachable as we checked for cycles in Compile()
@@ -217,15 +248,19 @@ func (c *coordinator) Execute() error {
 	constraints := c.makeConstraints()
 	if c.ctx != nil {
 		go func() {
-			<-c.ctx.Done()
-			c.l.Chan() <- Event{
-				Source:  "Coordinator",
-				Level:   Warning,
-				Message: "Received external signal through context - aborting",
-				Time:    time.Now(),
+			select {
+			case <-c.ctx.Done():
+				c.l.Chan() <- Event{
+					Source:  "Coordinator",
+					Level:   Warning,
+					Message: "Received external signal through context - aborting",
+					Time:    time.Now(),
+				}
+				c.Stop()
+				interrupted = true
+			case <-done:
+				return
 			}
-			c.Stop()
-			interrupted = true
 		}()
 	}
 	for _, node := range executionOrder {
@@ -255,6 +290,7 @@ func (c *coordinator) Execute() error {
 			}(n.name)
 			upstream = n.name
 		default:
+			done <- true
 			panic(fmt.Sprintf("unknown node type %T: %v", nv, nv))
 		}
 		neighbors := c.g.From(node)
@@ -312,11 +348,13 @@ func (c *coordinator) Execute() error {
 					wg.Done()
 				}(d.name)
 			default:
+				done <- true
 				panic(fmt.Sprintf("unknown node type %T: %v", dnv, dnv))
 			}
 		}
 	}
 	wg.Wait()
+	done <- true
 	var endErr error
 	if c.s.Stopped() {
 		endErr = c.txManager.Rollback()

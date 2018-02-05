@@ -240,6 +240,34 @@ func TestCancellation(t *testing.T) {
 	})
 }
 
+func TestNoCancellation(t *testing.T) {
+	Convey("Given a coordinator and context that never cancels", t, func() {
+		l := NewConsoleLogger(Trace)
+		tx := NewTransactionManager(l)
+		c := NewCoordinator(l, tx)
+		ctx := context.Background()
+		c.UseContext(ctx)
+		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
+		cols := []string{"1", "2", "3"}
+		Convey("It should return no error and not panic", func() {
+			s := NewSliceSource(cols, msg)
+			s.SetName("s")
+			d := SliceDestination{Alias: "d"}
+			err := c.AddSource("source", "s", s)
+			So(err, ShouldBeNil)
+			err = c.AddDestination("destination", "d", &d)
+			err = c.Connect("source", "destination")
+			So(err, ShouldBeNil)
+			err = c.Compile()
+			So(err, ShouldBeNil)
+			err = c.Execute()
+			So(err, ShouldEqual, nil)
+			So(d.Results(), ShouldHaveLength, 2)
+		})
+
+	})
+}
+
 func TestNamedStreams(t *testing.T) {
 	Convey("Given a named slice source and two destinations", t, func() {
 		msg := []Message{

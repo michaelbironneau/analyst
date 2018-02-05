@@ -4,6 +4,7 @@ import (
 	"fmt"
 	colors "github.com/logrusorgru/aurora"
 	"time"
+	"io"
 )
 
 type LogLevel int
@@ -22,6 +23,13 @@ var eventTypeMap = map[LogLevel]string{
 	Info:    "[INFO]",
 	Warning: "[WARNING]",
 	Error:   "[ERROR]",
+}
+
+var htmlTypeMap = map[LogLevel] string{
+	Trace: "<div><small>[TRACE]</small>",
+	Info: "<div><small>[INFO]</small>",
+	Warning: "<div class='alert alert-warning'><small>[WARNING]</small>",
+	Error: "<div class='alert alert-danger'><small>[ERROR]</small>",
 }
 
 var eventTypeColors = map[LogLevel]func(interface{}) colors.Value{
@@ -46,6 +54,37 @@ type ConsoleLogger struct {
 	MinLevel LogLevel
 	c        chan Event
 }
+
+type GenericLogger struct {
+	MinLevel LogLevel
+	Writer io.Writer
+	c chan Event
+}
+
+func NewGenericLogger(minLevel LogLevel, writer io.Writer) *GenericLogger {
+	gl := GenericLogger{
+		Writer: writer,
+		MinLevel: minLevel,
+		c:        make(chan Event, DefaultBufferSize),
+	}
+
+	go func() {
+		for event := range gl.c {
+			if event.Level >= gl.MinLevel {
+				msg := fmt.Sprint(htmlTypeMap[event.Level] + " " + event.Time.Format(timeFormat), "- ("+event.Source+")" + "<p>" + event.Message + "</p></div></p>")
+				writer.Write([]byte(msg))
+			}
+		}
+	}()
+
+	return &gl
+
+}
+
+func (gl *GenericLogger) Chan() chan<- Event {
+	return gl.c
+}
+
 
 func NewConsoleLogger(minLevel LogLevel) *ConsoleLogger {
 	cl := ConsoleLogger{

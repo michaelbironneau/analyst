@@ -2,6 +2,7 @@
 
 [![Go Report Card](http://goreportcard.com/badge/github.com/michaelbironneau/analyst)](https://goreportcard.com/report/github.com/michaelbironneau/analyst)
 [![Build Status](https://travis-ci.org/michaelbironneau/analyst.svg?branch=master)](https://travis-ci.org/michaelbironneau/analyst/)
+[![](https://godoc.org/github.com/michaelbironneau/analyst?status.svg)](http://godoc.org/github.com/michaelbironneau/analyst)
 
 **I am currently augmenting much of the language to support new, much wider use cases. Please forgive the spartan documentation below; more will follow when the implementation of the new language features is complete.**
 

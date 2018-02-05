@@ -56,12 +56,17 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 
 	err := js.EvaluateParametrizedExtern(options)
 	if err != nil {
-		return fmt.Errorf("error resolving parametrized external sources: %v", err)
+		return fmt.Errorf("error evaluating parametrized external sources: %v", err)
 	}
 
 	err = js.ResolveExternalContent()
 	if err != nil {
 		return fmt.Errorf("error resolving external content: %v", err)
+	}
+
+	err = js.EvaluateParametrizedContent(options)
+	if err != nil {
+		return fmt.Errorf("error evaluating parametrized content: %v", err)
 	}
 
 	connMap, err := connectionMap(js)
@@ -86,11 +91,14 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 		return err
 	}
 
-	err = globalInit(js)
+	if !compileOnly {
+		err = globalInit(js)
 
-	if err != nil {
-		return err
+		if err != nil {
+			return err
+		}
 	}
+
 
 	err = sources(js, dag, connMap, params, options, txManager)
 
@@ -204,7 +212,7 @@ func ExecuteFile(filename string, opts *RuntimeOptions) error {
 
 func ValidateString(script string, opts *RuntimeOptions) error {
 	if opts.Logger == nil {
-		opts.Logger = &engine.ConsoleLogger{}
+		opts.Logger = engine.NewConsoleLogger(engine.Error)
 	}
 	js, err := aql.ParseString(script)
 	if err != nil {

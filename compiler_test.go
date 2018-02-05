@@ -186,6 +186,10 @@ func TestCompilerWithExecs(t *testing.T) {
 
 func TestCompilerWithLookupTransform(t *testing.T) {
 	script := `
+	/**
+		Create global tables with the base and lookup tables,
+		so that we can test the lookup transform.
+	**/
 	GLOBAL 'CreateTables' (
 		CREATE TABLE LookupTable (
 			id INT PRIMARY KEY,
@@ -473,6 +477,7 @@ func TestTxManagerRollback(t *testing.T) {
 		);
 	)
 
+	--Insert a single value into TEST
 	EXEC 'InsertOne' FROM CONNECTION DB (
 		INSERT INTO Test VALUES (1);
 	) AFTER CreateTables;
