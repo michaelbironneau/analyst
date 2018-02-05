@@ -56,12 +56,17 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 
 	err := js.EvaluateParametrizedExtern(options)
 	if err != nil {
-		return fmt.Errorf("error resolving parametrized external sources: %v", err)
+		return fmt.Errorf("error evaluating parametrized external sources: %v", err)
 	}
 
 	err = js.ResolveExternalContent()
 	if err != nil {
 		return fmt.Errorf("error resolving external content: %v", err)
+	}
+
+	err = js.EvaluateParametrizedContent(options)
+	if err != nil {
+		return fmt.Errorf("error evaluating parametrized content: %v", err)
 	}
 
 	connMap, err := connectionMap(js)
