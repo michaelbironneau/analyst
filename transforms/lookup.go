@@ -136,6 +136,7 @@ func (l *lookup) Open(s engine.Stream, dest engine.Stream, logger engine.Logger,
 		}
 
 		if firstMessage {
+			l.log(logger, engine.Info, "Started processing messages for source %s", msg.Source)
 			source = strings.ToLower(msg.Source)
 			l.sequencer.Wait(source)
 
@@ -198,9 +199,15 @@ func (l *lookup) Open(s engine.Stream, dest engine.Stream, logger engine.Logger,
 			}
 		}
 	}
-	l.sequencer.Done(source)
-	if source == l.sourceSeq[1] {
-		close(outChan)
+	if source != "" {
+		l.sequencer.Done(source)
+		l.log(logger, engine.Info, "Finished processing messages for source %s", source)
+		if source == l.sourceSeq[1] {
+			close(outChan)
+		}
+	} else {
+		l.log(logger, engine.Error, "Opened with empty source")
+		st.Stop()
 	}
 
 }

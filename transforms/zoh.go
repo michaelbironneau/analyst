@@ -96,7 +96,7 @@ func (s *zoh) Reduce(arg []interface{}) error {
 	f, ok = args[1].(float64)
 
 	if !ok {
-		return fmt.Errorf("expected floating-point number for second argument but got %v", args[1])
+		return fmt.Errorf("expected floating-point number for second argument but got %T: %v", args[1], args[1])
 	}
 
 	s.items = append(s.items, TimeseriesItem{
