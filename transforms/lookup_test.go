@@ -77,7 +77,7 @@ func TestSplitProject(t *testing.T) {
 
 func TestLookup(t *testing.T) {
 	s := `
-	LOOKUP a.Id, b.Name, a.Something from A
+	LOOKUP a.Id, b.Name, a.Something, a.Id2 from A
 	INNER JOIN b ON b.Id = a.Id and a.Id2 = b.Id2
 	`
 	Convey("Given a valid LOOKUP transform script", t, func() {
@@ -140,9 +140,9 @@ func TestLookup(t *testing.T) {
 			var count int
 			for row := range out.Chan(engine.DestinationWildcard) {
 				count++
-				So(row.Data, ShouldHaveLength, 3)
+				So(row.Data, ShouldHaveLength, 4)
 				So(row.Data[0], ShouldBeIn, []interface{}{2, "D"})
-				So(row.Data[1], ShouldBeIn, []interface{}{"bob", "john"})
+				So(row.Data[1], ShouldBeIn, []interface{}{"bob", "john", 3})
 				So(row.Data[2], ShouldBeIn, []interface{}{"A", "B", "C"})
 				fmt.Println(row)
 			}
