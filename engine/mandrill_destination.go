@@ -4,6 +4,7 @@ import (
 	"time"
 	"github.com/keighl/mandrill"
 	"fmt"
+	"sync/atomic"
 )
 
 
@@ -21,6 +22,7 @@ type MandrillDestination struct {
 	Template string
 	Subject string
 	client *mandrill.Client
+	emailsSent int64
 	cols []string
 }
 
@@ -52,6 +54,7 @@ func (d *MandrillDestination) Open(s Stream, l Logger, st Stopper) {
 			m := d.prepareMsg()
 			content := d.prepareContent(cols, msg.Data)
 			_, err := d.client.MessagesSendTemplate(m, d.Template, content)
+			atomic.AddInt64(&d.emailsSent, 1)
 			if err != nil {
 				d.fatalerr(err, l)
 				return
@@ -61,17 +64,18 @@ func (d *MandrillDestination) Open(s Stream, l Logger, st Stopper) {
 			rows = append(rows, d.prepareContent(cols, msg.Data))
 		}
 	}
-	d.log(l, Info, "All messages processed")
 
 	if !d.SplitByRow {
 		m := d.prepareMsg()
 		_, err := d.client.MessagesSendTemplate(m, d.Template, rows)
+		atomic.AddInt64(&d.emailsSent, 1)
 		if err != nil {
 			d.fatalerr(err, l)
 			return
 		}
 		d.log(l, Info, "sent email to recipients containing all received rows")
 	}
+	d.log(l, Info, "Sent a total of %v emails - finished", d.emailsSent)
 }
 
 func (d *MandrillDestination) prepareContent(cols []string, row []interface{}) map[string]interface{} {
