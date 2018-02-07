@@ -819,6 +819,85 @@ func globalDest(js *aql.JobScript, dag engine.Coordinator, block aql.Block, dest
 
 }
 
+
+
+func mandrillDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, dest aql.SourceSink, globalOptions []aql.Option) error {
+	var (
+		senderStr string
+		recipientStr string
+	)
+	m := engine.MandrillDestination{}
+
+	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
+	maybeScan := aql.MaybeOptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
+
+	err := scan("API_KEY", &m.APIKey)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = maybeScan("SENDER", &senderStr)
+
+	if err != nil {
+		return err
+	}
+
+	if len(senderStr) > 0 {
+		pr, err := engine.ParseEmailRecipients(senderStr)
+		if err != nil {
+			return fmt.Errorf("error parsing SENDER: %v", err)
+		}
+
+		if len(pr) > 1 {
+			return fmt.Errorf("there can only be one SENDER: %s", senderStr)
+		}
+
+		m.Sender = &pr[0]
+	}
+
+	err = scan("RECIPIENTS", &recipientStr)
+
+	if err != nil {
+		return err
+	}
+
+	rr, errR := engine.ParseEmailRecipients(recipientStr)
+
+	if errR != nil {
+		return errR
+	}
+
+	m.Recipients = rr
+
+	err = scan("TEMPLATE", &m.Template)
+
+	if err != nil {
+		return err
+	}
+	_, err = maybeScan("SUBJECT", &m.Subject)
+
+	if err != nil {
+		return err
+	}
+
+	_, err = maybeScan("SPLIT", &m.SplitByRow)
+
+	if err != nil {
+		return err
+	}
+
+	alias := alias(dest, &conn)
+
+	m.Name = block.GetName() + destinationUniquifier + conn.Name
+
+	dag.AddDestination(strings.ToLower(block.GetName()+destinationUniquifier+conn.Name), alias, &m)
+	dag.Connect(strings.ToLower(block.GetName()), strings.ToLower(block.GetName()+destinationUniquifier+conn.Name))
+
+	return nil
+
+}
+
 func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, dest aql.SourceSink, globalOptions []aql.Option) error {
 	//register Excel destination
 	var (
@@ -1176,6 +1255,8 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 			var err error
 			if strings.ToUpper(conn.Driver) == "EXCEL" {
 				err = excelDest(js, dag, connMap, &query, conn, dest, globalOptions)
+			} else if strings.ToUpper(conn.Driver) == "MANDRILL" {
+				err = mandrillDest(js, dag, connMap, &query, conn, dest, globalOptions)
 			} else {
 				err = sqlDest(js, dag, connMap, &query, conn, dest, globalOptions, txManager)
 			}
