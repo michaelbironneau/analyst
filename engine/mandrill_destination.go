@@ -5,8 +5,11 @@ import (
 	"github.com/keighl/mandrill"
 	"fmt"
 	"sync/atomic"
+	"strings"
+	"regexp"
 )
 
+var emailRecipientRegexp = regexp.MustCompile(`^\s*([\w\s]+)\s*<\s*(\w[-._\w]*\w@\w[-._\w]*\w\.\w{2,3})\s*>\s*$`)
 
 type MandrillPrincipal struct {
 	Name string
@@ -31,6 +34,21 @@ func (d *MandrillDestination) Ping() error {
 	_, err := d.client.Ping()
 	return err
 }
+
+func ParseEmailRecipients(s string) ([]MandrillPrincipal, error){
+	var ret []MandrillPrincipal
+	recipientStr := strings.Split(s, ",")
+
+	for _, recip := range recipientStr {
+		matches := emailRecipientRegexp.FindStringSubmatch(recip)
+		if len(matches) != 3 {
+			return nil, fmt.Errorf("invalid syntax or email for recipient %s. Expecting NAME <EMAIL>", recip)
+		}
+		ret = append(ret, MandrillPrincipal{Name: strings.TrimSpace(matches[1]), Email: matches[2]})
+	}
+	return ret, nil
+}
+
 func (d *MandrillDestination) Open(s Stream, l Logger, st Stopper) {
 	c := s.Chan(d.Name)
 	var (
