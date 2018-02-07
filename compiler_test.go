@@ -381,6 +381,38 @@ func TestCompilerWithParameters(t *testing.T) {
 
 }
 
+func TestCompilerWithEmail(t *testing.T) {
+	script := `
+	CONNECTION 'SendTestEmail' (
+		DRIVER = 'MANDRILL',
+		API_KEY = 'XIrAnHAcpAMpOONkJYjiNg',
+		RECIPIENTS = 'Test <test@test.com>, Test2 <test2@test2.com>',
+		TEMPLATE = 'analyst-test',
+		SPLIT = 'True'
+	)
+
+	DATA 'Values' (
+    [
+  		["Bob Bobbertson", 123.123],
+  		["Steve Stevenson", 234.234]
+	  ]
+	)WITH (FORMAT = 'JSON_ARRAY', COLUMNS = 'Engineer,Current');
+
+	TRANSFORM 'PopulateEmail' FROM BLOCK Values (
+		AGGREGATE Engineer, Current
+		GROUP BY Engineer, Current
+	) INTO CONNECTION SendTestEmail
+	`
+	Convey("Given a script that uses email", t, func() {
+		Convey("It should run without errors", func(){
+			err := ExecuteString(script, &RuntimeOptions{})
+			So(err, ShouldBeNil)
+		})
+
+	})
+
+}
+
 func TestCompilerWithTransform(t *testing.T) {
 	script := `
 	CONNECTION 'Workbook' (

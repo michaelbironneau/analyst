@@ -889,7 +889,7 @@ func mandrillDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 
 	alias := alias(dest, &conn)
 
-	m.Name = block.GetName() + destinationUniquifier + conn.Name
+	m.Name = alias
 
 	dag.AddDestination(strings.ToLower(block.GetName()+destinationUniquifier+conn.Name), alias, &m)
 	dag.Connect(strings.ToLower(block.GetName()), strings.ToLower(block.GetName()+destinationUniquifier+conn.Name))
@@ -1323,7 +1323,9 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 			var err error
 			if strings.ToUpper(conn.Driver) == "EXCEL" {
 				err = excelDest(js, dag, connMap, &transform, conn, dest, globalOptions)
-			} else {
+			} else if strings.ToUpper(conn.Driver) == "MANDRILL" {
+				err = mandrillDest(js, dag, connMap, &transform, conn, dest, globalOptions)
+			}  else {
 				err = sqlDest(js, dag, connMap, &transform, conn, dest, globalOptions, txManager)
 			}
 			if err != nil {
