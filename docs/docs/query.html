@@ -1,0 +1,93 @@
+<html lang="en"><head><meta charset="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><title>QUERY · Analyst QL</title><meta name="viewport" content="width=device-width"/><meta name="generator" content="Docusaurus"/><meta property="og:title" content="QUERY · Analyst QL"/><meta property="og:type" content="website"/><meta property="og:url" content="https://github.com/michaelbironneau/analyst/analyst/index.html"/><meta property="og:description" content="The general query syntax is as follows:"/><link rel="shortcut icon" href="/analyst/"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css"/><script type="text/javascript" src="https://buttons.github.io/buttons.js"></script><link rel="stylesheet" href="/analyst/css/main.css"/></head><body class="sideNavVisible"><div class="fixedHeaderContainer"><div class="headerWrapper wrapper"><header><a href="/analyst/"><h2 class="headerTitle">Analyst QL</h2></a><div class="navigationWrapper navigationSlider"><nav class="slidingNav"><ul class="nav-site nav-site-internal"><li><a href="/analyst/docs/intro.html" target="_self">Introduction to Analyst</a></li></ul></nav></div></header></div></div><div class="navPusher"><div class="docMainWrapper wrapper"><div class="container docsNavContainer" id="docsNav"><nav class="toc"><div class="toggleNav"><section class="navWrapper wrapper"><div class="navBreadcrumb wrapper"><div class="navToggle" id="navToggler"><i></i></div><h2><i>›</i><span>Blocks</span></h2></div><div class="navGroups"><div class="navGroup navGroupActive"><h3>Get Started</h3><ul><li class="navListItem"><a class="navItem" href="/analyst/docs/intro.html">30-second Introduction</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/cli.html">Command Line Interface</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/data-flow.html">Data Flow</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/blocks.html">Block Syntax</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/connections.html">Connectors</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/transforms.html">Transforms</a></li></ul></div><div class="navGroup navGroupActive"><h3>Recipes</h3><ul><li class="navListItem"><a class="navItem" href="/analyst/docs/email.html">Data-Driven Email</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/http.html">Getting data from Web APIs</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/logic.html">Using Python for execution logic</a></li></ul></div><div class="navGroup navGroupActive"><h3>Blocks</h3><ul><li class="navListItem"><a class="navItem" href="/analyst/docs/include.html">INCLUDE</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/connection.html">CONNECTION</a></li><li class="navListItem navListItemActive"><a class="navItem navItemActive" href="/analyst/docs/query.html">QUERY</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/exec.html">EXEC</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/transform.html">TRANSFORM</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/data.html">DATA</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/declare.html">DECLARE</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/global.html">GLOBAL</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/set.html">SET</a></li></ul></div></div></section></div><script>
+          var toggler = document.getElementById('navToggler');
+          var nav = document.getElementById('docsNav');
+          toggler.onclick = function() {
+            nav.classList.toggle('docsSliderActive');
+          };
+        </script></nav></div><div class="container mainContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1>QUERY</h1></header><article><div><span><p>The general query syntax is as follows:</p>
+<pre><code class="hljs">QUERY 'QUERY_NAME' <span class="hljs-comment">[EXTERN 'QUERY_FILE']</span> FROM QUERY_SOURCE (
+    QUERY_CONTENT
+) 
+<span class="hljs-comment">[USING PARAMETER PARAM_1 <span class="hljs-comment">[, PARAM_2 <span class="hljs-comment">[, ...]</span>]</span>]</span>
+<span class="hljs-comment">[INTO QUERY_DESTINATION <span class="hljs-comment">[, QUERY_DESTINATION_" <span class="hljs-comment">[, ...]</span>]</span>]</span>
+<span class="hljs-comment">[WITH QUERY_OPTIONS]</span>
+<span class="hljs-comment">[AFTER DEPENDENCY_1 <span class="hljs-comment">[, DEPENDENCY_2 <span class="hljs-comment">[, ...]</span>]</span>]</span>
+</code></pre>
+<p>The query content is always a SQL statement valid for the type of query source (e.g. a Microsoft SQL query source requires a valid T-SQL query).</p>
+<h2><a class="anchor" aria-hidden="true" name="query-sources"></a><a href="#query-sources" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Query Sources</h2>
+<p>The syntax for query source specification is as follows:</p>
+<pre><code class="hljs">QUERY_SOURCE = {CONNECTION <span class="hljs-string">| BLOCK} SOURCE_IDENTIFIER </span>
+                <span class="hljs-string">| GLOBAL</span>
+</code></pre>
+<p>Queries have two types of sources:</p>
+<ul>
+<li>SQL databases</li>
+<li>Non-database sources</li>
+</ul>
+<p>For the first type, the query content is a SQL statement that is valid for the database, and the query will be run against that database.</p>
+<p>The the second type, Analyst will extract the data to an in-memory SQLite 3 database (not the same as the global database) and the query will be run against that. Therefore, the query needs to be valid for SQLite 3.</p>
+<p>Note that the GLOBAL database is an SQLite3 database too.</p>
+<h2><a class="anchor" aria-hidden="true" name="query-destinations"></a><a href="#query-destinations" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Query Destinations</h2>
+<p>The syntax for query destination specification is as follows:</p>
+<pre><code class="hljs">QUERY_DESTINATION =<span class="hljs-built_in"> CONNECTION </span>DESTINATION_IDENTIFIER 
+                        | GLOBAL 
+                        |<span class="hljs-built_in"> CONSOLE </span>
+                        | PARAMETER ( PARAMETER1_NAME [, PARAMETER2_NAME [, <span class="hljs-built_in">..</span>.]])
+</code></pre>
+<p>If the destination is specified, then every row returned by the query will be sent to it. For example, if a connection to an Excel file is specified, then this file will be populated with all the rows returned by the query.</p>
+<p>A query need not specify a destination. A query without a destination can be used as the source of another block, such as <code>TRANSFORM</code>.</p>
+<p>Queries that do not specify a destination and that are not the source of any other block will <strong>NOT</strong> be executed.</p>
+<h3><a class="anchor" aria-hidden="true" name="connection"></a><a href="#connection" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Connection</h3>
+<p>If a connection is specified, then connection-specific options may need to be provided. For SQL destinations, the <code>TABLE</code> option always needs to be speficied, saying which table the data should be inserted into.</p>
+<h3><a class="anchor" aria-hidden="true" name="console"></a><a href="#console" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Console</h3>
+<p>This will send rows to STDOUT on the console. There are two available output formats configurable with the <code>OUTPUT_FORMAT</code> option:</p>
+<ul>
+<li><code>table</code> (default): Pretty-prints the output as a table.</li>
+<li><code>json</code>: Formats the output as an array of JSON objects. The keys are the column names.</li>
+</ul>
+<h3><a class="anchor" aria-hidden="true" name="parameter"></a><a href="#parameter" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Parameter</h3>
+<p>This will send the output to one or more parameters, in column order. The parameter must have been previously declared by the <code>DECLARE</code> statement.</p>
+<p>For example in the below <code>@Param</code> will be set to 1 and <code>@Param2</code> will be set to 2.</p>
+<pre><code class="hljs"><span class="hljs-attribute">DECLARE</span> <span class="hljs-variable">@Param</span>;
+<span class="hljs-attribute">DECLARE</span> <span class="hljs-variable">@Param2</span>;
+
+<span class="hljs-attribute">QUERY</span> <span class="hljs-string">'WriteParam'</span> FROM GLOBAL (
+    SELECT <span class="hljs-number">1</span>, <span class="hljs-number">2</span>
+) INTO PARAMETER (<span class="hljs-variable">@Param</span>, <span class="hljs-variable">@Param2</span>)
+</code></pre>
+<p><em>The query must return a single row</em>.</p>
+<h2><a class="anchor" aria-hidden="true" name="after"></a><a href="#after" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>After</h2>
+<p>By default, QUERY and EXEC blocks are scheduled to run in parallel with maximum parallelism. This means that two QUERY blocks in the same script that both specify a destination will both run concurrently, rather than the second starting after the first finishes.</p>
+<p>The <code>AFTER</code> keyword specifies a dependency on any other block. Its meaning is that the query will not start running before the other block finishes. This can be used to synchronize parameter setting or data access (see examples below).</p>
+<h2><a class="anchor" aria-hidden="true" name="examples"></a><a href="#examples" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Examples</h2>
+<p>Basic example:</p>
+<pre><code class="hljs">QUERY <span class="hljs-string">'SelectAll'</span> <span class="hljs-keyword">FROM</span> CONNECTION MyDb (
+    <span class="hljs-keyword">SELECT</span> * <span class="hljs-keyword">FROM</span> MyTable
+) <span class="hljs-keyword">INTO</span> CONSOLE
+</code></pre>
+<p>Move data from one database to another:</p>
+<pre><code class="hljs">QUERY <span class="hljs-string">'MoveData'</span> <span class="hljs-keyword">FROM</span> CONNECTION MyDb (
+    <span class="hljs-keyword">SELECT</span> * <span class="hljs-keyword">FROM</span> MyTable
+) <span class="hljs-keyword">INTO</span> CONNECTION MyOtherDb <span class="hljs-keyword">WITH</span> (Table = <span class="hljs-string">'SecondTable'</span>)
+</code></pre>
+<p>Use parameters and synchronization to print @Name and @Id in that order.</p>
+<pre><code class="hljs"><span class="hljs-keyword">DECLARE</span> @<span class="hljs-keyword">Id</span>;
+<span class="hljs-keyword">DECLARE</span> @<span class="hljs-keyword">Name</span>;
+
+QUERY 'GetId' FROM CONNECTION MyDb (
+    <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">Id</span>, <span class="hljs-keyword">Name</span> <span class="hljs-keyword">FROM</span> MyTable <span class="hljs-keyword">LIMIT</span> <span class="hljs-number">1</span>
+) <span class="hljs-keyword">INTO</span> PARAMETER (@<span class="hljs-keyword">Id</span>, @<span class="hljs-keyword">Name</span>)
+
+<span class="hljs-keyword">QUERY</span> <span class="hljs-string">'PrintName'</span> <span class="hljs-keyword">FROM</span> <span class="hljs-keyword">GLOBAL</span> (
+    <span class="hljs-keyword">SELECT</span> ? <span class="hljs-keyword">AS</span> <span class="hljs-keyword">Name</span>
+) <span class="hljs-keyword">USING</span> PARAMETER @<span class="hljs-keyword">Name</span>
+  <span class="hljs-keyword">INTO</span> CONSOLE
+  <span class="hljs-keyword">AFTER</span> GetId
+  
+<span class="hljs-keyword">QUERY</span> <span class="hljs-string">'PrintId'</span> <span class="hljs-keyword">FROM</span> <span class="hljs-keyword">GLOBAL</span> (
+    <span class="hljs-keyword">SELECT</span> ? <span class="hljs-keyword">AS</span> <span class="hljs-keyword">Id</span>
+) <span class="hljs-keyword">USING</span> PARAMETER @<span class="hljs-keyword">Id</span> 
+  <span class="hljs-keyword">INTO</span> CONSOLE 
+  <span class="hljs-keyword">AFTER</span> PrintName
+</code></pre>
+</span></div></article></div><div class="docs-prevnext"><a class="docs-prev button" href="connection.html">← CONNECTION</a><a class="docs-next button" href="exec.html">EXEC →</a></div></div></div></div><footer class="nav-footer" id="footer"><section class="sitemap"><a href="/analyst/" class="nav-home"></a><div><h5>Docs</h5><a href="/analyst/docs/en/intro.html">30-second Intro</a><a href="/analyst/docs/en/cli.html">Command Line Interface</a></div><div><h5>More</h5><a href="/analyst/blog">Blog</a><a href="https://github.com/">GitHub</a><a class="github-button" href="https://github.com/michaelbironneau/analyst" data-icon="octicon-star" data-count-href="/facebook/docusaurus/stargazers" data-show-count="true" data-count-aria-label="# stargazers on GitHub" aria-label="Star this project on GitHub">Star</a></div></section><section class="copyright">Copyright © 2018 Michael Bironneau</section></footer></div></body></html>

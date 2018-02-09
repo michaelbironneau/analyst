@@ -1,0 +1,143 @@
+<html lang="en"><head><meta charset="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><title>Connectors · Analyst QL</title><meta name="viewport" content="width=device-width"/><meta name="generator" content="Docusaurus"/><meta property="og:title" content="Connectors · Analyst QL"/><meta property="og:type" content="website"/><meta property="og:url" content="https://github.com/michaelbironneau/analyst/analyst/index.html"/><meta property="og:description" content="This section discusses the different connectors available to use as a CONNECTION for queries, transforms or execs, along with their various options."/><link rel="shortcut icon" href="/analyst/"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css"/><script type="text/javascript" src="https://buttons.github.io/buttons.js"></script><link rel="stylesheet" href="/analyst/css/main.css"/></head><body class="sideNavVisible"><div class="fixedHeaderContainer"><div class="headerWrapper wrapper"><header><a href="/analyst/"><h2 class="headerTitle">Analyst QL</h2></a><div class="navigationWrapper navigationSlider"><nav class="slidingNav"><ul class="nav-site nav-site-internal"><li><a href="/analyst/docs/intro.html" target="_self">Introduction to Analyst</a></li></ul></nav></div></header></div></div><div class="navPusher"><div class="docMainWrapper wrapper"><div class="container docsNavContainer" id="docsNav"><nav class="toc"><div class="toggleNav"><section class="navWrapper wrapper"><div class="navBreadcrumb wrapper"><div class="navToggle" id="navToggler"><i></i></div><h2><i>›</i><span>Get Started</span></h2></div><div class="navGroups"><div class="navGroup navGroupActive"><h3>Get Started</h3><ul><li class="navListItem"><a class="navItem" href="/analyst/docs/intro.html">30-second Introduction</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/cli.html">Command Line Interface</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/data-flow.html">Data Flow</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/blocks.html">Block Syntax</a></li><li class="navListItem navListItemActive"><a class="navItem navItemActive" href="/analyst/docs/connections.html">Connectors</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/transforms.html">Transforms</a></li></ul></div><div class="navGroup navGroupActive"><h3>Recipes</h3><ul><li class="navListItem"><a class="navItem" href="/analyst/docs/email.html">Data-Driven Email</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/http.html">Getting data from Web APIs</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/logic.html">Using Python for execution logic</a></li></ul></div><div class="navGroup navGroupActive"><h3>Blocks</h3><ul><li class="navListItem"><a class="navItem" href="/analyst/docs/include.html">INCLUDE</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/connection.html">CONNECTION</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/query.html">QUERY</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/exec.html">EXEC</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/transform.html">TRANSFORM</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/data.html">DATA</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/declare.html">DECLARE</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/global.html">GLOBAL</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/set.html">SET</a></li></ul></div></div></section></div><script>
+          var toggler = document.getElementById('navToggler');
+          var nav = document.getElementById('docsNav');
+          toggler.onclick = function() {
+            nav.classList.toggle('docsSliderActive');
+          };
+        </script></nav></div><div class="container mainContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1>Connectors</h1></header><article><div><span><p>This section discusses the different connectors available to use as a CONNECTION for queries, transforms or execs, along with their various options.</p>
+<h2><a class="anchor" aria-hidden="true" name="sql-database-connectors"></a><a href="#sql-database-connectors" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>SQL Database Connectors</h2>
+<p>All SQL Database connections must specify the <code>CONNECTIONSTRING</code> option. This is a quoted string with driver-specific options. Please use the links below to access documentation for the drivers, which includes details of how to construct a connection string.</p>
+<p><em>Database connectors can be used as either sources (<code>FROM</code>) or destinations (<code>INTO</code>)</em>.</p>
+<h3><a class="anchor" aria-hidden="true" name="microsoft-sql-server-driver-mssql"></a><a href="#microsoft-sql-server-driver-mssql" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Microsoft SQL Server (<code>DRIVER = 'mssql'</code>)</h3>
+<p>This is a connector for MS SQL Server. It is documented <a href="https://github.com/denisenkom/go-mssqldb">here</a>.</p>
+<p><strong>Example</strong></p>
+<pre><code class="hljs">CONNECTION 'SQLServerExample' <span class="hljs-params">(
+    <span class="hljs-attr">DRIVER</span> = 'mssql',
+    <span class="hljs-attr">CONNECTIONSTRING</span> = '<span class="hljs-attr">server</span>=localhost;user <span class="hljs-attr">id</span>=sa;<span class="hljs-attr">database</span>=master;connection <span class="hljs-attr">timeout</span>=30'
+)</span>
+</code></pre>
+<h3><a class="anchor" aria-hidden="true" name="postgres-driver-postgres"></a><a href="#postgres-driver-postgres" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Postgres (<code>DRIVER = 'postgres'</code>)</h3>
+<p>This is a connector for Postgres. Documentation and examples can be found <a href="https://godoc.org/github.com/lib/pq">here</a>.</p>
+<p><strong>Example</strong></p>
+<pre><code class="hljs"><span class="hljs-attribute">CONNECTION</span> <span class="hljs-string">'PostgresExample'</span> (
+    DRIVER = <span class="hljs-string">'postgres'</span>,
+    CONNECTIONSTRING = <span class="hljs-string">'postgres://pqgotest:password<span class="hljs-variable">@localhost</span>/pqgotest?sslmode=verify-full'</span>
+)
+</code></pre>
+<h3><a class="anchor" aria-hidden="true" name="sqlite-3-driver-sqlite3"></a><a href="#sqlite-3-driver-sqlite3" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>SQLite 3 (<code>DRIVER = 'sqlite3'</code>)</h3>
+<p>This is a connector for SQLite 3. It is documented <a href="https://github.com/mattn/go-sqlite3">here</a>.</p>
+<p><strong>Example</strong></p>
+<pre><code class="hljs"><span class="hljs-attribute">CONNECTION</span> <span class="hljs-string">'PostgresExample'</span> (
+    DRIVER = <span class="hljs-string">'sqlite3'</span>,
+    CONNECTIONSTRING = <span class="hljs-string">'path-to-my-database.db'</span>
+)
+</code></pre>
+<h2><a class="anchor" aria-hidden="true" name="other-connectors"></a><a href="#other-connectors" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Other Connectors</h2>
+<h3><a class="anchor" aria-hidden="true" name="excel"></a><a href="#excel" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Excel</h3>
+<p>The Excel connector can be used to ingest data from Microsoft Excel 2007 and later in XLSX format.</p>
+<p><em>The Excel connector can be used as either a source (<code>FROM</code>) or a destination (<code>INTO</code>) for transforms. At present it is limited to being a destination for queries.</em></p>
+<p>The Excel connector need not specify a connection string, but if it does, then it is equivalent to the <code>FILE</code> option below.</p>
+<p><strong>Options</strong></p>
+<ul>
+<li><code>FILE</code>: XLSX file with input/output. For destinations, it need not exist but the directory must.</li>
+<li><code>SHEET</code>: Name of input/output sheet.</li>
+<li><code>RANGE</code>: Range of input/output data (details below).</li>
+<li><code>COLUMNS</code>: (Optional) Includes the column names for input or output. If not included for a source, then the first row of the range must include column names.</li>
+<li><code>TRANSPOSE</code>: (Optional, default 'False') Transpose the output from rows into columns.</li>
+<li><code>TEMPLATE</code>: (Optional) Copy the template file (XLSX) into the output directory and populate this instead of an empty spreadsheet.</li>
+<li><code>OVERWRITE</code>: (Optional, default 'False') Overwrite <code>FILE</code> if it exists.</li>
+</ul>
+<p><strong>The <code>RANGE</code> Option</strong></p>
+<p>Ranges should be specified as cell-to-cell as they are in Excel, eg. <code>A1:B2</code>. For cases where te number of input/output rows is unknown, a single wildcard should be used in the right-hand cell, e.g. <code>A1:B*</code> or <code>A1:*2</code>.</p>
+<p><strong>Examples</strong></p>
+<p>As source:</p>
+<pre><code class="hljs">CONNECTION <span class="hljs-string">'Workbook'</span> (
+        Driver = <span class="hljs-string">'Excel'</span>,
+        <span class="hljs-keyword">File</span> = <span class="hljs-string">'./sales.xlsx'</span>,
+        Sheet = <span class="hljs-string">'2017'</span>,
+        Range = <span class="hljs-string">'A1:B*'</span>
+)
+
+TRANSFORM <span class="hljs-string">'SumSales'</span> <span class="hljs-keyword">FROM</span> CONNECTION Workbook (
+    AGGREGATE Month, SUM(Sales)
+    <span class="hljs-keyword">GROUP</span> BY Month
+) <span class="hljs-keyword">INTO</span> CONSOLE
+</code></pre>
+<p>As destination:</p>
+<pre><code class="hljs">CONNECTION <span class="hljs-string">'Workbook'</span> (
+        Driver = <span class="hljs-string">'Excel'</span>,
+        File = <span class="hljs-string">'./output.xlsx'</span>,
+)
+
+QUERY <span class="hljs-string">'DumpData'</span> <span class="hljs-keyword">FROM</span> <span class="hljs-keyword">GLOBAL</span> (
+        <span class="hljs-keyword">SELECT</span> <span class="hljs-number">1</span> <span class="hljs-keyword">AS</span> <span class="hljs-string">'Id'</span>, <span class="hljs-string">'Bob'</span> <span class="hljs-keyword">AS</span> <span class="hljs-string">'Name'</span>
+) <span class="hljs-keyword">INTO</span> CONNECTION Workbook
+  <span class="hljs-keyword">WITH</span> (Sheet = <span class="hljs-string">'TestSheet'</span>, Range = <span class="hljs-string">'A1:B1'</span>, Columns = <span class="hljs-string">'Identifier, First Name'</span>)
+</code></pre>
+<h2><a class="anchor" aria-hidden="true" name="http-connector"></a><a href="#http-connector" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>HTTP Connector</h2>
+<p>The HTTP Connector is a source-only connector used to fetch data from an HTTP endpoint that returns UTF-8 encoded JSON.</p>
+<p>Either primitive arrays <code>[[1,2][3,4]]</code> or object arrays <code>[{&quot;a&quot;: 1, &quot;b&quot;: 2}, {&quot;a&quot;: 3, &quot;b&quot;: 4}]</code> are supported.</p>
+<p>It supports pagination and basic authentication.</p>
+<p><strong>Options</strong></p>
+<ul>
+<li><code>URL</code>: The URL of the endpoint complete with the scheme and hostname, eg. <code>https://www.my-company.com/api/v1/endpoint</code></li>
+<li><code>COLUMNS</code>: Output columns, case-insensitive. For object arrays, it should match the name of the key. For primitive arrays, the values are returned in order.</li>
+<li><code>JSON_PATH</code>: (Optional, default: '') The JSON Path of the JSON object in the response that includes the data. It should be left unset or blank for top-level arrays.</li>
+<li><code>PAGE_SIZE</code>: (Optional, default: 50) If the API supports pagination, then this is the desired size of pages that the executor should fetch</li>
+<li><code>PAGINATION_LIMIT_PARAMETER</code>: (Optional, default: '') If the API supports pagination, then this is the query parameter that should be appended with the limit eg. <code>https://www.my-company.com/api/v1/endpoint?limit=100</code></li>
+<li><code>PAGINATION_OFFSET_PARAMETER</code>: (Optional, default: '') If the API supports pagination, then this is the query parameter that should be appended with the offset eg. <code>https://www.my-company.com/api/v1/endpoint?limit=100&amp;offset=100</code></li>
+<li><code>HEADERS</code>: (Optional, default: '') A JSON object containing a map of headers, eg. <code>{&quot;Authorization&quot;: &quot;Basic asdfasdf123=&quot;}</code></li>
+<li><code>FORMAT</code>: (Optional, default: <code>JSON_OBJECTS</code>) Either <code>JSON_OBJECTS</code> (object array) or <code>JSON_ARRAY</code> (primitive array).</li>
+</ul>
+<p><strong>Example</strong></p>
+<pre><code class="hljs">CONNECTION <span class="hljs-string">'WebAPI'</span> (
+    DRIVER = <span class="hljs-string">'http'</span>,
+    <span class="hljs-built_in">URL</span> = <span class="hljs-string">'https://chroniclingamerica.loc.gov/awardees.json'</span>,
+    JSON_PATH = <span class="hljs-string">'awardees'</span>,
+    COLUMNS = <span class="hljs-string">'URL, Name'</span>
+)
+</code></pre>
+<h2><a class="anchor" aria-hidden="true" name="mandrill-connector"></a><a href="#mandrill-connector" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Mandrill Connector</h2>
+<p>The <a href="http://mandrill.com/">Mandrill</a> Connector is a destination-only connector used to send data via a templated email.</p>
+<p>It can either send all the input rows in a single email or send one email per row.</p>
+<p><strong>Options</strong></p>
+<ul>
+<li><code>API_KEY</code>: The Mandrill API Key.</li>
+<li><code>RECIPIENTS</code>: List of recipients in the format <code>Name &lt;something@domain.com&gt;, Another Name &lt;something2@domain2.com&gt;</code>.</li>
+<li><code>TEMPLATE</code>: Name of the Mandrill template to use to send the email.</li>
+<li><code>SUBJECT</code>: (Optional) The subject line for the email. If blank, the default template subject line will be used.</li>
+<li><code>SENDER</code>: (Optional) The sender in the format <code>Name &lt;something@domain.com&gt;</code>. If blank, the default template sender will be used.</li>
+<li><code>SPLIT</code>: (Optional, default: 'False') If 'True', send one email per input row. If 'False', send one email with all input rows as an array of JSON objects.</li>
+</ul>
+<p><strong>Full Example</strong></p>
+<p>This script generates some dummy data and sends it via email using a passthrough transform.</p>
+<pre><code class="hljs">CONNECTION <span class="hljs-comment">'SendTestEmail' (</span>
+    DRIVER = <span class="hljs-comment">'MANDRILL',</span>
+    API_KEY = <span class="hljs-comment">'XXXXXXXXXXXXXXXXXXXXX',</span>
+    RECIPIENTS = <span class="hljs-comment">'Test <span class="hljs-doctag">&lt;test@test.com&gt;</span>, Test2 <span class="hljs-doctag">&lt;test2@test2.com&gt;</span>',</span>
+    TEMPLATE = <span class="hljs-comment">'analyst-test',</span>
+    SPLIT = <span class="hljs-comment">'True'</span>
+)
+
+DATA <span class="hljs-comment">'Values' (</span>
+    [
+        [<span class="hljs-string">"Bob Bobbertson"</span>, <span class="hljs-number">123.123</span>],
+        [<span class="hljs-string">"Steve Stevenson"</span>, <span class="hljs-number">234.234</span>]
+      ]
+)<span class="hljs-keyword">WITH</span> (FORMAT = <span class="hljs-comment">'JSON_ARRAY', COLUMNS = 'Engineer,Current');</span>
+    
+TRANSFORM <span class="hljs-comment">'PopulateEmail' FROM BLOCK Values (</span>
+    <span class="hljs-keyword">AGGREGATE</span> Engineer, Current
+    <span class="hljs-keyword">GROUP</span> <span class="hljs-keyword">BY</span> Engineer, Current
+) <span class="hljs-keyword">INTO</span> CONNECTION SendTestEmail
+</code></pre>
+<p>The source code of the Mandrill template used, <code>analyst-test</code>, is as follows:</p>
+<pre><code class="hljs"><span class="xml"><span class="hljs-tag">&lt;<span class="hljs-name">html</span>&gt;</span>
+    <span class="hljs-tag">&lt;<span class="hljs-name">body</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">h1</span>&gt;</span>New test run<span class="hljs-tag">&lt;/<span class="hljs-name">h1</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-name">strong</span>&gt;</span>Engineer:<span class="hljs-tag">&lt;/<span class="hljs-name">strong</span>&gt;</span></span><span class="hljs-template-variable">{{engineer}}</span><span class="xml"><span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">p</span>&gt;</span><span class="hljs-tag">&lt;<span class="hljs-name">strong</span>&gt;</span>Current car mileage:<span class="hljs-tag">&lt;/<span class="hljs-name">strong</span>&gt;</span></span><span class="hljs-template-variable">{{current}}</span><span class="xml"><span class="hljs-tag">&lt;/<span class="hljs-name">p</span>&gt;</span>   
+    <span class="hljs-tag">&lt;/<span class="hljs-name">body</span>&gt;</span>
+<span class="hljs-tag">&lt;/<span class="hljs-name">html</span>&gt;</span>
+</span></code></pre>
+</span></div></article></div><div class="docs-prevnext"><a class="docs-prev button" href="blocks.html">← Block Syntax</a><a class="docs-next button" href="transforms.html">Transforms →</a></div></div></div></div><footer class="nav-footer" id="footer"><section class="sitemap"><a href="/analyst/" class="nav-home"></a><div><h5>Docs</h5><a href="/analyst/docs/en/intro.html">30-second Intro</a><a href="/analyst/docs/en/cli.html">Command Line Interface</a></div><div><h5>More</h5><a href="/analyst/blog">Blog</a><a href="https://github.com/">GitHub</a><a class="github-button" href="https://github.com/michaelbironneau/analyst" data-icon="octicon-star" data-count-href="/facebook/docusaurus/stargazers" data-show-count="true" data-count-aria-label="# stargazers on GitHub" aria-label="Star this project on GitHub">Star</a></div></section><section class="copyright">Copyright © 2018 Michael Bironneau</section></footer></div></body></html>

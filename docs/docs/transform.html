@@ -1,0 +1,114 @@
+<html lang="en"><head><meta charset="utf-8"/><meta http-equiv="X-UA-Compatible" content="IE=edge"/><title>TRANSFORM · Analyst QL</title><meta name="viewport" content="width=device-width"/><meta name="generator" content="Docusaurus"/><meta property="og:title" content="TRANSFORM · Analyst QL"/><meta property="og:type" content="website"/><meta property="og:url" content="https://github.com/michaelbironneau/analyst/analyst/index.html"/><meta property="og:description" content="The syntax of a transform block is as follows:"/><link rel="shortcut icon" href="/analyst/"/><link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css"/><script type="text/javascript" src="https://buttons.github.io/buttons.js"></script><link rel="stylesheet" href="/analyst/css/main.css"/></head><body class="sideNavVisible"><div class="fixedHeaderContainer"><div class="headerWrapper wrapper"><header><a href="/analyst/"><h2 class="headerTitle">Analyst QL</h2></a><div class="navigationWrapper navigationSlider"><nav class="slidingNav"><ul class="nav-site nav-site-internal"><li><a href="/analyst/docs/intro.html" target="_self">Introduction to Analyst</a></li></ul></nav></div></header></div></div><div class="navPusher"><div class="docMainWrapper wrapper"><div class="container docsNavContainer" id="docsNav"><nav class="toc"><div class="toggleNav"><section class="navWrapper wrapper"><div class="navBreadcrumb wrapper"><div class="navToggle" id="navToggler"><i></i></div><h2><i>›</i><span>Blocks</span></h2></div><div class="navGroups"><div class="navGroup navGroupActive"><h3>Get Started</h3><ul><li class="navListItem"><a class="navItem" href="/analyst/docs/intro.html">30-second Introduction</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/cli.html">Command Line Interface</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/data-flow.html">Data Flow</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/blocks.html">Block Syntax</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/connections.html">Connectors</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/transforms.html">Transforms</a></li></ul></div><div class="navGroup navGroupActive"><h3>Recipes</h3><ul><li class="navListItem"><a class="navItem" href="/analyst/docs/email.html">Data-Driven Email</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/http.html">Getting data from Web APIs</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/logic.html">Using Python for execution logic</a></li></ul></div><div class="navGroup navGroupActive"><h3>Blocks</h3><ul><li class="navListItem"><a class="navItem" href="/analyst/docs/include.html">INCLUDE</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/connection.html">CONNECTION</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/query.html">QUERY</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/exec.html">EXEC</a></li><li class="navListItem navListItemActive"><a class="navItem navItemActive" href="/analyst/docs/transform.html">TRANSFORM</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/data.html">DATA</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/declare.html">DECLARE</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/global.html">GLOBAL</a></li><li class="navListItem"><a class="navItem" href="/analyst/docs/set.html">SET</a></li></ul></div></div></section></div><script>
+          var toggler = document.getElementById('navToggler');
+          var nav = document.getElementById('docsNav');
+          toggler.onclick = function() {
+            nav.classList.toggle('docsSliderActive');
+          };
+        </script></nav></div><div class="container mainContainer"><div class="wrapper"><div class="post"><header class="postHeader"><h1>TRANSFORM</h1></header><article><div><span><p>The syntax of a transform block is as follows:</p>
+<pre><code class="hljs"><span class="hljs-symbol">TRANSFORM</span> [<span class="hljs-symbol">PLUGIN</span>] <span class="hljs-string">'BLOCK_NAME'</span> [<span class="hljs-symbol">EXTERN</span> <span class="hljs-string">'TRANSFORM_FILE'</span>] <span class="hljs-symbol">FROM</span> <span class="hljs-symbol">TRANSFORM_SOURCE_1</span> [, <span class="hljs-symbol">TRANSFORM_SOURCE_2</span> [, ...]] (
+    <span class="hljs-symbol">TRANSFORM_CONTENT</span>
+)
+  [<span class="hljs-symbol">INTO</span> <span class="hljs-symbol">TRANSFORM_DESTINATION_1</span> [, <span class="hljs-symbol">TRANSFORM_DESTINATION_2</span> [, ...]]]
+  [<span class="hljs-symbol">WITH</span> (<span class="hljs-symbol">BLOCK_OPTIONS</span>)]
+  [<span class="hljs-symbol">AFTER</span> <span class="hljs-symbol">DEPENDENCY_1</span> [, <span class="hljs-symbol">DEPENDENCY_2</span> [,...]]]
+</code></pre>
+<p>Transform blocks take data from a source, manipulate it, and send it to a destination.</p>
+<p>There are two types of transforms:</p>
+<ul>
+<li>Built-in transforms</li>
+<li>External plugins</li>
+</ul>
+<h2><a class="anchor" aria-hidden="true" name="built-in-transforms"></a><a href="#built-in-transforms" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Built-in transforms</h2>
+<p>There are two built-in transforms:</p>
+<ul>
+<li><code>LOOKUP</code>: Performs a lookup using outer or inner join condition</li>
+<li><code>AGGREGATE</code>: Applies aggregates such as <code>SUM()</code> to the data</li>
+</ul>
+<p>Both are documented more extensively in the <a href="/analyst/docs/transforms.html">Transforms</a> page.</p>
+<h2><a class="anchor" aria-hidden="true" name="external-plugins"></a><a href="#external-plugins" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>External plugins</h2>
+<p>External transform plugins can be created using JSON-RPC. Some example Python source code can be found <a href="https://github.com/michaelbironneau/analyst/blob/master/test_filter.py">here</a>.</p>
+<p>Creating language-specific libraries to simplify plugin creation is an area for future development and contributions are welcome.</p>
+<p>To invoke a plugin, some mandatory options need to be specified in the <code>WITH</code> clause:</p>
+<ul>
+<li><code>EXECUTABLE</code>: The path or alias of the executable (eg. <code>python</code>)</li>
+<li><code>Args</code>: The arguments to pass, as JSON array (eg. <code>'[&quot;./test_filter.py&quot;]'</code>)</li>
+</ul>
+<h2><a class="anchor" aria-hidden="true" name="transform-sources"></a><a href="#transform-sources" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Transform Sources</h2>
+<p>The syntax for query source specification is as follows:</p>
+<pre><code class="hljs">TRANSFORM_SOURCE = {CONNECTION <span class="hljs-string">| BLOCK} SOURCE_IDENTIFIER </span>
+                <span class="hljs-string">| GLOBAL</span>
+</code></pre>
+<p>If a transform source is a SQL database connection, then the <code>TABLE</code> option must be included. In that case, all rows from the specified table will be fetched and passed to the transform.</p>
+<p>If a transform specifies multiple sources, then the <code>MULTISOURCE_ORDER</code> option can be used to synchronize source fetch order:</p>
+<ul>
+<li><code>PARALLEL</code> (default): Data from all sources will be sent to the transform at the same time</li>
+<li><code>SEQUENTIAL</code>: Data will first be sent from the first source, and when it finishes, the second source, and so on, until all sources are done</li>
+</ul>
+<h2><a class="anchor" aria-hidden="true" name="examples"></a><a href="#examples" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Examples</h2>
+<h3><a class="anchor" aria-hidden="true" name="plugin"></a><a href="#plugin" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Plugin</h3>
+<p>This example generates some dummy data, uses a plugin to filter the results and sends the rows to an Excel spreadsheet.</p>
+<pre><code class="hljs">CONNECTION <span class="hljs-string">'Workbook'</span> (
+    Driver = <span class="hljs-string">'Excel'</span>,
+    ConnectionString = <span class="hljs-string">'.'</span>,
+    File = <span class="hljs-string">'./output_transform.xlsx'</span>
+)
+
+QUERY <span class="hljs-string">'SliceOfData'</span> <span class="hljs-keyword">FROM</span> <span class="hljs-keyword">GLOBAL</span> (
+    <span class="hljs-keyword">SELECT</span> <span class="hljs-number">1</span> <span class="hljs-keyword">AS</span> <span class="hljs-string">'Value'</span>
+        <span class="hljs-keyword">UNION</span> ALL
+    <span class="hljs-keyword">SELECT</span> -<span class="hljs-number">1</span> <span class="hljs-keyword">AS</span> <span class="hljs-string">'Value'</span>
+        <span class="hljs-keyword">UNION</span> ALL
+    <span class="hljs-keyword">SELECT</span> <span class="hljs-number">2</span> <span class="hljs-keyword">AS</span> <span class="hljs-string">'Value'</span>
+)
+
+QUERY <span class="hljs-string">'SliceOfData2'</span> <span class="hljs-keyword">FROM</span> <span class="hljs-keyword">GLOBAL</span> (
+    <span class="hljs-keyword">SELECT</span> <span class="hljs-number">10</span> <span class="hljs-keyword">AS</span> <span class="hljs-string">'Value'</span>
+        <span class="hljs-keyword">UNION</span> ALL
+    <span class="hljs-keyword">SELECT</span> <span class="hljs-number">11</span> <span class="hljs-keyword">AS</span> <span class="hljs-string">'Value'</span>
+        <span class="hljs-keyword">UNION</span> ALL
+    <span class="hljs-keyword">SELECT</span> -<span class="hljs-number">2</span> <span class="hljs-keyword">AS</span> <span class="hljs-string">'Value'</span>
+)
+
+TRANSFORM PLUGIN <span class="hljs-string">'FilterNegatives'</span> <span class="hljs-keyword">FROM</span> <span class="hljs-keyword">BLOCK</span> SliceOfData, <span class="hljs-keyword">BLOCK</span> SliceOfData2 ()
+<span class="hljs-keyword">INTO</span> CONNECTION Workbook
+<span class="hljs-keyword">WITH</span> (
+        Sheet = <span class="hljs-string">'TestSheet'</span>, Range = <span class="hljs-string">'A1:A*'</span>,
+        Columns = <span class="hljs-string">'Value'</span>, Multisource_Order = <span class="hljs-string">'Sequential'</span>,
+        Executable = <span class="hljs-string">'python'</span>, Args = <span class="hljs-string">'["./test_filter.py"]'</span>, Overwrite = <span class="hljs-string">'True'</span>
+)
+</code></pre>
+<h3><a class="anchor" aria-hidden="true" name="built-in"></a><a href="#built-in" aria-hidden="true" class="hash-link" ><svg aria-hidden="true" height="16" version="1.1" viewBox="0 0 16 16" width="16"><path fill-rule="evenodd" d="M4 9h1v1H4c-1.5 0-3-1.69-3-3.5S2.55 3 4 3h4c1.45 0 3 1.69 3 3.5 0 1.41-.91 2.72-2 3.25V8.59c.58-.45 1-1.27 1-2.09C10 5.22 8.98 4 8 4H4c-.98 0-2 1.22-2 2.5S3 9 4 9zm9-3h-1v1h1c1 0 2 1.22 2 2.5S13.98 12 13 12H9c-.98 0-2-1.22-2-2.5 0-.83.42-1.64 1-2.09V6.25c-1.09.53-2 1.84-2 3.25C6 11.31 7.55 13 9 13h4c1.45 0 3-1.69 3-3.5S14.5 6 13 6z"></path></svg></a>Built-in</h3>
+<p>This example creates two dummy tables and performs an in-memory join.</p>
+<pre><code class="hljs">    GLOBAL 'CreateTables' (
+        <span class="hljs-keyword">CREATE</span> <span class="hljs-keyword">TABLE</span> LookupTable (
+            <span class="hljs-keyword">id</span> <span class="hljs-built_in">INT</span> PRIMARY <span class="hljs-keyword">KEY</span>,
+            first_name <span class="hljs-built_in">TEXT</span>
+        );
+        <span class="hljs-keyword">CREATE</span> <span class="hljs-keyword">TABLE</span> BaseTable (
+            lookup_id <span class="hljs-built_in">INT</span> PRIMARY <span class="hljs-keyword">KEY</span>,
+            last_name <span class="hljs-built_in">TEXT</span>
+        );
+        <span class="hljs-keyword">CREATE</span> <span class="hljs-keyword">TABLE</span> JoinedTable (
+            first_name <span class="hljs-built_in">TEXT</span>,
+            last_name <span class="hljs-built_in">TEXT</span>
+        );
+    );
+    GLOBAL 'SeedTables' (
+        <span class="hljs-keyword">INSERT</span> <span class="hljs-keyword">INTO</span> LookupTable <span class="hljs-keyword">VALUES</span> (<span class="hljs-number">1</span>, <span class="hljs-string">'Bob'</span>);
+        <span class="hljs-keyword">INSERT</span> <span class="hljs-keyword">INTO</span> LookupTable <span class="hljs-keyword">VALUES</span> (<span class="hljs-number">2</span>, <span class="hljs-string">'John'</span>);
+        <span class="hljs-keyword">INSERT</span> <span class="hljs-keyword">INTO</span> LookupTable <span class="hljs-keyword">VALUES</span> (<span class="hljs-number">3</span>, <span class="hljs-string">'Steve'</span>);
+        <span class="hljs-keyword">INSERT</span> <span class="hljs-keyword">INTO</span> BaseTable <span class="hljs-keyword">VALUES</span> (<span class="hljs-number">1</span>, <span class="hljs-string">'Bobbertson'</span>);
+        <span class="hljs-keyword">INSERT</span> <span class="hljs-keyword">INTO</span> BaseTable <span class="hljs-keyword">VALUES</span> (<span class="hljs-number">2</span>, <span class="hljs-string">'Johnson'</span>);
+    );
+    QUERY 'FirstNames' FROM GLOBAL (
+        <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">id</span>, first_name <span class="hljs-keyword">FROM</span> LookupTable
+    );
+    QUERY 'LastNames' FROM GLOBAL (
+        <span class="hljs-keyword">SELECT</span> lookup_id, last_name <span class="hljs-keyword">FROM</span> BaseTable
+    );
+    TRANSFORM 'Join' FROM BLOCK FirstNames, BLOCK LastNames (
+        LOOKUP FirstNames.first_name, LastNames.last_name FROM FirstNames
+        INNER JOIN LastNames ON FirstNames.id = LastNames.lookup_id
+    ) INTO GLOBAL WITH(Table = 'JoinedTable')
+</code></pre>
+</span></div></article></div><div class="docs-prevnext"><a class="docs-prev button" href="exec.html">← EXEC</a><a class="docs-next button" href="data.html">DATA →</a></div></div></div></div><footer class="nav-footer" id="footer"><section class="sitemap"><a href="/analyst/" class="nav-home"></a><div><h5>Docs</h5><a href="/analyst/docs/en/intro.html">30-second Intro</a><a href="/analyst/docs/en/cli.html">Command Line Interface</a></div><div><h5>More</h5><a href="/analyst/blog">Blog</a><a href="https://github.com/">GitHub</a><a class="github-button" href="https://github.com/michaelbironneau/analyst" data-icon="octicon-star" data-count-href="/facebook/docusaurus/stargazers" data-show-count="true" data-count-aria-label="# stargazers on GitHub" aria-label="Star this project on GitHub">Star</a></div></section><section class="copyright">Copyright © 2018 Michael Bironneau</section></footer></div></body></html>
