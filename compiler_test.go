@@ -404,7 +404,7 @@ func TestCompilerWithEmail(t *testing.T) {
 	) INTO CONNECTION SendTestEmail
 	`
 	Convey("Given a script that uses email", t, func() {
-		Convey("It should run without errors", func(){
+		Convey("It should run without errors", func() {
 			err := ExecuteString(script, &RuntimeOptions{})
 			So(err, ShouldBeNil)
 		})

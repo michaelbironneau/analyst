@@ -22,10 +22,10 @@ const (
 )
 
 type RuntimeOptions struct {
-	Options []aql.Option
-	Logger  engine.Logger
-	Hooks   []interface{}
-	Context context.Context
+	Options         []aql.Option
+	Logger          engine.Logger
+	Hooks           []interface{}
+	Context         context.Context
 	ScriptDirectory string
 }
 
@@ -99,7 +99,6 @@ func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, comp
 			return err
 		}
 	}
-
 
 	err = sources(js, dag, connMap, params, options, txManager)
 
@@ -792,7 +791,6 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 		}
 	}
 
-
 	//Uniquify destination name
 	dag.AddDestination(strings.ToLower(block.GetName()+destinationUniquifier+conn.Name), alias, &engine.SQLDestination{
 		Name:             block.GetName() + destinationUniquifier + conn.Name,
@@ -838,11 +836,9 @@ func globalDest(js *aql.JobScript, dag engine.Coordinator, block aql.Block, dest
 
 }
 
-
-
 func mandrillDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, dest aql.SourceSink, globalOptions []aql.Option) error {
 	var (
-		senderStr string
+		senderStr    string
 		recipientStr string
 	)
 	m := engine.MandrillDestination{}
@@ -1128,7 +1124,7 @@ func httpSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 		cols                 []string
 		pageSize             int
 		headerStr            string
-	    headers map[string]string
+		headers              map[string]string
 	)
 
 	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
@@ -1164,7 +1160,6 @@ func httpSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 		return err
 	}
 
-
 	ok, err := maybeScan("HEADERS", &headerStr)
 
 	if err != nil {
@@ -1179,11 +1174,6 @@ func httpSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 
 		}
 	}
-
-
-
-
-
 
 	var colString string
 	err = scan("COLUMNS", &colString)
@@ -1207,7 +1197,7 @@ func httpSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 		JSONPath:             jsonPath,
 		ColumnNames:          cols,
 		PageSize:             pageSize,
-		Headers: headers,
+		Headers:              headers,
 	}
 	ssource.SetName(alias)
 	//Make destination name unique
@@ -1368,7 +1358,7 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 				err = excelDest(js, dag, connMap, &transform, conn, dest, globalOptions)
 			} else if strings.ToUpper(conn.Driver) == "MANDRILL" {
 				err = mandrillDest(js, dag, connMap, &transform, conn, dest, globalOptions)
-			}  else {
+			} else {
 				err = sqlDest(js, dag, connMap, &transform, conn, dest, globalOptions, txManager)
 			}
 			if err != nil {
