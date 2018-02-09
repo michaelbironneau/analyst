@@ -1,12 +1,12 @@
 docs/node_modules
 .DS_Store
-docs/lib/core/metadata.js
-docs/lib/core/MetadataBlog.js
-docs/website/translated_docs
-docs/website/build/
-docs/website/yarn.lock
-docs/website/node_modules
+docs-src/lib/core/metadata.js
+docs-src/lib/core/MetadataBlog.js
+docs-src/website/translated_docs
+docs-src/website/build/
+docs-src/website/yarn.lock
+docs-src/website/node_modules
 
-docs/website/i18n/*
-!docs/website/i18n/en.json
+docs-src/website/i18n/*
+!docs-src/website/i18n/en.json
 

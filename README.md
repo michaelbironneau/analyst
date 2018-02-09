@@ -17,3 +17,10 @@ Analyst is a tool to validate and run Analyst Query Language (AQL) scripts. AQL 
 
 [All docs are hosted here](https://michaelbironneau.github.io/analyst).
 
+# Contributing
+
+All contributions are welcome: 
+
+* For minor issues or bugs, please open a pull request
+* For enhancements, refactoring, or major issues, please open an issue first
+
