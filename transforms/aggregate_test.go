@@ -187,3 +187,58 @@ func TestGroupByAggregate(t *testing.T) {
 	})
 
 }
+
+func TestCountAggregate(t *testing.T) {
+	Convey("Given a valid count aggregate", t, func() {
+		s := `
+			AGGREGATE COUNT(1) As Val, B
+			GROUP BY B
+			`
+		a, err := NewAggregate(s)
+		Convey("It should create the Transform", func() {
+			So(err, ShouldBeNil)
+			So(a.aliasOrder, ShouldResemble, []string{"Val", "B"})
+			So(a.keyColumns, ShouldResemble, []string{"B"})
+			So(a.blank.aggregates["Val"], ShouldHaveSameTypeAs, &sum{})
+			So(a.blank.key, ShouldBeEmpty)
+		})
+		Convey("It should correctly generate the key map", func() {
+			maker := a.keyMaker["B"]
+			argMap, err := maker([]string{"val", "A", "B"})
+			So(err, ShouldBeNil)
+			So(argMap([]interface{}{1, 2, 3}), ShouldResemble, []interface{}{3})
+		})
+		Convey("It should process messages correctly", func() {
+			in := engine.NewStream([]string{"val", "A", "B"}, 100)
+			out := engine.NewStream(nil, 100)
+			l := engine.ConsoleLogger{}
+			st := engine.NewStopper()
+			a.SetName("Agg")
+			for i := 0; i < 5; i++ {
+				var msg engine.Message
+				msg.Source = "Source"
+				msg.Destination = "Agg"
+				msg.Data = []interface{}{"HHH", i, i % 2}
+				in.Chan("Agg") <- msg
+			}
+			close(in.Chan("Agg"))
+			a.Open(in, out, &l, st)
+			var count int
+			for msg := range out.Chan(engine.DestinationWildcard) {
+				if count == 0 {
+					So(out.Columns(), ShouldResemble, []string{"Val", "B"})
+				}
+				count++
+				So(msg.Source, ShouldEqual, "Agg")
+				if msg.Data[1].(int) == 0 {
+					So(msg.Data, ShouldResemble, []interface{}{3.0, 0})
+				} else {
+					So(msg.Data, ShouldResemble, []interface{}{2.0, 1})
+				}
+			}
+			So(count, ShouldEqual, 2)
+
+		})
+	})
+
+}

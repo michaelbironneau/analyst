@@ -1108,6 +1108,8 @@ func httpSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 		jsonPath             string
 		cols                 []string
 		pageSize             int
+		headerStr            string
+	    headers map[string]string
 	)
 
 	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
@@ -1143,6 +1145,27 @@ func httpSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 		return err
 	}
 
+
+	ok, err := maybeScan("HEADERS", &headerStr)
+
+	if err != nil {
+		return err
+	}
+
+	if ok {
+		err = json.Unmarshal([]byte(headerStr), &headers)
+
+		if err != nil {
+			return fmt.Errorf("error parsing JSON for HEADERS option: %v", err)
+
+		}
+	}
+
+
+
+
+
+
 	var colString string
 	err = scan("COLUMNS", &colString)
 
@@ -1165,6 +1188,7 @@ func httpSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 		JSONPath:             jsonPath,
 		ColumnNames:          cols,
 		PageSize:             pageSize,
+		Headers: headers,
 	}
 	ssource.SetName(alias)
 	//Make destination name unique
