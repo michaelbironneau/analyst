@@ -1,19 +1,19 @@
 package main
 
 import (
-	"github.com/michaelbironneau/analyst/engine"
-	"golang.org/x/net/websocket"
 	"encoding/json"
 	"github.com/michaelbironneau/analyst"
+	"github.com/michaelbironneau/analyst/engine"
+	"golang.org/x/net/websocket"
 )
 
 type websocketWriter struct {
-	ws *websocket.Conn
+	ws      *websocket.Conn
 	msgType string
 }
 
-func (w *websocketWriter) Write(p []byte) (n int, err error){
-	var entry  struct {
+func (w *websocketWriter) Write(p []byte) (n int, err error) {
+	var entry struct {
 		Entry string `json:"entry"`
 	}
 	entry.Entry = string(p)

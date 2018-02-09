@@ -7,9 +7,9 @@ import (
 	"github.com/gonum/graph"
 	"github.com/gonum/graph/simple"
 	"github.com/gonum/graph/topo"
+	"reflect"
 	"sync"
 	"time"
-	"reflect"
 )
 
 var ErrInterrupted = errors.New("The execution was interrupted by a context cancellation")

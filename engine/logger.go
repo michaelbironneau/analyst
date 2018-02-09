@@ -3,8 +3,8 @@ package engine
 import (
 	"fmt"
 	colors "github.com/logrusorgru/aurora"
-	"time"
 	"io"
+	"time"
 )
 
 type LogLevel int
@@ -25,11 +25,11 @@ var eventTypeMap = map[LogLevel]string{
 	Error:   "[ERROR]",
 }
 
-var htmlTypeMap = map[LogLevel] string{
-	Trace: "<div><small>[TRACE]</small>",
-	Info: "<div><small>[INFO]</small>",
+var htmlTypeMap = map[LogLevel]string{
+	Trace:   "<div><small>[TRACE]</small>",
+	Info:    "<div><small>[INFO]</small>",
 	Warning: "<div class='alert alert-warning'><small>[WARNING]</small>",
-	Error: "<div class='alert alert-danger'><small>[ERROR]</small>",
+	Error:   "<div class='alert alert-danger'><small>[ERROR]</small>",
 }
 
 var eventTypeColors = map[LogLevel]func(interface{}) colors.Value{
@@ -57,13 +57,13 @@ type ConsoleLogger struct {
 
 type GenericLogger struct {
 	MinLevel LogLevel
-	Writer io.Writer
-	c chan Event
+	Writer   io.Writer
+	c        chan Event
 }
 
 func NewGenericLogger(minLevel LogLevel, writer io.Writer) *GenericLogger {
 	gl := GenericLogger{
-		Writer: writer,
+		Writer:   writer,
 		MinLevel: minLevel,
 		c:        make(chan Event, DefaultBufferSize),
 	}
@@ -71,7 +71,7 @@ func NewGenericLogger(minLevel LogLevel, writer io.Writer) *GenericLogger {
 	go func() {
 		for event := range gl.c {
 			if event.Level >= gl.MinLevel {
-				msg := fmt.Sprint(htmlTypeMap[event.Level] + " " + event.Time.Format(timeFormat), "- ("+event.Source+")" + "<p>" + event.Message + "</p></div></p>")
+				msg := fmt.Sprint(htmlTypeMap[event.Level]+" "+event.Time.Format(timeFormat), "- ("+event.Source+")"+"<p>"+event.Message+"</p></div></p>")
 				writer.Write([]byte(msg))
 			}
 		}
@@ -84,7 +84,6 @@ func NewGenericLogger(minLevel LogLevel, writer io.Writer) *GenericLogger {
 func (gl *GenericLogger) Chan() chan<- Event {
 	return gl.c
 }
-
 
 func NewConsoleLogger(minLevel LogLevel) *ConsoleLogger {
 	cl := ConsoleLogger{

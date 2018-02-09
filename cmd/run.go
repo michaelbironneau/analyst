@@ -2,12 +2,12 @@ package main
 
 import (
 	"fmt"
+	"github.com/michaelbironneau/analyst"
 	"github.com/michaelbironneau/analyst/aql"
 	"github.com/michaelbironneau/analyst/engine"
 	"github.com/urfave/cli"
-	"time"
-	"github.com/michaelbironneau/analyst"
 	"path/filepath"
+	"time"
 )
 
 func Run(c *cli.Context) error {
@@ -45,8 +45,6 @@ func Run(c *cli.Context) error {
 	}
 
 	l := engine.NewConsoleLogger(lev)
-
-
 
 	err = analyst.ExecuteFile(scriptFile, &analyst.RuntimeOptions{opts, l, nil, nil, filepath.Dir(scriptFile)})
 	time.Sleep(time.Millisecond * 100) //give loggers time to flush

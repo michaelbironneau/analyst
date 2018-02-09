@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"github.com/michaelbironneau/analyst"
 	"github.com/michaelbironneau/analyst/aql"
 	"github.com/michaelbironneau/analyst/engine"
 	"github.com/urfave/cli"
-	"github.com/michaelbironneau/analyst"
 	"path/filepath"
 )
 
@@ -30,8 +30,6 @@ func Validate(c *cli.Context) error {
 	}
 
 	l := engine.ConsoleLogger{}
-
-
 
 	err = analyst.ValidateFile(scriptFile, &analyst.RuntimeOptions{Options: opts, Logger: &l, ScriptDirectory: filepath.Dir(scriptFile)})
 

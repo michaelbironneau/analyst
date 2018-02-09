@@ -3,20 +3,19 @@ package main
 import (
 	"fmt"
 
+	"encoding/json"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
-	"golang.org/x/net/websocket"
-	"encoding/json"
 	"github.com/michaelbironneau/analyst"
+	"golang.org/x/net/websocket"
 )
 
 const (
-	MsgLog = "LOG"
-	MsgRunScript = "RUN"
-	MsgResult = "RESULT"
+	MsgLog           = "LOG"
+	MsgRunScript     = "RUN"
+	MsgResult        = "RESULT"
 	MsgCompileScript = "COMPILE"
-	MsgOutput = "OUTPUT"
-
+	MsgOutput        = "OUTPUT"
 )
 
 type RunMessagePayload struct {
@@ -24,18 +23,16 @@ type RunMessagePayload struct {
 }
 
 type RunResponse struct {
-	Success bool `json:"success"`
-	Error string `json:"error,omitempty"`
+	Success bool   `json:"success"`
+	Error   string `json:"error,omitempty"`
 }
 
 type Message struct {
-	Type string `json:"type"`
+	Type string          `json:"type"`
 	Data json.RawMessage `json:"data"`
 }
 
-
-
-func receiveMessages(ws *websocket.Conn, c echo.Context){
+func receiveMessages(ws *websocket.Conn, c echo.Context) {
 	fmt.Println("Starting to receive")
 	for {
 		var b []byte
@@ -87,7 +84,7 @@ func receiveMessages(ws *websocket.Conn, c echo.Context){
 }
 
 //send message, ignoring errors
-func send(ws *websocket.Conn, messageType string, payload interface{}){
+func send(ws *websocket.Conn, messageType string, payload interface{}) {
 	var m Message
 	m.Type = messageType
 	b, _ := json.Marshal(payload)

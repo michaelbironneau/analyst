@@ -1,32 +1,32 @@
 package engine
 
 import (
-	"time"
-	"github.com/keighl/mandrill"
 	"fmt"
-	"sync/atomic"
-	"strings"
+	"github.com/keighl/mandrill"
 	"regexp"
+	"strings"
+	"sync/atomic"
+	"time"
 )
 
 var emailRecipientRegexp = regexp.MustCompile(`^\s*([\w\s]+)\s*<\s*(\w[-._\w]*\w@\w[-._\w]*\w\.\w{2,3})\s*>\s*$`)
 
 type MandrillPrincipal struct {
-	Name string
+	Name  string
 	Email string
 }
 
 type MandrillDestination struct {
-	Name string
-	APIKey string
-	Sender *MandrillPrincipal
+	Name       string
+	APIKey     string
+	Sender     *MandrillPrincipal
 	Recipients []MandrillPrincipal
 	SplitByRow bool
-	Template string
-	Subject string
-	client *mandrill.Client
+	Template   string
+	Subject    string
+	client     *mandrill.Client
 	emailsSent int64
-	cols []string
+	cols       []string
 }
 
 func (d *MandrillDestination) Ping() error {
@@ -35,7 +35,7 @@ func (d *MandrillDestination) Ping() error {
 	return err
 }
 
-func ParseEmailRecipients(s string) ([]MandrillPrincipal, error){
+func ParseEmailRecipients(s string) ([]MandrillPrincipal, error) {
 	var ret []MandrillPrincipal
 	recipientStr := strings.Split(s, ",")
 
@@ -52,8 +52,8 @@ func ParseEmailRecipients(s string) ([]MandrillPrincipal, error){
 func (d *MandrillDestination) Open(s Stream, l Logger, st Stopper) {
 	c := s.Chan(d.Name)
 	var (
-		rows []map[string]interface{}
-		cols []string
+		rows         []map[string]interface{}
+		cols         []string
 		firstMessage = true
 	)
 
@@ -104,7 +104,7 @@ func (d *MandrillDestination) prepareContent(cols []string, row []interface{}) m
 	return ret
 }
 
-func (d *MandrillDestination) prepareMsg() *mandrill.Message{
+func (d *MandrillDestination) prepareMsg() *mandrill.Message {
 	var m mandrill.Message
 	if d.Subject != "" {
 		//Could be set as part of the template
@@ -121,9 +121,7 @@ func (d *MandrillDestination) prepareMsg() *mandrill.Message{
 	return &m
 }
 
-
-
-func (d *MandrillDestination) log(l Logger, level LogLevel, msgFormat string, args...interface{}) {
+func (d *MandrillDestination) log(l Logger, level LogLevel, msgFormat string, args ...interface{}) {
 	l.Chan() <- Event{
 		Source:  d.Name,
 		Level:   level,

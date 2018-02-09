@@ -1,11 +1,11 @@
 package plugins
 
 import (
+	"fmt"
 	"github.com/michaelbironneau/analyst/aql"
 	"github.com/michaelbironneau/analyst/engine"
 	"sync"
 	"time"
-	"fmt"
 )
 
 //Transform is the default implementation of a Transform plugin
@@ -99,11 +99,11 @@ func (d *Transform) Sequence(sourceSeq []string) {
 	d.l.Unlock()
 }
 
-func (d *Transform) log(l engine.Logger, level engine.LogLevel, msg string){
-	l.Chan() <- engine.Event {
-		Source: d.Alias,
-		Level: level,
-		Time: time.Now(),
+func (d *Transform) log(l engine.Logger, level engine.LogLevel, msg string) {
+	l.Chan() <- engine.Event{
+		Source:  d.Alias,
+		Level:   level,
+		Time:    time.Now(),
 		Message: msg,
 	}
 }

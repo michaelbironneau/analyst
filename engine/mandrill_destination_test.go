@@ -34,11 +34,11 @@ func TestMandrillDestination(t *testing.T) {
 
 }
 
-func TestPrincipalParser(t *testing.T){
-	Convey("Given some valid recipients", t, func(){
+func TestPrincipalParser(t *testing.T) {
+	Convey("Given some valid recipients", t, func() {
 		s := `John Johnson <jj@jj.com > `
 		s2 := `Adam <  adam@adam.com>, James Jameson <jj@jj.co.uk>`
-		Convey("It should parse them to principals correctly", func(){
+		Convey("It should parse them to principals correctly", func() {
 			r, err := ParseEmailRecipients(s)
 			So(err, ShouldBeNil)
 			So(len(r), ShouldEqual, 1)
@@ -52,10 +52,10 @@ func TestPrincipalParser(t *testing.T){
 		})
 	})
 
-	Convey("Given some invalid email recipients", t, func(){
+	Convey("Given some invalid email recipients", t, func() {
 		s := `John <jj@jj.com>; Bob <bob@bob.com>`
 		s2 := `John <john:john.com>`
-		Convey("It should return an error when parsing", func(){
+		Convey("It should return an error when parsing", func() {
 			_, err := ParseEmailRecipients(s)
 			So(err, ShouldNotBeNil)
 			_, err = ParseEmailRecipients(s2)
