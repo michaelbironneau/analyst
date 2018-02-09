@@ -22,15 +22,13 @@ const siteConfig = {
   baseUrl: '/analyst/' /* base url for your project */,
   projectName: 'analyst',
   headerLinks: [
-    {doc: 'intro', label: 'Introduction to Analyst'},
-    {page: 'help', label: 'Reference'},
-    {blog: true, label: 'Blog'},
+    {doc: 'intro', label: 'Introduction to Analyst'}
   ],
   users,
   /* path to images for header/footer */
-  headerIcon: 'img/docusaurus.svg',
-  footerIcon: 'img/docusaurus.svg',
-  favicon: 'img/favicon.png',
+  headerIcon: '',
+  footerIcon: '',
+  favicon: '',
   /* colors for website */
   colors: {
     primaryColor: '#486A87',

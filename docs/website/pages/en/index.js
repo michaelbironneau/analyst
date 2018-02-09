@@ -76,13 +76,13 @@ class HomeSplash extends React.Component {
     let language = this.props.language || '';
     return (
       <SplashContainer>
-        <Logo img_src={imgUrl('docusaurus.svg')} />
+        
         <div className="inner">
           <ProjectTitle />
           <PromoSection>
-            <Button href="#try">Get Started</Button>
-            <Button href={docUrl('doc1.html', language)}>Examples</Button>
-            <Button href={docUrl('doc2.html', language)}>Reference</Button>
+            <Button href={docUrl('intro.html', language)}>Get Started</Button>
+            <Button href={docUrl('intro.html', language)}>Examples</Button>
+            <Button href={docUrl('blocks.html', language)}>Reference</Button>
           </PromoSection>
         </div>
       </SplashContainer>
@@ -146,47 +146,25 @@ const FeatureCallout = props => (
   <div
     className="productShowcaseSection paddingBottom"
     style={{textAlign: 'center'}}>
-    <h2>Feature Callout</h2>
-    <MarkdownBlock>These are features of this project</MarkdownBlock>
+
   </div>
 );
 
 const LearnHow = props => (
-  <Block background="light">
-    {[
-      {
-        content: 'Talk about learning how to use this',
-        image: imgUrl('docusaurus.svg'),
-        imageAlign: 'right',
-        title: 'Learn How',
-      },
-    ]}
+  <Block>
+ 
   </Block>
 );
 
 const TryOut = props => (
   <Block id="try">
-    {[
-      {
-        content: 'Talk about trying this out',
-        image: imgUrl('docusaurus.svg'),
-        imageAlign: 'left',
-        title: 'Try it Out',
-      },
-    ]}
+  
   </Block>
 );
 
 const Description = props => (
-  <Block background="dark">
-    {[
-      {
-        content: 'This is another description of how this project is useful',
-        image: imgUrl('docusaurus.svg'),
-        imageAlign: 'right',
-        title: 'Description',
-      },
-    ]}
+  <Block>
+  
   </Block>
 );
 
@@ -208,14 +186,7 @@ const Showcase = props => {
 
   return (
     <div className="productShowcaseSection paddingBottom">
-      <h2>{"Who's Using This?"}</h2>
-      <p>This project is used by all these people</p>
-      <div className="logos">{showcase}</div>
-      <div className="more-users">
-        <a className="button" href={pageUrl('users.html', props.language)}>
-          More {siteConfig.title} Users
-        </a>
-      </div>
+     
     </div>
   );
 };
@@ -228,11 +199,8 @@ class Index extends React.Component {
       <div>
         <HomeSplash language={language} />
         <div className="mainContainer">
-          <Features />
-          <FeatureCallout />
-          <LearnHow />
-          <TryOut />
-          <Description />
+         
+         
           <Showcase language={language} />
         </div>
       </div>
