@@ -763,17 +763,36 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 	driver := conn.Driver
 	connString := conn.ConnectionString
 	var table string
+	maybeScan := aql.MaybeOptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
 	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
 	err := scan("TABLE", &table)
+
 	if err != nil {
 		return err
 	}
 
 	alias := alias(dest, &conn)
-	tx, err := txManager.Tx(conn.Name)
+
+	var (
+		manageTx bool
+	)
+
+	ok, err := maybeScan("MANAGED_TRANSACTION", &manageTx)
+
 	if err != nil {
 		return err
 	}
+
+	var tx *sql.Tx
+
+	if ok && manageTx || !ok {
+		tx, err = txManager.Tx(conn.Name)
+		if err != nil {
+			return err
+		}
+	}
+
+
 	//Uniquify destination name
 	dag.AddDestination(strings.ToLower(block.GetName()+destinationUniquifier+conn.Name), alias, &engine.SQLDestination{
 		Name:             block.GetName() + destinationUniquifier + conn.Name,
