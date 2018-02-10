@@ -106,12 +106,12 @@ type ExcelRange struct {
 
 type ExcelSource struct {
 	Name                 string
-	Filename             string
-	Sheet                string
+	Filename             string `aql:"FILE"`
+	Sheet                string `aql:"SHEET"`
 	Range                ExcelRange
 	RangeIncludesColumns bool
 	Dateformat           string
-	Cols                 []string
+	Cols                 []string `aql:"COLUMNS, optional"`
 	posX                 int
 	posY                 int
 	outgoingName         string

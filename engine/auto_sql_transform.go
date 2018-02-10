@@ -21,9 +21,9 @@ import (
 type AutoSQLTransform struct {
 	db                   *sql.DB
 	Name                 string
-	Table                string
+	Table                string `aql: "STAGING_TABLE, optional"`
 	outgoingName         string
-	StagingSQLConnString string
+	StagingSQLConnString string `aql: "STAGING_CONNECTION_STRING, optional"`
 	Query                string
 	ParameterTable       *ParameterTable
 	ParameterNames       []string

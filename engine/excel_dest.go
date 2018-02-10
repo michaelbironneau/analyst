@@ -9,14 +9,14 @@ import (
 
 type ExcelDestination struct {
 	Name      string
-	Filename  string
-	Overwrite bool
-	Template  string
-	Sheet     string
+	Filename  string `aql:"FILE"`
+	Overwrite bool   `aql:"OVERWRITE, optional"`
+	Template  string `aql:"TEMPLATE, optional"`
+	Sheet     string `aql:"SHEET"`
 	Range     ExcelRange
 	Alias     string
-	Transpose bool
-	Cols      []string
+	Transpose bool     `aql:"TRANSPOSE, optional"`
+	Cols      []string `aql:"COLUMNS, optional"`
 	posY      int
 	posX      int
 }

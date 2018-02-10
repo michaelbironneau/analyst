@@ -153,6 +153,36 @@ func TestFindOverridableOption(t *testing.T) {
 
 	})
 }
+
+func TestReflectionScanner2(t *testing.T) {
+	Convey("Given some options", t, func() {
+		optStr := `
+			{"Table": "asdf", "API_KEY" : "bsdf", "OVERRIDE": 1, "COLUMNS": "asdf, b,  c"}
+		`
+		opts, err := StrToOpts(optStr)
+		So(err, ShouldBeNil)
+		Convey("They should get scanned correctly into a struct", func() {
+			var t struct {
+				Table    string   `aql:"TABLE"`
+				APIKey   string   `aql:"API_KEY"`
+				Override bool     `aql:"OVERRIDE, optional"`
+				Columns  []string `aql:"COLUMNS"`
+			}
+			scan := OptionScanner("", "", opts)
+			maybeScan := MaybeOptionScanner("", "", opts)
+			err := ScanOptions(scan, maybeScan, &t)
+			So(err, ShouldBeNil)
+			So(t.Table, ShouldEqual, "asdf")
+			So(t.APIKey, ShouldEqual, "bsdf")
+			So(t.Override, ShouldBeTrue)
+			So(t.Columns, ShouldHaveLength, 3)
+			So(t.Columns[0], ShouldEqual, "asdf")
+			So(t.Columns[1], ShouldEqual, "b")
+			So(t.Columns[2], ShouldEqual, "c")
+		})
+
+	})
+}
 func TestReflectionScanner(t *testing.T) {
 	Convey("Given some options", t, func() {
 		f := 1.0

@@ -18,12 +18,12 @@ type MandrillPrincipal struct {
 
 type MandrillDestination struct {
 	Name       string
-	APIKey     string
+	APIKey     string `aql:"API_KEY"`
 	Sender     *MandrillPrincipal
 	Recipients []MandrillPrincipal
-	SplitByRow bool
-	Template   string
-	Subject    string
+	SplitByRow bool   `aql:"SPLIT, optional"`
+	Template   string `aql:"TEMPLATE"`
+	Subject    string `aql:"SUBJECT, optional"`
 	client     *mandrill.Client
 	emailsSent int64
 	cols       []string

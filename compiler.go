@@ -697,32 +697,18 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			autoSQL = true
 		}
 		if autoSQL {
+			scanner := aql.OptionScanner(query.Name, "", query.Options, conn.Options, globalOptions)
 			maybeScanner := aql.MaybeOptionScanner(query.Name, "", query.Options, conn.Options, globalOptions)
-
-			var (
-				stagingTable      string
-				stagingConnString string
-			)
-
-			if ok, err := maybeScanner("STAGING_TABLE", &stagingTable); err != nil {
-				return err
-			} else if !ok {
-				stagingTable = alias(query.Sources[0], conn)
-			}
-
-			if _, err := maybeScanner("STAGING_CONNECTION_STRING", &stagingConnString); err != nil {
-				return err
-			}
-
-			//create auto-sql transform
-			//(and wire up)
 			s := engine.AutoSQLTransform{
-				Name:                 query.Name,
-				Query:                query.Content,
-				ParameterTable:       params,
-				ParameterNames:       query.Parameters,
-				Table:                stagingTable,
-				StagingSQLConnString: stagingConnString,
+				Name:           query.Name,
+				Query:          query.Content,
+				ParameterTable: params,
+				ParameterNames: query.Parameters,
+			}
+			err := aql.ScanOptions(scanner, maybeScanner, &s)
+
+			if err != nil {
+				return err
 			}
 
 			s.SetName(query.Name)
@@ -864,7 +850,7 @@ func mandrillDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
 	maybeScan := aql.MaybeOptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
 
-	err := scan("API_KEY", &m.APIKey)
+	err := aql.ScanOptions(scan, maybeScan, &m)
 
 	if err != nil {
 		return err
@@ -903,23 +889,6 @@ func mandrillDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 
 	m.Recipients = rr
 
-	err = scan("TEMPLATE", &m.Template)
-
-	if err != nil {
-		return err
-	}
-	_, err = maybeScan("SUBJECT", &m.Subject)
-
-	if err != nil {
-		return err
-	}
-
-	_, err = maybeScan("SPLIT", &m.SplitByRow)
-
-	if err != nil {
-		return err
-	}
-
 	alias := alias(dest, &conn)
 
 	m.Name = alias
@@ -934,42 +903,21 @@ func mandrillDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, dest aql.SourceSink, globalOptions []aql.Option) error {
 	//register Excel destination
 	var (
-		file      string
-		sheet     string
-		template  string
-		rang      string
-		transpose bool
-		overwrite bool
-		cols      string
+		rang string
 	)
+	d := engine.ExcelDestination{
+		Name: block.GetName() + destinationUniquifier + conn.Name,
+	}
 	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
 	maybeScan := aql.MaybeOptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
 
-	err := scan("FILE", &file)
-
-	if err != nil {
-		return err
-	}
-
-	err = scan("SHEET", &sheet)
-
-	if err != nil {
-		return err
-	}
-
-	_, err = maybeScan("TEMPLATE", &template)
+	err := aql.ScanOptions(scan, maybeScan, &d)
 
 	if err != nil {
 		return err
 	}
 
 	err = scan("RANGE", &rang)
-
-	if err != nil {
-		return err
-	}
-
-	_, err = maybeScan("OVERWRITE", &overwrite)
 
 	if err != nil {
 		return err
@@ -998,47 +946,17 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 		yy2.P = *y2
 	}
 
-	var columns []string
-
-	_, err = maybeScan("TRANSPOSE", &transpose)
-
-	if err != nil {
-		return err
-	}
-
-	var ok bool
-
-	ok, err = maybeScan("COLUMNS", &cols)
-
-	if err != nil {
-		return err
-	}
-
-	if ok {
-		columns = strings.Split(cols, ",")
-		for i := range columns {
-			columns[i] = strings.TrimSpace(columns[i])
-		}
-	}
-
 	alias := alias(dest, &conn)
+	d.Alias = alias
+	d.Range = engine.ExcelRange{
+		X1: x1,
+		Y1: y1,
+		X2: xx2,
+		Y2: yy2,
+	}
+
 	//Make destination name unique
-	dag.AddDestination(strings.ToLower(block.GetName()+destinationUniquifier+conn.Name), alias, &engine.ExcelDestination{
-		Name:     block.GetName() + destinationUniquifier + conn.Name,
-		Filename: file,
-		Sheet:    sheet,
-		Range: engine.ExcelRange{
-			X1: x1,
-			Y1: y1,
-			X2: xx2,
-			Y2: yy2,
-		},
-		Transpose: transpose,
-		Cols:      columns,
-		Overwrite: overwrite,
-		Template:  template,
-		Alias:     alias,
-	})
+	dag.AddDestination(strings.ToLower(block.GetName()+destinationUniquifier+conn.Name), alias, &d)
 	dag.Connect(strings.ToLower(block.GetName()), strings.ToLower(block.GetName()+destinationUniquifier+conn.Name))
 
 	return nil
@@ -1047,21 +965,14 @@ func excelDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aq
 
 func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, source aql.SourceSink, globalOptions []aql.Option) error {
 	var (
-		file  string
-		sheet string
-		rang  string
+		rang string
+		s    engine.ExcelSource
 	)
 
 	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
-	//maybeScan := aql.MaybeOptionScanner(block.Name, conn.Name, block.Options, conn.Options)
+	maybeScan := aql.MaybeOptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
 
-	err := scan("FILE", &file)
-
-	if err != nil {
-		return err
-	}
-
-	err = scan("SHEET", &sheet)
+	err := aql.ScanOptions(scan, maybeScan, &s)
 
 	if err != nil {
 		return err
@@ -1096,36 +1007,17 @@ func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 		yy2.P = *y2
 	}
 
-	var columns []string
-
-	colsOpt, ok := aql.FindOverridableOption("COLUMNS", conn.Name, block.GetOptions(), conn.Options)
-
-	if ok {
-		cols, ok2 := colsOpt.String()
-		if !ok2 {
-			return fmt.Errorf("expected COLUMNS option to be a STRING for connection %s and block %s", conn.Name, block.GetName())
-		}
-		columns = strings.Split(cols, ",")
-		for i := range columns {
-			columns[i] = strings.TrimSpace(columns[i])
-		}
+	alias := alias(source, &conn)
+	s.Name = block.GetName() + sourceUniquifier + alias
+	s.Range = engine.ExcelRange{
+		X1: x1,
+		Y1: y1,
+		X2: xx2,
+		Y2: yy2,
 	}
 
-	alias := alias(source, &conn)
-
 	//Make destination name unique
-	dag.AddSource(strings.ToLower(block.GetName()+sourceUniquifier+alias), alias, &engine.ExcelSource{
-		Name:     block.GetName() + sourceUniquifier + alias,
-		Filename: file,
-		Sheet:    sheet,
-		Range: engine.ExcelRange{
-			X1: x1,
-			Y1: y1,
-			X2: xx2,
-			Y2: yy2,
-		},
-		Cols: columns,
-	})
+	dag.AddSource(strings.ToLower(block.GetName()+sourceUniquifier+alias), alias, &s)
 
 	//dag.Connect(strings.ToLower(block.Name+sourceUniquifier+alias), strings.ToLower(block.Name))
 
@@ -1135,44 +1027,15 @@ func excelSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*
 
 func httpSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, block aql.Block, conn aql.Connection, source aql.SourceSink, globalOptions []aql.Option) error {
 	var (
-		url                  string
-		paginationOffsetName string
-		paginationLimitName  string
-		jsonPath             string
-		cols                 []string
-		pageSize             int
-		headerStr            string
-		headers              map[string]string
+		headerStr string
+		headers   map[string]string
+		h         engine.HTTPSource
 	)
 
 	scan := aql.OptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
-	maybeScan := aql.MaybeOptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options)
+	maybeScan := aql.MaybeOptionScanner(block.GetName(), conn.Name, block.GetOptions(), conn.Options, globalOptions)
 
-	err := scan("URL", &url)
-
-	if err != nil {
-		return err
-	}
-
-	_, err = maybeScan("PAGINATION_OFFSET_PARAMETER", &paginationOffsetName)
-
-	if err != nil {
-		return err
-	}
-
-	_, err = maybeScan("PAGINATION_LIMIT_PARAMETER", &paginationLimitName)
-
-	if err != nil {
-		return err
-	}
-
-	_, err = maybeScan("JSON_PATH", &jsonPath)
-
-	if err != nil {
-		return err
-	}
-
-	_, err = maybeScan("PAGE_SIZE", &pageSize)
+	err := aql.ScanOptions(scan, maybeScan, &h)
 
 	if err != nil {
 		return err
@@ -1193,33 +1056,13 @@ func httpSource(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 		}
 	}
 
-	var colString string
-	err = scan("COLUMNS", &colString)
-
-	if err != nil {
-		return err
-	}
-
-	cols = strings.Split(colString, ",")
-	for i := range cols {
-		cols[i] = strings.TrimSpace(cols[i])
-	}
-
 	alias := alias(source, &conn)
+	h.Name = block.GetName() + sourceUniquifier + alias
+	h.Headers = headers
 
-	ssource := &engine.HTTPSource{
-		Name:                 block.GetName() + sourceUniquifier + alias,
-		URL:                  url,
-		PaginationOffsetName: paginationOffsetName,
-		PaginationLimitName:  paginationLimitName,
-		JSONPath:             jsonPath,
-		ColumnNames:          cols,
-		PageSize:             pageSize,
-		Headers:              headers,
-	}
-	ssource.SetName(alias)
+	h.SetName(alias)
 	//Make destination name unique
-	dag.AddSource(strings.ToLower(block.GetName()+sourceUniquifier+alias), alias, ssource)
+	dag.AddSource(strings.ToLower(block.GetName()+sourceUniquifier+alias), alias, &h)
 
 	//dag.Connect(strings.ToLower(block.Name+sourceUniquifier+alias), strings.ToLower(block.Name))
 

@@ -11,10 +11,10 @@ type SQLDestination struct {
 	Name             string
 	Driver           string
 	ConnectionString string
-	Table            string
+	Table            string `aql: TABLE`
 	Tx               *sql.Tx
 	columns          []string
-	manageTx         bool
+	manageTx         bool `aql: "MANAGED_TRANSACTION, optional"`
 	db               *sql.DB
 	Alias            string
 }

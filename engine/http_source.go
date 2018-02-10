@@ -15,14 +15,14 @@ import (
 type HTTPSource struct {
 	Name                 string
 	outgoingName         string
-	URL                  string            //URL of request
+	URL                  string            `aql:"URL"` //URL of request
 	Headers              map[string]string //Headers to add to request, optional
-	JSONPath             string            //Path to object containing array of rows, optional
+	JSONPath             string            `aql:"JSON_PATH, optional"` //Path to object containing array of rows, optional
 	NoColumnNames        bool              //If response has array of primitive types rather than objects with column names, eg. ["bob",2] instead of {"name": "bob", "age": 2}
-	ColumnNames          []string          //if NoColumnNames is true, this should be provided
-	PaginationLimitName  string            //query parameter for pagination limit (optional)
-	PaginationOffsetName string            //query parameter for pagination offset (optional)
-	PageSize             int               //size of page for pagination
+	ColumnNames          []string          `aql:"COLUMNS, optional"`                     //if NoColumnNames is true, this should be provided
+	PaginationLimitName  string            `aql:"PAGINATION_LIMIT_PARAMETER, optional"`  //query parameter for pagination limit (optional)
+	PaginationOffsetName string            `aql:"PAGINATION_OFFSET_PARAMETER, optional"` //query parameter for pagination offset (optional)
+	PageSize             int               `aql:"PAGE_SIZE, optional"`                   //size of page for pagination
 	//PaginationTotalResultsProperty string //JSON property containing the total number of results for pagination (optional)
 	client http.Client
 	limit  int

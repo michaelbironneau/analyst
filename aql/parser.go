@@ -233,6 +233,15 @@ func OptionScanner(blockName, namespace string, scope ...[]Option) OptScanner {
 		case *bool:
 			src := opt.Truthy()
 			*v = src
+		case *[]string:
+			if opt.Value == nil || opt.Value.Str == nil {
+				return fmt.Errorf("expected a string for option %s in block %s", needle, blockName)
+			}
+
+			vs := strings.Split(*opt.Value.Str, ",")
+			for i := range vs {
+				*v = append(*v, strings.TrimSpace(vs[i]))
+			}
 		default:
 			panic(fmt.Errorf("OptionScanner found dest of unexpected type %T in block %s for needle '%s'", dest, blockName, needle))
 		}
@@ -260,8 +269,17 @@ func MaybeOptionScanner(blockName, namespace string, scope ...[]Option) MaybeOpt
 		case *bool:
 			src := opt.Truthy()
 			*v = src
+		case *[]string:
+			if opt.Value == nil || opt.Value.Str == nil {
+				return false, fmt.Errorf("expected a string for option %s in block %s", needle, blockName)
+			}
+
+			vs := strings.Split(*opt.Value.Str, ",")
+			for i := range vs {
+				*v = append(*v, strings.TrimSpace(vs[i]))
+			}
 		default:
-			panic(fmt.Errorf("OptionScanner found dest of unexpected type %T in block %s", dest, blockName))
+			panic(fmt.Errorf("MaybeOptionScanner found dest of unexpected type %T in block %s", dest, blockName))
 		}
 		return true, nil
 	}
