@@ -101,10 +101,19 @@ type Test struct {
 }
 
 type Data struct {
-	Name    string   `DATA @QUOTED_STRING`
-	Extern  *string  `[EXTERN @QUOTED_STRING]`
-	Content string   `['(' @PAREN_BODY ')']`
-	Options []Option `[WITH '(' @@ {"," @@} ')' ]`
+	Name         string       `DATA @QUOTED_STRING`
+	Extern       *string      `[EXTERN @QUOTED_STRING]`
+	Content      string       `['(' @PAREN_BODY ')']`
+	Destinations []SourceSink `[INTO @@ {"," @@}]`
+	Options      []Option     `[WITH '(' @@ {"," @@} ')' ]`
+}
+
+func (d *Data) GetName() string {
+	return d.Name
+}
+
+func (d *Data) GetOptions() []Option {
+	return d.Options
 }
 
 type Global struct {

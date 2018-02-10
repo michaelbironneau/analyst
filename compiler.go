@@ -449,64 +449,10 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 					continue
 				}
 
-				var columns []string
+				err = createDataBlock(js, dag, dataBlock, source)
 
-				colsOpt, ok := aql.FindOption(dataBlock.Options, "COLUMNS")
-
-				if !ok {
-					return fmt.Errorf("expected COLUMNS option for data block %s", dataBlock.Name)
-				}
-
-				cols, ok2 := colsOpt.String()
-				if !ok2 {
-					return fmt.Errorf("expected COLUMNS option to be a STRING for data block %s", dataBlock.Name)
-				}
-				columns = strings.Split(cols, ",")
-				for i := range columns {
-					columns[i] = strings.TrimSpace(columns[i])
-				}
-
-				var dataFormat engine.LiteralSourceFormat
-
-				format, ok := aql.FindOption(dataBlock.Options, "FORMAT")
-
-				if !ok {
-					dataFormat = engine.JSONArray
-				} else {
-					fStr, ok2 := format.String()
-
-					if !ok2 {
-						return fmt.Errorf("expected FORMAT option to be a STRING in data block %s", dataBlock.Name)
-					}
-
-					f, ok := engine.LiteralSourceFormats[strings.ToUpper(fStr)]
-					if !ok {
-						return fmt.Errorf("expected FORMAT option to be one of JSON_ARRAY, JSON_OBJECTS or CSV but got %s", format)
-					}
-					dataFormat = f
-				}
-
-				if ok {
-					//create new literal source before attempting to connect
-					ls := engine.LiteralSource{
-						Name:    dataBlock.Name,
-						Content: dataBlock.Content,
-						Columns: columns,
-						Format:  dataFormat,
-					}
-					var err error
-					if source.Alias != nil {
-						ls.SetName(*source.Alias)
-						err = dag.AddSource(strings.ToLower(*source.Block), *source.Alias, &ls)
-					} else {
-						ls.SetName(dataBlock.Name)
-						err = dag.AddSource(strings.ToLower(*source.Block), *source.Block, &ls)
-					}
-
-					if err != nil {
-						return err
-					}
-
+				if err != nil {
+					return err
 				}
 
 				//query is already created, so connect it
@@ -524,6 +470,70 @@ func transforms(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*a
 		}
 
 	}
+	return nil
+}
+
+func createDataBlock(js *aql.JobScript, dag engine.Coordinator, dataBlock *aql.Data, source *aql.SourceSink) error {
+	var columns []string
+
+	colsOpt, ok := aql.FindOption(dataBlock.Options, "COLUMNS")
+
+	if !ok {
+		return fmt.Errorf("expected COLUMNS option for data block %s", dataBlock.Name)
+	}
+
+	cols, ok2 := colsOpt.String()
+	if !ok2 {
+		return fmt.Errorf("expected COLUMNS option to be a STRING for data block %s", dataBlock.Name)
+	}
+	columns = strings.Split(cols, ",")
+	for i := range columns {
+		columns[i] = strings.TrimSpace(columns[i])
+	}
+
+	var dataFormat engine.LiteralSourceFormat
+
+	format, ok := aql.FindOption(dataBlock.Options, "FORMAT")
+
+	if !ok {
+		dataFormat = engine.JSONArray
+	} else {
+		fStr, ok2 := format.String()
+
+		if !ok2 {
+			return fmt.Errorf("expected FORMAT option to be a STRING in data block %s", dataBlock.Name)
+		}
+
+		f, ok := engine.LiteralSourceFormats[strings.ToUpper(fStr)]
+		if !ok {
+			return fmt.Errorf("expected FORMAT option to be one of JSON_ARRAY, JSON_OBJECTS or CSV but got %s", format)
+		}
+		dataFormat = f
+	}
+
+	//create new literal source before attempting to connect
+	ls := engine.LiteralSource{
+		Name:    strings.ToLower(dataBlock.Name),
+		Content: dataBlock.Content,
+		Columns: columns,
+		Format:  dataFormat,
+	}
+	var err error
+	if source == nil {
+		return dag.AddSource(strings.ToLower(dataBlock.Name), strings.ToLower(dataBlock.Name), &ls)
+	}
+	if source.Alias != nil {
+		ls.SetName(*source.Alias)
+		err = dag.AddSource(strings.ToLower(*source.Block), *source.Alias, &ls)
+	} else {
+		ls.SetName(strings.ToLower(dataBlock.Name))
+		err = dag.AddSource(strings.ToLower(*source.Block), *source.Block, &ls)
+	}
+
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -627,6 +637,14 @@ func addPlugin(js *aql.JobScript, dag engine.Coordinator, transform aql.Transfor
 //	- Limited to SQL sources (Excel sources require scripts or built-ins to process data which won't come until vNext)
 //	- Queries limited to single source (this will probably remain a limitation for the foreseeable future)
 func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.Connection, params *engine.ParameterTable, globalOptions []aql.Option, txManager engine.TransactionManager) error {
+	for _, dataBlock := range js.Data {
+		if dataBlock.Destinations != nil {
+			err := createDataBlock(js, dag, &dataBlock, nil)
+			if err != nil {
+				return err
+			}
+		}
+	}
 	for _, exec := range js.Execs {
 		if len(exec.Destinations) > 0 {
 			return fmt.Errorf("execs are queries that returns no results, and thus cannot have destinations: %s", exec.Name)
@@ -1360,6 +1378,74 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 				err = mandrillDest(js, dag, connMap, &transform, conn, dest, globalOptions)
 			} else {
 				err = sqlDest(js, dag, connMap, &transform, conn, dest, globalOptions, txManager)
+			}
+			if err != nil {
+				return err
+			}
+
+		}
+	}
+	for _, data := range js.Data {
+		for _, dest := range data.Destinations {
+			if dest.Block != nil {
+				return fmt.Errorf("BLOCK destinations are not allowed because they create non-deterministic source orders: %s", data.Name)
+			}
+
+			if dest.Global {
+				if err := globalDest(js, dag, &data, dest, globalOptions); err != nil {
+					return err
+				}
+				continue
+			}
+
+			if dest.Console {
+				var d engine.Destination
+				var name string
+				if dest.Alias != nil {
+					name = *dest.Alias
+				} else {
+					name = engine.ConsoleDestinationName
+				}
+				maybeScan := aql.MaybeOptionScanner(data.Name, name, data.Options, globalOptions)
+				var (
+					outputFormat string
+					outputJSON   bool
+				)
+				ok, err := maybeScan("OUTPUT_FORMAT", &outputFormat)
+
+				if err != nil {
+					return err
+				}
+
+				if ok && strings.ToLower(outputFormat) == "json" {
+					outputJSON = true
+				} else if ok && strings.ToLower(outputFormat) == "table" {
+					outputJSON = false
+				} else if ok {
+					return fmt.Errorf("unknown OUTPUT_FORMAT value %s", outputFormat)
+				}
+
+				d = &engine.ConsoleDestination{Name: name, FormatAsJSON: outputJSON}
+				if err := dag.AddDestination(strings.ToLower(data.Name+destinationUniquifier+engine.ConsoleDestinationName), name, d); err != nil {
+					return err
+				}
+				if err := dag.Connect(strings.ToLower(data.Name), strings.ToLower(data.Name+destinationUniquifier+engine.ConsoleDestinationName)); err != nil {
+					return err
+				}
+				continue
+			}
+
+			if dest.Database != nil && connMap[strings.ToLower(*dest.Database)] == nil {
+				return fmt.Errorf("destination %s not found for query %s", *dest.Database, data.Name)
+			}
+			conn := *connMap[strings.ToLower(*dest.Database)]
+			var err error
+			if strings.ToUpper(conn.Driver) == "EXCEL" {
+				err = excelDest(js, dag, connMap, &data, conn, dest, globalOptions)
+			} else if strings.ToUpper(conn.Driver) == "MANDRILL" {
+				err = mandrillDest(js, dag, connMap, &data, conn, dest, globalOptions)
+			} else {
+				err = sqlDest(js, dag, connMap, &data, conn, dest, globalOptions, txManager)
 			}
 			if err != nil {
 				return err

@@ -81,6 +81,30 @@ func TestCompilerDataLiteralAndHooks(t *testing.T) {
 	})
 }
 
+func TestCompilerDataLiteralSourceDest(t *testing.T) {
+	script := `
+		DATA 'MyMessage' (
+		[
+	  		["Hello, World"]
+		]
+		) INTO CONSOLE WITH (COLUMNS = 'Message', OUTPUT_FORMAT='JSON')
+	`
+	Convey("Given a literal data source console dest", t, func() {
+		Convey("It should run without errors", func() {
+			l := engine.NewConsoleLogger(engine.Trace)
+			buf := bytes.NewBufferString("")
+			replaceReaderHook := engine.DestinationHook(func(s string, d engine.Destination) error {
+				cd, _ := d.(*engine.ConsoleDestination)
+				cd.Writer = buf
+				return nil
+			})
+			err := ExecuteString(script, &RuntimeOptions{nil, l, []interface{}{replaceReaderHook}, nil, ""})
+			So(err, ShouldBeNil)
+			So(buf.String(), ShouldEqual, "[{\"Message\":\"Hello, World\"}]")
+		})
+	})
+}
+
 func TestCompilerHTTPAutoSQL(t *testing.T) {
 	script := `
 	CONNECTION 'WebAPI' (
