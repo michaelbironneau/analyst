@@ -153,6 +153,56 @@ func TestFindOverridableOption(t *testing.T) {
 
 	})
 }
+func TestReflectionScanner(t *testing.T) {
+	Convey("Given some options", t, func() {
+		f := 1.0
+		f2 := 2.0
+		f3 := 3.0
+		f4 := 4.0
+		opts := []Option{
+			Option{
+				Key: "asdf_O1",
+				Value: &OptionValue{
+					Number: &f,
+				},
+			},
+			Option{
+				Key: "O2",
+				Value: &OptionValue{
+					Number: &f2,
+				},
+			},
+		}
+		opts2 := []Option{
+			Option{
+				Key: "O1",
+				Value: &OptionValue{
+					Number: &f3,
+				},
+			},
+			Option{
+				Key: "O3",
+				Value: &OptionValue{
+					Number: &f4,
+				},
+			},
+		}
+		var dest struct {
+			O1 float64 `aql:"O1"`
+			O2 float64 `aql:"O2, optional"`
+			O3 string  `aql:"O33, optional"`
+		}
+		scan := OptionScanner("", "", opts, opts2)
+		maybeScan := MaybeOptionScanner("", "", opts, opts2)
+		Convey("It should scan all options correctly", func() {
+			err := ScanOptions(scan, maybeScan, &dest)
+			So(err, ShouldBeNil)
+			So(dest.O1, ShouldEqual, f3)
+			So(dest.O2, ShouldEqual, f2)
+			So(dest.O3, ShouldBeBlank)
+		})
+	})
+}
 
 func TestOptionScanner(t *testing.T) {
 	Convey("Given some options", t, func() {

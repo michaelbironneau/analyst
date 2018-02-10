@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"text/template"
@@ -17,6 +18,9 @@ import (
 
 //MaxIncludeDepth is the maximum depth of includes that will be processed before an error is returned.
 const MaxIncludeDepth = 8
+
+//tagName is the name of the reflect tag used for AQL options
+const tagName = "aql"
 
 type Block interface {
 	GetName() string
@@ -157,7 +161,59 @@ type JobScript struct {
 	Transforms    []Transform          ` | @@ }`
 }
 
-func OptionScanner(blockName, namespace string, scope ...[]Option) func(needle string, dest interface{}) error {
+type OptScanner func(needle string, dest interface{}) error
+type MaybeOptScanner func(needle string, dest interface{}) (bool, error)
+
+//ScanOptions uses reflection with the "aql" struct tag to scan options. The tags are:
+//	aql: "<case_insensitive_option_name>"
+//  aql: "<case_insensitive_option_name>, optional"
+func ScanOptions(scanner OptScanner, maybeScanner MaybeOptScanner, dest interface{}) error {
+
+	t := reflect.TypeOf(dest)
+
+	if t.Kind() != reflect.Ptr {
+		panic(fmt.Errorf("optscanner: not a pointer: %v", t))
+	}
+
+	t = t.Elem()
+
+	v := reflect.ValueOf(dest)
+	vi := reflect.Indirect(v)
+
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+
+		tag, ok := field.Tag.Lookup(tagName)
+
+		if !ok {
+			continue
+		}
+
+		parts := strings.Split(tag, ",")
+
+		if len(parts) > 2 {
+			panic(fmt.Errorf("optscanner: invalid struct tag: %s", tag))
+		}
+
+		if len(parts) == 2 && strings.Contains(parts[1], "optional") {
+			_, err := maybeScanner(strings.TrimSpace(parts[0]), vi.Field(i).Addr().Interface())
+			if err != nil {
+				return err
+			}
+			continue
+		}
+
+		err := scanner(strings.TrimSpace(parts[0]), vi.Field(i).Addr().Interface())
+
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func OptionScanner(blockName, namespace string, scope ...[]Option) OptScanner {
 	return func(needle string, dest interface{}) error {
 		opt, ok := FindOverridableOption(needle, namespace, scope...)
 		if !ok {
@@ -184,7 +240,7 @@ func OptionScanner(blockName, namespace string, scope ...[]Option) func(needle s
 	}
 }
 
-func MaybeOptionScanner(blockName, namespace string, scope ...[]Option) func(needle string, dest interface{}) (bool, error) {
+func MaybeOptionScanner(blockName, namespace string, scope ...[]Option) MaybeOptScanner {
 	return func(needle string, dest interface{}) (bool, error) {
 		opt, ok := FindOverridableOption(needle, namespace, scope...)
 		if !ok {
