@@ -15,6 +15,7 @@ type SlackOpts struct {
 	Username   string `aql:"SLACK_USER, optional"`
 	WebhookURL string `aql:"SLACK_WEBHOOK_URL"`
 	MinLevel   string `aql:"SLACK_LOG_LEVEL"`
+	Script string     `aql:"SLACK_NAME, optional"`
 }
 
 type slackLogger struct {
@@ -38,7 +39,7 @@ func (s *slackLogger) Chan() chan<- Event {
 
 func (s *slackLogger) sendSlackMessage(msg Event, errChan chan<- Event) {
 	payload := slackPayload{
-		Text:     fmt.Sprintf("%s - %s - %s", msg.Source, eventTypeMap[msg.Level], msg.Message),
+		Text:     fmt.Sprintf("<%s>: %s - %s - %s", s.Opts.Script, msg.Source, eventTypeMap[msg.Level], msg.Message),
 		Channel:  s.Opts.Channel,
 		Username: s.Opts.Username,
 		Emoji:    s.Opts.Emoji,
@@ -100,6 +101,9 @@ func SlackWrapper(l Logger, opts SlackOpts) Logger {
 	min, ok := StrToLevel(opts.MinLevel)
 	if !ok {
 		panic(fmt.Sprintf("invalid level %s", opts.MinLevel))
+	}
+	if opts.Script == "" {
+		opts.Script = "Unnamed script"
 	}
 	s := slackLogger{
 		Opts:     opts,

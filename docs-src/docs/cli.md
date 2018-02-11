@@ -20,3 +20,22 @@ The parameters are as follows:
 ```
 analyst validate --script 'myscript.aql' --params "{\"MyOpt\": 1}" --v
 ```
+
+## Logging
+
+There are four log levels: `TRACE`, `INFO`, `WARNING` and `ERROR`. Any error condition causes the execution to halt and any managed transactions to be rolled back.
+
+### Logging to Slack
+
+You can configure the logger to send log messages above a given level to Slack using an [incoming webhook](https://api.slack.com/incoming-webhooks).
+
+Messages will be formatted as `<NAME>: SOURCE - LEVEL - MESSAGE`. 
+
+The options, that you can set using either `SET <option_name> = '<option_value>'` syntax or via command-line flag `params`, are:
+
+* `SLACK_WEBHOOK_URL`: The URL of your webhook.
+* `SLACK_LOG_LEVEL`: Minimum level of messages to log. One of 'TRACE', 'INFO', 'WARNING' or 'ERROR' (case-insensitive).
+* `SLACK_CHANNEL` (optional): Name of Slack channel for the messages.
+* `SLACK_USER` (optional): Name of Slack user for the messages.
+* `SLACK_EMOJI` (optional): Emoji for message.
+* `SLACK_NAME` (optional): Prefix of all messages, so that the script that caused the error can be identified ('<NAME>' above)

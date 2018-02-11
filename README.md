@@ -20,6 +20,7 @@ It has connectors to:
 * SQLite3 (source/destination)
 * Mandrill transactional email API (destination)
 * Web APIs (source)
+* Slack (for logging only)
 * Flat file (source)
 * Console (destination)
 * Built-in in-memory SQLite3 database (source/destination)
