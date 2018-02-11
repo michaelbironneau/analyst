@@ -47,7 +47,7 @@ func Run(c *cli.Context) error {
 	l := engine.NewConsoleLogger(lev)
 
 	err = analyst.ExecuteFile(scriptFile, &analyst.RuntimeOptions{opts, l, nil, nil, filepath.Dir(scriptFile)})
-	time.Sleep(time.Millisecond * 100) //give loggers time to flush
+	time.Sleep(time.Millisecond * 1500) //give loggers time to flush
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
 	}

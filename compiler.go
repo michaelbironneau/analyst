@@ -44,8 +44,50 @@ func formatOptions(options []aql.Option) string {
 	return fmt.Sprintf("%v", s)
 }
 
-func execute(js *aql.JobScript, options []aql.Option, logger engine.Logger, compileOnly bool, hooks []interface{}, ctx context.Context, cwd string) error {
+func checkWrapLogger(l engine.Logger, options []aql.Option) (engine.Logger, error) {
+
+	if _, ok := aql.FindOption(options, "SLACK_WEBHOOK_URL"); !ok {
+		return nil, nil
+	}
+
+	opts := engine.SlackOpts{}
+	scan := aql.OptionScanner("", "", options)
+	maybeScan := aql.MaybeOptionScanner("", "", options)
+
+	err := aql.ScanOptions(scan, maybeScan, &opts)
+
+	if err != nil {
+		return nil, err
+	}
+
+	if _, ok := engine.StrToLevel(opts.MinLevel); !ok {
+		return nil, fmt.Errorf("invalid log level for Slack hook %s", opts.MinLevel)
+	}
+
+	return engine.SlackWrapper(l, opts), nil
+
+}
+
+func execute(js *aql.JobScript, options []aql.Option, lg engine.Logger, compileOnly bool, hooks []interface{}, ctx context.Context, cwd string) error {
+	logger := lg
 	options = mergeOptions(js, options)
+
+	if !compileOnly {
+		l, err := checkWrapLogger(logger, options)
+		if err != nil {
+			return err
+		}
+		if l != nil {
+			logger = l
+			logger.Chan() <- engine.Event{
+				Source:  "Compiler",
+				Level:   engine.Info,
+				Time:    time.Now(),
+				Message: "Logger re-configured to send specified output to Slack",
+			}
+		}
+	}
+
 	logger.Chan() <- engine.Event{
 		Source:  "Compiler",
 		Level:   engine.Trace,
