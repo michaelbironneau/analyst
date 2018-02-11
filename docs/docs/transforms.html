@@ -47,6 +47,8 @@
 <ul>
 <li><code>SUM</code>, <code>AVG</code>, <code>MAX</code>, <code>MIN</code>, <code>COUNT</code> with the usual meanings as defined in eg. <a href="http://www.sqlservercentral.com/articles/Advanced+Querying/gotchasqlaggregatefunctionsandnull/1947/">this article</a></li>
 <li><code>ZOH</code>: Zero-Order-Hold (i.e. time-weighted mean for irregularly sampled series). This takes four parameters: point time (RFC3339 with or without nanoseconds), value, start, and finish times.</li>
+<li><code>QUANTILE</code>: Streaming quantile. This takes two parameters: the column and the quantile, eg. <code>QUANTILE(Value, 0.75)</code> for the 75th percentile. The quantile must be the same for all entries in each group if there is a group by statement, or constant otherwise.</li>
+<li><code>CDF</code>: Cumulative Distribution Function of a column evaluated at a given position. This takes two parameters: the column and the position, eg. <code>CDF(Value, 5)</code> evaluates the CDF for the column 'Value' at the point 5. The point should be constant for each group.</li>
 </ul>
 <p><strong>Examples</strong>
 Aggregating data from an HTTP API:</p>
