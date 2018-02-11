@@ -49,26 +49,26 @@ DATA 'MyMessage' (
 ## Table of Contents
 
 1. Get Started
-    A. [30-second Introduction](https://michaelbironneau.github.io/analyst/docs/intro.html)
-    B. [Command-Line Interface](https://michaelbironneau.github.io/analyst/docs/cli.html)
-    C. [Data Flow](https://michaelbironneau.github.io/analyst/docs/data-flow.html)
-    D. [Block Syntax](https://michaelbironneau.github.io/analyst/docs/blocks.html)
-    E. [Connectors](https://michaelbironneau.github.io/analyst/docs/connections.html)
-    F. [Transforms](https://michaelbironneau.github.io/analyst/docs/transforms.html)
+    - [30-second Introduction](https://michaelbironneau.github.io/analyst/docs/intro.html)
+    - [Command-Line Interface](https://michaelbironneau.github.io/analyst/docs/cli.html)
+    - [Data Flow](https://michaelbironneau.github.io/analyst/docs/data-flow.html)
+    - [Block Syntax](https://michaelbironneau.github.io/analyst/docs/blocks.html)
+    - [Connectors](https://michaelbironneau.github.io/analyst/docs/connections.html)
+    - [Transforms](https://michaelbironneau.github.io/analyst/docs/transforms.html)
 2. Recipes
-    A. [Data-Driven Email](https://michaelbironneau.github.io/analyst/docs/email.html)
-    B. [Getting Data From Web APIs](https://michaelbironneau.github.io/analyst/docs/http.html)
-    C. [Using Python for Execution Logic](https://michaelbironneau.github.io/analyst/docs/logic.html)
+    - [Data-Driven Email](https://michaelbironneau.github.io/analyst/docs/email.html)
+    - [Getting Data From Web APIs](https://michaelbironneau.github.io/analyst/docs/http.html)
+	- [Using Python for Execution Logic](https://michaelbironneau.github.io/analyst/docs/logic.html)
 3. Blocks
-    A. [INCLUDE](https://michaelbironneau.github.io/analyst/docs/include.html)
-    B. [CONNECTION](https://michaelbironneau.github.io/analyst/docs/connection.html)
-    C. [QUERY](https://michaelbironneau.github.io/analyst/docs/query.html)
-    D. [EXEC](https://michaelbironneau.github.io/analyst/docs/exec.html)
-    E. [TRANSFORM](https://michaelbironneau.github.io/analyst/docs/transform.html)
-    F. [DATA](https://michaelbironneau.github.io/analyst/docs/data.html)
-    G. [DECLARE](https://michaelbironneau.github.io/analyst/docs/declare.html)
-    H. [GLOBAL](https://michaelbironneau.github.io/analyst/docs/global.html)
-    I. [SET](https://michaelbironneau.github.io/analyst/docs/set.html)
+    - [INCLUDE](https://michaelbironneau.github.io/analyst/docs/include.html)
+    - [CONNECTION](https://michaelbironneau.github.io/analyst/docs/connection.html)
+    - [QUERY](https://michaelbironneau.github.io/analyst/docs/query.html)
+    - [EXEC](https://michaelbironneau.github.io/analyst/docs/exec.html)
+    - [TRANSFORM](https://michaelbironneau.github.io/analyst/docs/transform.html)
+    - [DATA](https://michaelbironneau.github.io/analyst/docs/data.html)
+    - [DECLARE](https://michaelbironneau.github.io/analyst/docs/declare.html)
+    - [GLOBAL](https://michaelbironneau.github.io/analyst/docs/global.html)
+    - [SET](https://michaelbironneau.github.io/analyst/docs/set.html)
 
 # Contributing
 
