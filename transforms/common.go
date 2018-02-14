@@ -21,7 +21,7 @@ func parseTime(s string) (*time.Time, string, error) {
 		if err != nil {
 			t, err = time.Parse(defaultDatabaseGoDateFormat, s)
 			if err != nil {
-				return nil, "", fmt.Errorf("unknown time format %s: expected RFC3339, RFC3339 with nanoseconds or YYYY-MM-DDTHH:MM:SSZ", s)
+				return nil, "", fmt.Errorf("unknown time format %s: expected RFC3339, RFC3339 with nanoseconds or %s", s, DefaultDatabaseDateFormat)
 			}
 			return &t, DefaultDatabaseDateFormat, nil
 		}
