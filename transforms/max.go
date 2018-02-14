@@ -40,6 +40,12 @@ func (s *max) Reduce(arg []interface{}) error {
 		s.result = math.Max(s.result, float64(v))
 	case int32:
 		s.result = math.Max(s.result, float64(v))
+	case string:
+		value, _, err := parseTime(v)
+		if err != nil {
+			return err
+		}
+		s.result = math.Max(s.result, float64(value.Unix()))
 	default:
 		return fmt.Errorf("max takes a single numerical argument, but %v was provided", args[0])
 	}

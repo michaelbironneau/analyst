@@ -23,22 +23,6 @@ func (s *zoh) SetArgumentMap(am ArgumentMap) {
 	s.am = am
 }
 
-func parseTime(s string) (*time.Time, string, error) {
-	var (
-		t   time.Time
-		err error
-	)
-	t, err = time.Parse(time.RFC3339, s)
-	if err != nil {
-		t, err = time.Parse(time.RFC3339Nano, s)
-		if err != nil {
-			return nil, "", fmt.Errorf("unknown time format %s: expected RFC3339 or RFC3339 with nanoseconds", s)
-		}
-		return &t, time.RFC3339Nano, nil
-	}
-	return &t, time.RFC3339, nil
-}
-
 func (s *zoh) Reduce(arg []interface{}) error {
 	args := s.am(arg)
 	if len(args) != 4 {
