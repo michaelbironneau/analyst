@@ -27,7 +27,7 @@ func (sq *SQLDestination) Columns() []string {
 
 func (sq *SQLDestination) connect() error {
 	var err error
-	sq.db, err = sql.Open(sq.Driver, sq.ConnectionString)
+	sq.db, err = SQLDriverManager.DB(sq.Driver, sq.ConnectionString)
 	if err != nil {
 		return fmt.Errorf("SQL destination: %s", err.Error())
 	}

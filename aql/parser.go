@@ -633,7 +633,12 @@ func (b *JobScript) EvaluateParametrizedContent(globals []Option) error {
 			return err
 		}
 	}
-
+	for i := range b.Execs {
+		b.Execs[i].Content, err = evaluateContent(b.Execs[i].Content, b.Execs[i].Options, globals)
+		if err != nil {
+			return err
+		}
+	}
 	for i := range b.Transforms {
 		b.Transforms[i].Content, err = evaluateContent(b.Transforms[i].Content, b.Transforms[i].Options, globals)
 		if err != nil {

@@ -657,7 +657,9 @@ func TestParameterEvaluation(t *testing.T) {
 		q := `QUERY 'a' FROM GLOBAL (
 			SELECT * FROM {{ .Table }}
 		) INTO GLOBAL
-		WITH (Table = 'Something')`
+		WITH (Table = 'Something');
+
+		EXEC 'b' FROM GLOBAL ({{ .Table}}) WITH (Table = 'bb')`
 		b, err := ParseString(q)
 		So(err, ShouldBeNil)
 		Convey("It should correctly evaluate the content", func() {
@@ -668,6 +670,7 @@ func TestParameterEvaluation(t *testing.T) {
 			So(b.Queries[0].Content, ShouldEqual, `
 			SELECT * FROM Something
 		`)
+			So(b.Execs[0].Content, ShouldEqual, "bb")
 		})
 	})
 }

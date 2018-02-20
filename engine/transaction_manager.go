@@ -105,7 +105,7 @@ func (tm *transactionManager) Tx(connName string) (*sql.Tx, error) {
 
 	tm.log(Trace, "opening new db connection for connection %s", connName)
 	//new transaction
-	db, err := sql.Open(conn.Driver, conn.ConnectionString)
+	db, err := SQLDriverManager.DB(conn.Driver, conn.ConnectionString)
 
 	if err != nil {
 		return nil, err

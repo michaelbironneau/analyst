@@ -72,9 +72,9 @@ func (a *AutoSQLTransform) connectToStaging(l Logger) error {
 	var err error
 	if a.StagingSQLConnString != "" {
 		a.log(l, Trace, fmt.Sprintf("using provided SQL connection string %s instead of new in-memory cache", a.StagingSQLConnString))
-		a.db, err = sql.Open("sqlite3", a.StagingSQLConnString)
+		a.db, err = SQLDriverManager.DB("sqlite3", a.StagingSQLConnString)
 	} else {
-		a.db, err = sql.Open("sqlite3", ":memory:") //don't use shared cache
+		a.db, err = SQLDriverManager.DB("sqlite3", ":memory:") //Don't use a shared cache
 	}
 	if err != nil {
 		return err
