@@ -27,6 +27,10 @@ func (s *min) Reduce(arg []interface{}) error {
 	if args[0] == nil {
 		return nil
 	}
+	if !s.notNull {
+		//initialize result
+		s.result = math.MaxFloat64
+	}
 	s.notNull = true
 	switch v := args[0].(type) {
 	case float64:

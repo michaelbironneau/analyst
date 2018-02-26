@@ -27,6 +27,20 @@ func TestMax(t *testing.T) {
 			So(f, ShouldNotBeNil)
 			So(*f, ShouldEqual, 1.0)
 		})
+		Convey("It should reduce multiple messages all negative correctly", func() {
+			msgs := [][]interface{}{
+				[]interface{}{-1.0},
+				[]interface{}{-2},
+				[]interface{}{nil},
+			}
+			for _, msg := range msgs {
+				err := agg.Reduce(msg)
+				So(err, ShouldBeNil)
+			}
+			f := agg.Return()
+			So(f, ShouldNotBeNil)
+			So(*f, ShouldEqual, -1.0)
+		})
 		Convey("It should reduce multiple timestamps correctly", func() {
 			expectedMax := "2018-02-14T11:00:00Z"
 			msgs := [][]interface{}{
@@ -52,8 +66,6 @@ func TestMax(t *testing.T) {
 			err := agg.Reduce([]interface{}{expectedRejectionTimestampFormat})
 			So(err, ShouldBeError)
 			So(err.Error(), ShouldEqual, "unknown time format FOO_BAR_BAZ: expected RFC3339, RFC3339 with nanoseconds or YYYY-MM-DDTHH:MM:SSZ")
-			f := agg.Return()
-			So(*f, ShouldBeZeroValue)
 		})
 	})
 }

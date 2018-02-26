@@ -27,6 +27,9 @@ func (s *max) Reduce(arg []interface{}) error {
 	if args[0] == nil {
 		return nil
 	}
+	if !s.notNull {
+		s.result = -1*math.MaxFloat64
+	}
 	s.notNull = true
 	if args[0] == nil {
 		return nil //ignore
