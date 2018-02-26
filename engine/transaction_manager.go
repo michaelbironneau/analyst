@@ -24,8 +24,12 @@ type TransactionManager interface {
 	Register(aql.Connection) error
 
 	//  Use will begin a new transaction (if none exists) or re-use the existing
-	//  transaction, applying a func to it.
+	//  transaction, locking it so that no one may concurrently use it.
 	Tx(connection string) (*sql.Tx, error)
+
+	//  Release the transaction so that it may be used by others. It panics if the
+	//  connection has not been registered.
+	Release(connection string)
 
 	//  Commit commits ALL transactions. It is an error to call Use() or Register()
 	//  after Commit().
@@ -42,6 +46,7 @@ type transactionManager struct {
 	finished bool
 	l        Logger
 	txs      map[string]*sql.Tx
+	locks    map[string]*sync.Mutex
 	conns    map[string]aql.Connection
 	dbs      map[string]*sql.DB
 	ctx      context.Context
@@ -52,6 +57,7 @@ func NewTransactionManager(l Logger) TransactionManager {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &transactionManager{
 		txs:    make(map[string]*sql.Tx),
+		locks:  make(map[string]*sync.Mutex),
 		conns:  make(map[string]aql.Connection),
 		dbs:    make(map[string]*sql.DB),
 		ctx:    ctx,
@@ -67,6 +73,20 @@ func (tm *transactionManager) log(level LogLevel, msg string, args ...interface{
 		Level:   level,
 		Message: fmt.Sprintf(msg, args...),
 	}
+}
+
+func (tm *transactionManager) Release(connName string){
+	defer func(){
+		if r := recover(); r != nil {
+			tm.log(Warning, "Transaction lock for %s already released", connName)
+		} //ignore panics from twice-unlocked mutexes
+	}()
+	if l, ok := tm.locks[connName]; ok {
+		l.Unlock()
+	} else {
+		tm.log(Warning, "Transaction release attempt for connection %s but it was not found", connName)
+	}
+
 }
 
 func (tm *transactionManager) Register(conn aql.Connection) error {
@@ -100,6 +120,7 @@ func (tm *transactionManager) Tx(connName string) (*sql.Tx, error) {
 	}
 
 	if tx, ok := tm.txs[connName]; ok {
+		tm.locks[connName].Lock()
 		return tx, nil
 	}
 
@@ -123,15 +144,17 @@ func (tm *transactionManager) Tx(connName string) (*sql.Tx, error) {
 	}
 	tm.log(Info, "new transaction initiated for connection %s", connName)
 	tm.txs[connName] = tx
+	tm.locks[connName] = &sync.Mutex{}
 	tm.Unlock()
 	tm.RLock()
-
+	tm.locks[connName].Lock()
 	return tx, nil
 }
 
 //  Commit commits all transactions. If it encounters an error, eg. network went down after
 //  Commit() was called, it will keep retrying TxManagerMaxRetries until Commit() succeeds
-//  or TxManagerMaxRetries is exceeded.
+//  or TxManagerMaxRetries is exceeded. If any locks are still held on individual Tx they
+//  will be ignored.
 func (tm *transactionManager) Commit() error {
 	tm.Lock()
 	defer tm.Unlock()
@@ -163,7 +186,8 @@ func (tm *transactionManager) Commit() error {
 
 //  Commit rolls back all transactions. If it encounters an error, eg. network went down after
 //  Rollback() was called, it will keep retrying TxManagerMaxRetries until Rollback() succeeds
-//  or TxManagerMaxRetries is exceeded.
+//  or TxManagerMaxRetries is exceeded. If any individual locks are still held on Tx s they
+//  will be ignored.
 func (tm *transactionManager) Rollback() error {
 	tm.Lock()
 	defer tm.Unlock()

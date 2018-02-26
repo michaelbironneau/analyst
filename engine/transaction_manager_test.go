@@ -20,6 +20,7 @@ func TestSingleConn(t *testing.T) {
 			err := tm.Register(conn)
 			So(err, ShouldBeNil)
 			tx, err := tm.Tx(conn.Name)
+			defer tm.Release(conn.Name)
 			So(err, ShouldBeNil)
 			_, err = tx.Exec(`
 				CREATE TABLE TxManagerTest (
@@ -47,6 +48,7 @@ func TestSingleConn(t *testing.T) {
 			err := tm.Register(conn)
 			So(err, ShouldBeNil)
 			tx, err := tm.Tx(conn.Name)
+			defer tm.Release(conn.Name)
 			So(err, ShouldBeNil)
 			_, err = tx.Exec(`
 				CREATE TABLE TxManagerTest2 (

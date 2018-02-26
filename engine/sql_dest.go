@@ -16,6 +16,8 @@ type SQLDestination struct {
 	columns          []string
 	manageTx         bool `aql: "MANAGED_TRANSACTION, optional"`
 	db               *sql.DB
+	TxUseFunc        func() (*sql.Tx, error)
+	TxReleaseFunc    func()
 	Alias            string
 }
 
@@ -64,7 +66,10 @@ func (sq *SQLDestination) log(l Logger, level LogLevel, msg string) {
 }
 
 func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
-	sq.manageTx = sq.Tx == nil
+	if sq.TxReleaseFunc != nil {
+		defer sq.TxReleaseFunc()
+	}
+	sq.manageTx = sq.TxUseFunc == nil
 	if sq.db == nil {
 		err := sq.connect()
 		if err != nil {
@@ -77,15 +82,15 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 		tx  *sql.Tx
 		err error
 	)
-	if sq.Tx == nil {
+	if sq.manageTx {
 		tx, err = sq.db.Begin()
 		sq.log(l, Trace, "Initiated transaction")
-		if err != nil {
-			sq.fatalerr(err, l, st)
-			return
-		}
 	} else {
-		tx = sq.Tx
+		tx, err = sq.TxUseFunc()
+	}
+	if err != nil {
+		sq.fatalerr(err, l, st)
+		return
 	}
 	var (
 		stmt *sql.Stmt

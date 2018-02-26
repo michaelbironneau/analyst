@@ -28,8 +28,8 @@ func TestSQLite(t *testing.T) {
 		err := setupInsertTest()
 		So(err, ShouldBeNil)
 		l := NewConsoleLogger(Trace)
-		tx := NewTransactionManager(l)
-		c := NewCoordinator(l, tx)
+		tm := NewTransactionManager(l)
+		c := NewCoordinator(l, tm)
 		sq := SQLDestination{
 			Driver:           "sqlite3",
 			ConnectionString: "./testing/test_insert.db",

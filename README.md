@@ -81,6 +81,6 @@ All contributions are welcome:
 
 # License
 
-All source code and artifacts are released under GNU General Public License v3.0, as detailed in LICENSE.md. This means, among other things, that if you wish to use any part of the code or artifacts in your own project, it must be distributed under the same license.
+All source code and artifacts are released under GNU Affero General Public License v3.0, as detailed in LICENSE.md.
 
 If this not suitable for your use case please get in touch by opening an issue or Twitter @MikeBrno.

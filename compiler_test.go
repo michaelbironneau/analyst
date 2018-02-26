@@ -384,7 +384,7 @@ func TestCompilerWithParameters(t *testing.T) {
 	INTO GLOBAL WITH (Table = 'Contacts')
 	AFTER GetId
 	`
-	Convey("Given a script that uses parameters", t, func() {
+	SkipConvey("Given a script that uses parameters", t, func() {
 		err := ExecuteString(script, &RuntimeOptions{})
 		So(err, ShouldBeNil)
 		db, err := sql.Open(globalDbDriver, globalDbConnString)

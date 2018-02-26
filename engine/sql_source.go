@@ -23,6 +23,8 @@ type SQLSource struct {
 	outgoingName     string
 	ExecOnly         bool
 	ParameterNames   []string
+	TxReleaseFunc    func()
+	TxUseFunc        func() (*sql.Tx, error)
 }
 
 func (sq *SQLSource) SetName(name string) {
@@ -92,7 +94,10 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 		close(s.Chan(sq.outgoingName))
 		return
 	}
-	sq.manageTx = sq.Tx == nil
+	if sq.TxReleaseFunc != nil {
+		defer sq.TxReleaseFunc()
+	}
+	sq.manageTx = sq.TxUseFunc == nil
 	if sq.db == nil {
 		err := sq.connect()
 		if err != nil {
@@ -105,15 +110,15 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 		tx  *sql.Tx
 		err error
 	)
-	if sq.Tx == nil {
+	if sq.manageTx {
 		tx, err = sq.db.Begin()
 		sq.log(l, Trace, "Initiated transaction")
-		if err != nil {
-			sq.fatalerr(err, s, l, st)
-			return
-		}
 	} else {
-		tx = sq.Tx
+		tx, err = sq.TxUseFunc()
+	}
+	if err != nil {
+		sq.fatalerr(err, s, l, st)
+		return
 	}
 	params, err := sq.parameters()
 	if err != nil {

@@ -767,10 +767,7 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 
 			continue
 		}
-		tx, err := txManager.Tx(conn.Name)
-		if err != nil {
-			return err
-		}
+
 		s := engine.SQLSource{
 			Name:             query.Name,
 			Driver:           conn.Driver,
@@ -779,7 +776,8 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			ParameterTable:   params,
 			ParameterNames:   query.Parameters,
 			ExecOnly:         execOnly,
-			Tx:               tx,
+			TxReleaseFunc: func(){txManager.Release(conn.Name)},
+			TxUseFunc: func() (*sql.Tx, error ){return txManager.Tx(conn.Name)},
 		}
 		//alias := alias(query.Sources[0], conn)
 		alias := query.Name //Queries can only have one source, so let's do away with this confusing alias nonsense
@@ -828,13 +826,10 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 		return err
 	}
 
-	var tx *sql.Tx
+	var txUseFunc func() (*sql.Tx, error)
 
-	if ok && manageTx || !ok {
-		tx, err = txManager.Tx(conn.Name)
-		if err != nil {
-			return err
-		}
+	if ok && manageTx {
+		txUseFunc = func() (*sql.Tx, error ){return txManager.Tx(conn.Name)}
 	}
 
 	//Uniquify destination name
@@ -844,7 +839,9 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 		ConnectionString: connString,
 		Table:            table,
 		Alias:            alias,
-		Tx:               tx,
+		TxReleaseFunc: func(){txManager.Release(conn.Name)},
+		TxUseFunc: txUseFunc,
+
 	})
 
 	dag.Connect(strings.ToLower(block.GetName()), strings.ToLower(block.GetName()+destinationUniquifier+conn.Name))
