@@ -94,6 +94,7 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 	}
 	var (
 		stmt *sql.Stmt
+		inserted int
 	)
 	for msg := range s.Chan(sq.Alias) {
 		if st.Stopped() {
@@ -140,6 +141,10 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 			}
 			tx.Rollback()
 			return
+		}
+		inserted++
+		if inserted%1000==0{
+			sq.log(l, Info, fmt.Sprintf("Inserted %v rows", inserted))
 		}
 	}
 	if !sq.manageTx {
