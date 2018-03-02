@@ -208,7 +208,7 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 		if time.Now().Sub(startToProcess).Seconds() > 10 {
 			//update processed row count every 10 seconds
 			sq.log(l, Info, fmt.Sprintf("Processed %v rows", processed))
-			start = time.Now()
+			startToProcess = time.Now()
 		}
 		rr := make([]interface{}, len(cols))
 		rrp := makeRowPointers(rr)
