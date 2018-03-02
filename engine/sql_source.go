@@ -112,7 +112,7 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 	)
 	if sq.manageTx {
 		tx, err = sq.db.Begin()
-		sq.log(l, Trace, "Initiated transaction")
+		sq.log(l, Info, "Initiated transaction")
 	} else {
 		tx, err = sq.TxUseFunc()
 	}
@@ -151,7 +151,7 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 		}
 		rowsAffected, err = res.RowsAffected()
 		if err != nil {
-			sq.log(l, Trace, fmt.Sprintf("Error retrieving rows affected: %v", err))
+			sq.log(l, Info, fmt.Sprintf("Error retrieving rows affected: %v", err))
 		}
 
 		sq.log(l, Info, fmt.Sprintf("Rows affected: %v", rowsAffected))
@@ -194,11 +194,21 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 	sq.log(l, Trace, fmt.Sprintf("Found columns %v", cols))
 	s.SetColumns(DestinationWildcard, cols)
 
+	var (
+		startToProcess = time.Now()
+		processed = 0
+	)
 	for r.Next() {
 		if st.Stopped() {
 			sq.log(l, Warning, fmt.Sprintf("SQL source aborted"))
 			close(s.Chan(sq.outgoingName))
 			return
+		}
+		processed++
+		if time.Now().Sub(startToProcess).Seconds() > 10 {
+			//update processed row count every 10 seconds
+			sq.log(l, Info, fmt.Sprintf("Processed %v rows", processed))
+			start = time.Now()
 		}
 		rr := make([]interface{}, len(cols))
 		rrp := makeRowPointers(rr)
