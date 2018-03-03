@@ -163,13 +163,13 @@ func TestCompiler(t *testing.T) {
 
 func TestUnmanagedTransaction(t *testing.T) {
 	script := `
-	GLOBAL 'Initialize' (
+	EXEC 'Initialize' FROM GLOBAL (
 		CREATE TABLE ContactStats3 (
 			id integer PRIMARY KEY,
 			first_name text NOT NULL,
 			calls real
 		);
-	);
+	) WITH (MANAGED_TRANSACTION = 'FALSE');
 
 	QUERY 'InsertResults' FROM GLOBAL (
 		SELECT 1 AS id, 'Bob' AS first_name, 8 AS calls
@@ -179,6 +179,7 @@ func TestUnmanagedTransaction(t *testing.T) {
 		SELECT 3 AS id, 'Jack' AS first_name, 1 AS calls
 	) INTO GLOBAL WITH (TABLE = 'ContactStats3', MANAGED_TRANSACTION = 'False',
 					ROWS_PER_BATCH=2)
+      AFTER Initialize
 	`
 	Convey("Given a script that uses unmanaged transaction", t, func() {
 		err := ExecuteString(script, &RuntimeOptions{})

@@ -703,6 +703,7 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			return fmt.Errorf("console sources are not supported: %s", query.Name)
 		}
 		if query.Sources[0].Global {
+
 			g := engine.SQLSource{
 				Name:             query.Name,
 				Driver:           globalDbDriver,
@@ -767,6 +768,24 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 
 			continue
 		}
+		maybeScan := aql.MaybeOptionScanner(query.Name, "", query.Options, conn.Options, globalOptions)
+		var (
+			manageTx bool
+			okM bool
+			errM error
+		)
+
+		okM, errM = maybeScan("MANAGED_TRANSACTION", &manageTx)
+
+		if errM != nil {
+			return errM
+		}
+
+		var txUseFunc func() (*sql.Tx, error)
+
+		if !okM || manageTx {
+			txUseFunc = func() (*sql.Tx, error ){return txManager.Tx(conn.Name)}
+		}
 
 		s := engine.SQLSource{
 			Name:             query.Name,
@@ -777,7 +796,7 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			ParameterNames:   query.Parameters,
 			ExecOnly:         execOnly,
 			TxReleaseFunc: func(){txManager.Release(conn.Name)},
-			TxUseFunc: func() (*sql.Tx, error ){return txManager.Tx(conn.Name)},
+			TxUseFunc: txUseFunc,
 		}
 		//alias := alias(query.Sources[0], conn)
 		alias := query.Name //Queries can only have one source, so let's do away with this confusing alias nonsense
@@ -786,6 +805,7 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 	}
 	return nil
 }
+
 
 func alias(ss aql.SourceSink, conn *aql.Connection) string {
 	if ss.Alias != nil {
@@ -829,7 +849,7 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 
 	var txUseFunc func() (*sql.Tx, error)
 
-	if ok && manageTx {
+	if !ok || manageTx {
 		txUseFunc = func() (*sql.Tx, error ){return txManager.Tx(conn.Name)}
 	}
 
@@ -884,7 +904,7 @@ func globalDest(js *aql.JobScript, dag engine.Coordinator, block aql.Block, dest
 
 	var txUseFunc func() (*sql.Tx, error)
 
-	if ok && manageTx {
+	if !ok || manageTx {
 		txUseFunc = func() (*sql.Tx, error ){return txManager.Tx("GLOBAL")}
 	}
 
