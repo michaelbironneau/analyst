@@ -53,3 +53,9 @@ Should that case present itself in practice, the uncommitted transaction may blo
 To disable the transaction manager for a single destination, set the option `MANAGED_TRANSACTION` to 'False'.
 
 To disable it for all destinations, set it using a CLI flag or `SET MANAGED_TRANSACTION = 'False'`.
+
+### Batching Inserts
+
+For certain SQL databases (eg. Microsoft Azure SQL Database) a large number of inserts per transaction is not supported. To set the batch size for SQL destinations, set `MANAGED_TRANSACTION` to False and `ROWS_PER_BATCH` to the number of rows per transaction.
+
+Please note that disabling automatic transaction management is necessary to achieve this.

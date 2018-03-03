@@ -5,16 +5,18 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"errors"
 )
 
 type SQLDestination struct {
 	Name             string
 	Driver           string
 	ConnectionString string
-	Table            string `aql: TABLE`
+	Table            string `aql:"TABLE"`
 	Tx               *sql.Tx
 	columns          []string
-	manageTx         bool `aql: "MANAGED_TRANSACTION, optional"`
+	manageTx         bool `aql:"MANAGED_TRANSACTION,optional"`
+	RowsPerBatch     int  `aql:"ROWS_PER_BATCH,optional"`
 	db               *sql.DB
 	TxUseFunc        func() (*sql.Tx, error)
 	TxReleaseFunc    func()
@@ -22,6 +24,7 @@ type SQLDestination struct {
 }
 
 const InsertQuery = `INSERT INTO %s (%s) VALUES (%s)`
+var ErrManagedCannotBatch = errors.New("ROWS_PER_BATCH can only be specified if MANAGED_TRANSACTION is false")
 
 func (sq *SQLDestination) Columns() []string {
 	return sq.columns
@@ -37,6 +40,9 @@ func (sq *SQLDestination) connect() error {
 }
 
 func (sq *SQLDestination) Ping() error {
+	if sq.RowsPerBatch > 0 && sq.TxUseFunc != nil {
+		return ErrManagedCannotBatch
+	}
 	if sq.db == nil {
 		err := sq.connect()
 		if err != nil {
@@ -95,6 +101,7 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 	var (
 		stmt *sql.Stmt
 		inserted int
+		rowsInBatch int
 	)
 	for msg := range s.Chan(sq.Alias) {
 		if st.Stopped() {
@@ -109,6 +116,26 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 				sq.log(l, Error, fmt.Sprintf("Failed to roll back transaction: %v", err))
 			}
 			return
+		}
+		if sq.RowsPerBatch > 0 && rowsInBatch == sq.RowsPerBatch {
+			//unmanaged transaction commit + reset transaction information
+			if err := tx.Commit(); err != nil {
+				sq.fatalerr(err, l, st)
+				return
+			}
+			sq.log(l, Info, fmt.Sprintf("Committed batch with %v rows", rowsInBatch))
+			tx, err = sq.db.Begin()
+			if err != nil {
+				sq.fatalerr(err, l, st)
+				return
+			}
+			insertQuery := sq.prepare(s, msg.Data)
+			stmt, err = tx.Prepare(insertQuery)
+			if err != nil {
+				sq.fatalerr(err, l, st)
+				return
+			}
+			rowsInBatch = 0
 		}
 		sq.log(l, Trace, fmt.Sprintf("Row %v", msg.Data))
 		if len(s.Columns()) != len(msg.Data) {
@@ -143,6 +170,7 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 			return
 		}
 		inserted++
+		rowsInBatch++
 		if inserted%1000==0{
 			sq.log(l, Info, fmt.Sprintf("Inserted %v rows", inserted))
 		}

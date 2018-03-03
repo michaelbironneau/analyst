@@ -55,7 +55,7 @@ type transactionManager struct {
 
 func NewTransactionManager(l Logger) TransactionManager {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &transactionManager{
+	tx := &transactionManager{
 		txs:    make(map[string]*sql.Tx),
 		locks:  make(map[string]*sync.Mutex),
 		conns:  make(map[string]aql.Connection),
@@ -64,6 +64,12 @@ func NewTransactionManager(l Logger) TransactionManager {
 		cancel: cancel,
 		l:      l,
 	}
+	tx.Register(aql.Connection{
+		Name: "GLOBAL",
+		Driver: "sqlite3",
+		ConnectionString: "file::memory:?mode=memory&cache=shared&_busy_timeout=5000",
+	})
+	return tx
 }
 
 func (tm *transactionManager) log(level LogLevel, msg string, args ...interface{}) {
@@ -84,7 +90,7 @@ func (tm *transactionManager) Release(connName string){
 	if l, ok := tm.locks[connName]; ok {
 		l.Unlock()
 	} else {
-		tm.log(Warning, "Transaction release attempt for connection %s but it was not found", connName)
+		tm.log(Info, "Transaction release attempt for connection %s but it was not found", connName)
 	}
 
 }

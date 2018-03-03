@@ -818,6 +818,7 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 
 	var (
 		manageTx bool
+		rowsPerBatch int
 	)
 
 	ok, err := maybeScan("MANAGED_TRANSACTION", &manageTx)
@@ -832,6 +833,12 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 		txUseFunc = func() (*sql.Tx, error ){return txManager.Tx(conn.Name)}
 	}
 
+	ok, err = maybeScan("ROWS_PER_BATCH", &rowsPerBatch)
+
+	if err != nil {
+		return err
+	}
+
 	//Uniquify destination name
 	dag.AddDestination(strings.ToLower(block.GetName()+destinationUniquifier+conn.Name), alias, &engine.SQLDestination{
 		Name:             block.GetName() + destinationUniquifier + conn.Name,
@@ -841,7 +848,7 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 		Alias:            alias,
 		TxReleaseFunc: func(){txManager.Release(conn.Name)},
 		TxUseFunc: txUseFunc,
-
+		RowsPerBatch: rowsPerBatch,
 	})
 
 	dag.Connect(strings.ToLower(block.GetName()), strings.ToLower(block.GetName()+destinationUniquifier+conn.Name))
@@ -850,12 +857,12 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 
 }
 
-func globalDest(js *aql.JobScript, dag engine.Coordinator, block aql.Block, dest aql.SourceSink, globalOptions []aql.Option) error {
+func globalDest(js *aql.JobScript, dag engine.Coordinator, block aql.Block, dest aql.SourceSink, globalOptions []aql.Option, txManager engine.TransactionManager) error {
 	driver := globalDbDriver
 	connString := globalDbConnString
 	var table string
 	scan := aql.OptionScanner(block.GetName(), "", block.GetOptions(), globalOptions)
-
+	maybeScan := aql.MaybeOptionScanner(block.GetName(), "", block.GetOptions(), globalOptions)
 	err := scan("TABLE", &table)
 
 	if err != nil {
@@ -864,6 +871,29 @@ func globalDest(js *aql.JobScript, dag engine.Coordinator, block aql.Block, dest
 
 	alias := alias(dest, nil)
 
+	var (
+		manageTx bool
+		rowsPerBatch int
+	)
+
+	ok, err := maybeScan("MANAGED_TRANSACTION", &manageTx)
+
+	if err != nil {
+		return err
+	}
+
+	var txUseFunc func() (*sql.Tx, error)
+
+	if ok && manageTx {
+		txUseFunc = func() (*sql.Tx, error ){return txManager.Tx("GLOBAL")}
+	}
+
+	ok, err = maybeScan("ROWS_PER_BATCH", &rowsPerBatch)
+
+	if err != nil {
+		return err
+	}
+
 	//Uniquify destination name
 	dag.AddDestination(strings.ToLower(block.GetName()+destinationUniquifier+"GLOBAL"), alias, &engine.SQLDestination{
 		Name:             block.GetName() + destinationUniquifier + "GLOBAL",
@@ -871,6 +901,9 @@ func globalDest(js *aql.JobScript, dag engine.Coordinator, block aql.Block, dest
 		ConnectionString: connString,
 		Table:            table,
 		Alias:            alias,
+		TxUseFunc: txUseFunc,
+		TxReleaseFunc: func(){txManager.Release("GLOBAL")},
+		RowsPerBatch: rowsPerBatch,
 	})
 
 	dag.Connect(strings.ToLower(block.GetName()), strings.ToLower(block.GetName()+destinationUniquifier+"GLOBAL"))
@@ -1176,7 +1209,7 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 			}
 
 			if dest.Global {
-				if err := globalDest(js, dag, &query, dest, globalOptions); err != nil {
+				if err := globalDest(js, dag, &query, dest, globalOptions, txManager); err != nil {
 					return err
 				}
 				continue
@@ -1206,7 +1239,7 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 			}
 
 			if dest.Global {
-				if err := globalDest(js, dag, &transform, dest, globalOptions); err != nil {
+				if err := globalDest(js, dag, &transform, dest, globalOptions, txManager); err != nil {
 					return err
 				}
 				continue
@@ -1274,7 +1307,7 @@ func destinations(js *aql.JobScript, dag engine.Coordinator, connMap map[string]
 			}
 
 			if dest.Global {
-				if err := globalDest(js, dag, &data, dest, globalOptions); err != nil {
+				if err := globalDest(js, dag, &data, dest, globalOptions, txManager); err != nil {
 					return err
 				}
 				continue

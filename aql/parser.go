@@ -225,6 +225,11 @@ func OptionScanner(blockName, namespace string, scope ...[]Option) OptScanner {
 				return fmt.Errorf("expected a number for option %s in block %s", needle, blockName)
 			}
 			*v = *opt.Value.Number
+		case *int:
+			if opt.Value == nil || opt.Value.Number == nil {
+				return fmt.Errorf("expected a number for option %s in block %s", needle, blockName)
+			}
+			*v = int(*opt.Value.Number)
 		case *string:
 			if opt.Value == nil || opt.Value.Str == nil {
 				return fmt.Errorf("expected a string for option %s in block %s", needle, blockName)
@@ -261,6 +266,11 @@ func MaybeOptionScanner(blockName, namespace string, scope ...[]Option) MaybeOpt
 				return true, fmt.Errorf("expected a number for option %s in block %s", needle, blockName)
 			}
 			*v = *opt.Value.Number
+		case *int:
+			if opt.Value == nil || opt.Value.Number == nil {
+				return true, fmt.Errorf("expected a number for option %s in block %s", needle, blockName)
+			}
+			*v = int(*opt.Value.Number)
 		case *string:
 			if opt.Value == nil || opt.Value.Str == nil {
 				return true, fmt.Errorf("expected a string for option %s in block %s", needle, blockName)

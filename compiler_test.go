@@ -161,6 +161,59 @@ func TestCompiler(t *testing.T) {
 	})
 }
 
+func TestUnmanagedTransaction(t *testing.T) {
+	script := `
+	GLOBAL 'Initialize' (
+		CREATE TABLE ContactStats3 (
+			id integer PRIMARY KEY,
+			first_name text NOT NULL,
+			calls real
+		);
+	);
+
+	QUERY 'InsertResults' FROM GLOBAL (
+		SELECT 1 AS id, 'Bob' AS first_name, 8 AS calls
+		UNION ALL
+		SELECT 2 AS id, 'Steven' AS first_name, 0 AS calls
+		UNION ALL
+		SELECT 3 AS id, 'Jack' AS first_name, 1 AS calls
+	) INTO GLOBAL WITH (TABLE = 'ContactStats3', MANAGED_TRANSACTION = 'False',
+					ROWS_PER_BATCH=2)
+	`
+	Convey("Given a script that uses unmanaged transaction", t, func() {
+		err := ExecuteString(script, &RuntimeOptions{})
+		So(err, ShouldBeNil)
+		db, err := sql.Open(globalDbDriver, globalDbConnString)
+		defer db.Close()
+		So(err, ShouldBeNil)
+		rows, err := db.Query("Select first_name, calls FROM ContactStats3")
+		So(err, ShouldBeNil)
+		var res struct {
+			name string
+			sum  float64
+		}
+
+		defer rows.Close()
+		var count int
+		for rows.Next() {
+			count++
+			err := rows.Scan(&res.name, &res.sum)
+			So(err, ShouldBeNil)
+			if res.name == "Bob" {
+				So(res.sum, ShouldEqual, 8.0)
+			} else if res.name == "Steven" {
+				So(res.sum, ShouldEqual, 0.0)
+			} else if res.name == "Jack" {
+				So(res.sum, ShouldEqual, 1.0)
+			} else {
+				So(res.name, ShouldBeIn, []string{"Bob", "Steven", "Jack"}) //fails
+			}
+		}
+		So(count, ShouldEqual, 3)
+	})
+
+}
+
 func TestCompilerWithExecs(t *testing.T) {
 	script := `
 	GLOBAL 'Initialize' (
