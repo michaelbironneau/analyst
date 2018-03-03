@@ -685,7 +685,7 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			if err != nil {
 				return err
 			}
-		}
+	;	}
 	}
 	for _, exec := range js.Execs {
 		if len(exec.Destinations) > 0 {
