@@ -95,6 +95,7 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 		return
 	}
 	if i, ok := Inserters[strings.ToLower(sq.Driver)]; ok {
+		sq.log(l, Info, fmt.Sprintf("Using optimized inserter %T", i))
 		inserter = i.New()
 	} else {
 		inserter = &DefaultInserter{}
@@ -156,7 +157,7 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 					sq.fatalerr(err, l, st)
 					return
 				}
-				sq.log(l, Info, fmt.Sprintf("Committed batch with %v rows", rowsInBatch))
+				sq.log(l, Info, fmt.Sprintf("Committed batch of %d - inserted %d rows", rowsInBatch, inserted))
 				tx, err = sq.db.Begin()
 				if err != nil {
 					sq.fatalerr(err, l, st)
