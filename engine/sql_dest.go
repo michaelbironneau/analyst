@@ -22,7 +22,6 @@ type SQLDestination struct {
 	Alias            string
 }
 
-
 const DefaultRowsPerBatch = 500
 
 func (sq *SQLDestination) Columns() []string {
@@ -81,9 +80,9 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 	}
 	sq.log(l, Info, "SQL destination opened")
 	var (
-		tx  *sql.Tx
+		tx       *sql.Tx
 		inserter SQLInserter
-		err error
+		err      error
 	)
 	if sq.manageTx {
 		tx, err = sq.db.Begin()
@@ -102,8 +101,8 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 	}
 
 	var (
-		inserted int
-		rowsInBatch int
+		inserted     int
+		rowsInBatch  int
 		rowsPerBatch int
 	)
 	if sq.RowsPerBatch > 0 {

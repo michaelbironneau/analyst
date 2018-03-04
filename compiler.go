@@ -685,7 +685,7 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			if err != nil {
 				return err
 			}
-	;	}
+		}
 	}
 	for _, exec := range js.Execs {
 		if len(exec.Destinations) > 0 {
@@ -771,8 +771,8 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 		maybeScan := aql.MaybeOptionScanner(query.Name, "", query.Options, conn.Options, globalOptions)
 		var (
 			manageTx bool
-			okM bool
-			errM error
+			okM      bool
+			errM     error
 		)
 
 		okM, errM = maybeScan("MANAGED_TRANSACTION", &manageTx)
@@ -784,7 +784,7 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 		var txUseFunc func() (*sql.Tx, error)
 
 		if !okM || manageTx {
-			txUseFunc = func() (*sql.Tx, error ){return txManager.Tx(conn.Name)}
+			txUseFunc = func() (*sql.Tx, error) { return txManager.Tx(conn.Name) }
 		}
 
 		s := engine.SQLSource{
@@ -795,8 +795,8 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			ParameterTable:   params,
 			ParameterNames:   query.Parameters,
 			ExecOnly:         execOnly,
-			TxReleaseFunc: func(){txManager.Release(conn.Name)},
-			TxUseFunc: txUseFunc,
+			TxReleaseFunc:    func() { txManager.Release(conn.Name) },
+			TxUseFunc:        txUseFunc,
 		}
 		//alias := alias(query.Sources[0], conn)
 		alias := query.Name //Queries can only have one source, so let's do away with this confusing alias nonsense
@@ -805,7 +805,6 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 	}
 	return nil
 }
-
 
 func alias(ss aql.SourceSink, conn *aql.Connection) string {
 	if ss.Alias != nil {
@@ -837,7 +836,7 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 	alias := alias(dest, &conn)
 
 	var (
-		manageTx bool
+		manageTx     bool
 		rowsPerBatch int
 	)
 
@@ -850,7 +849,7 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 	var txUseFunc func() (*sql.Tx, error)
 
 	if !ok || manageTx {
-		txUseFunc = func() (*sql.Tx, error ){return txManager.Tx(conn.Name)}
+		txUseFunc = func() (*sql.Tx, error) { return txManager.Tx(conn.Name) }
 	}
 
 	ok, err = maybeScan("ROWS_PER_BATCH", &rowsPerBatch)
@@ -866,9 +865,9 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 		ConnectionString: connString,
 		Table:            table,
 		Alias:            alias,
-		TxReleaseFunc: func(){txManager.Release(conn.Name)},
-		TxUseFunc: txUseFunc,
-		RowsPerBatch: rowsPerBatch,
+		TxReleaseFunc:    func() { txManager.Release(conn.Name) },
+		TxUseFunc:        txUseFunc,
+		RowsPerBatch:     rowsPerBatch,
 	})
 
 	dag.Connect(strings.ToLower(block.GetName()), strings.ToLower(block.GetName()+destinationUniquifier+conn.Name))
@@ -892,7 +891,7 @@ func globalDest(js *aql.JobScript, dag engine.Coordinator, block aql.Block, dest
 	alias := alias(dest, nil)
 
 	var (
-		manageTx bool
+		manageTx     bool
 		rowsPerBatch int
 	)
 
@@ -905,7 +904,7 @@ func globalDest(js *aql.JobScript, dag engine.Coordinator, block aql.Block, dest
 	var txUseFunc func() (*sql.Tx, error)
 
 	if !ok || manageTx {
-		txUseFunc = func() (*sql.Tx, error ){return txManager.Tx("GLOBAL")}
+		txUseFunc = func() (*sql.Tx, error) { return txManager.Tx("GLOBAL") }
 	}
 
 	ok, err = maybeScan("ROWS_PER_BATCH", &rowsPerBatch)
@@ -921,9 +920,9 @@ func globalDest(js *aql.JobScript, dag engine.Coordinator, block aql.Block, dest
 		ConnectionString: connString,
 		Table:            table,
 		Alias:            alias,
-		TxUseFunc: txUseFunc,
-		TxReleaseFunc: func(){txManager.Release("GLOBAL")},
-		RowsPerBatch: rowsPerBatch,
+		TxUseFunc:        txUseFunc,
+		TxReleaseFunc:    func() { txManager.Release("GLOBAL") },
+		RowsPerBatch:     rowsPerBatch,
 	})
 
 	dag.Connect(strings.ToLower(block.GetName()), strings.ToLower(block.GetName()+destinationUniquifier+"GLOBAL"))

@@ -15,7 +15,7 @@ type SlackOpts struct {
 	Username   string `aql:"SLACK_USER, optional"`
 	WebhookURL string `aql:"SLACK_WEBHOOK_URL"`
 	MinLevel   string `aql:"SLACK_LOG_LEVEL"`
-	Script string     `aql:"SLACK_NAME, optional"`
+	Script     string `aql:"SLACK_NAME, optional"`
 }
 
 type slackLogger struct {

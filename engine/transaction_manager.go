@@ -65,8 +65,8 @@ func NewTransactionManager(l Logger) TransactionManager {
 		l:      l,
 	}
 	tx.Register(aql.Connection{
-		Name: "GLOBAL",
-		Driver: "sqlite3",
+		Name:             "GLOBAL",
+		Driver:           "sqlite3",
 		ConnectionString: "file::memory:?mode=memory&cache=shared&_busy_timeout=5000",
 	})
 	return tx
@@ -81,8 +81,8 @@ func (tm *transactionManager) log(level LogLevel, msg string, args ...interface{
 	}
 }
 
-func (tm *transactionManager) Release(connName string){
-	defer func(){
+func (tm *transactionManager) Release(connName string) {
+	defer func() {
 		if r := recover(); r != nil {
 			tm.log(Warning, "Transaction lock for %s already released", connName)
 		} //ignore panics from twice-unlocked mutexes

@@ -2,8 +2,8 @@ package engine
 
 import (
 	"database/sql"
-	"github.com/denisenkom/go-mssqldb"
 	"fmt"
+	"github.com/denisenkom/go-mssqldb"
 	"strings"
 )
 
@@ -13,7 +13,6 @@ const InsertQuery = `INSERT INTO %s (%s) VALUES (%s)`
 //	* MS SQL Server: uses bulk copy
 // It does not perform any transaction management.
 type SQLInserter interface {
-
 	New() SQLInserter
 
 	//Initialize with connection details and database.
@@ -29,10 +28,10 @@ type SQLInserter interface {
 var Inserters = map[string]SQLInserter{"mssql": &MSSQLInserter{}}
 
 type DefaultInserter struct {
-	l Logger
+	l         Logger
 	tableName string
-	template string
-	cols []string
+	template  string
+	cols      []string
 }
 
 func (d *DefaultInserter) New() SQLInserter {
@@ -70,12 +69,12 @@ func (d *DefaultInserter) InsertBatch(tx *sql.Tx, msgs []Message) error {
 	return nil
 }
 
-func (d *DefaultInserter) PreCommit() error {return nil}
+func (d *DefaultInserter) PreCommit() error { return nil }
 
 type MSSQLInserter struct {
-	l Logger
+	l         Logger
 	tableName string
-	cols []string
+	cols      []string
 }
 
 func (m *MSSQLInserter) New() SQLInserter {
@@ -89,7 +88,7 @@ func (m *MSSQLInserter) Initialize(l Logger, tableName string, db *sql.DB, cols 
 	return nil
 }
 
-func (m *MSSQLInserter) PreCommit() error {return nil}
+func (m *MSSQLInserter) PreCommit() error { return nil }
 
 func (m *MSSQLInserter) InsertBatch(tx *sql.Tx, msgs []Message) error {
 	if len(msgs) == 0 {
@@ -115,7 +114,6 @@ func (m *MSSQLInserter) InsertBatch(tx *sql.Tx, msgs []Message) error {
 	if err != nil {
 		return fmt.Errorf("error with bulk copy: %v", err)
 	}
-
 
 	return nil
 }

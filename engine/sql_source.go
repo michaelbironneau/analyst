@@ -196,7 +196,7 @@ func (sq *SQLSource) Open(s Stream, l Logger, st Stopper) {
 
 	var (
 		startToProcess = time.Now()
-		processed = 0
+		processed      = 0
 	)
 	for r.Next() {
 		if st.Stopped() {

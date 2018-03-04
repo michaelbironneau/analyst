@@ -31,7 +31,7 @@ func TestSQLite(t *testing.T) {
 		tm := NewTransactionManager(l)
 		c := NewCoordinator(l, tm)
 		sq := SQLDestination{
-			Name: "sq-destination",
+			Name:             "sq-destination",
 			Driver:           "sqlite3",
 			ConnectionString: "./testing/test_insert.db",
 			Table:            "test",

@@ -1,8 +1,8 @@
 package engine
 
 import (
-	"sync"
 	"database/sql"
+	"sync"
 )
 
 type sqlDriverManager struct {
@@ -14,23 +14,23 @@ type sqlDriverManager struct {
 //source/destination
 var SQLDriverManager sqlDriverManager
 
-const driverManagerSeparator= "<<>>"
+const driverManagerSeparator = "<<>>"
 
-func init(){
+func init() {
 	SQLDriverManager = sqlDriverManager{
 		dbs: make(map[string]*sql.DB),
 	}
 }
 
-func (s *sqlDriverManager) DB(driver, connectionString string) (*sql.DB, error){
+func (s *sqlDriverManager) DB(driver, connectionString string) (*sql.DB, error) {
 	s.Lock()
 	defer s.Unlock()
-	if db, ok := s.dbs[driver + driverManagerSeparator + connectionString]; ok {
+	if db, ok := s.dbs[driver+driverManagerSeparator+connectionString]; ok {
 		return db, nil
 	}
 	db, err := sql.Open(driver, connectionString)
 	if err == nil {
-		s.dbs[driver + driverManagerSeparator + connectionString] = db
+		s.dbs[driver+driverManagerSeparator+connectionString] = db
 	}
 	return db, err
 }
