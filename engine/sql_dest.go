@@ -113,6 +113,7 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 	}
 	buffer := make([]Message, rowsPerBatch, rowsPerBatch)
 	for msg := range s.Chan(sq.Alias) {
+		sq.columns = s.Columns()
 		if st.Stopped() {
 			sq.log(l, Warning, "SQL destination aborted")
 			if !sq.manageTx {
@@ -132,6 +133,16 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 			return
 		}
 		sq.log(l, Trace, fmt.Sprintf("Row %v", msg.Data))
+		buffer[rowsInBatch] = msg
+		if len(s.Columns()) != len(msg.Data) {
+			sq.fatalerr(fmt.Errorf("expected %v columns but got %v", len(s.Columns()), len(msg.Data)), l, st)
+			if !sq.manageTx {
+				return
+			}
+			tx.Rollback() //discard error - best effort attempt
+			return
+		}
+		rowsInBatch++
 		if rowsInBatch == rowsPerBatch {
 			if err := inserter.InsertBatch(tx, buffer); err != nil {
 				sq.fatalerr(err, l, st)
@@ -155,18 +166,7 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 			}
 			rowsInBatch = 0
 		}
-
-		if len(s.Columns()) != len(msg.Data) {
-			sq.fatalerr(fmt.Errorf("expected %v columns but got %v", len(s.Columns()), len(msg.Data)), l, st)
-			if !sq.manageTx {
-				return
-			}
-			tx.Rollback() //discard error - best effort attempt
-			return
-		}
-		buffer[rowsInBatch] = msg
 		inserted++
-		rowsInBatch++
 	}
 	//insert remaining messages that didn't fit into previous batch
 	if err := inserter.InsertBatch(tx, buffer[0:rowsInBatch]); err != nil {

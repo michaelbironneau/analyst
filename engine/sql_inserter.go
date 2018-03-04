@@ -29,6 +29,7 @@ type SQLInserter interface {
 var Inserters = map[string]SQLInserter{"mssql": &MSSQLInserter{}}
 
 type DefaultInserter struct {
+	l Logger
 	tableName string
 	template string
 	cols []string
@@ -42,6 +43,7 @@ func (d *DefaultInserter) Initialize(l Logger, tableName string, db *sql.DB, col
 	d.tableName = tableName
 	d.cols = cols
 	d.template = d.Statement()
+	d.l = l
 	return nil
 }
 
