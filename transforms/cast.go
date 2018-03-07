@@ -1,9 +1,9 @@
 package transforms
 
 import (
-	"time"
-	"strconv"
 	"fmt"
+	"strconv"
+	"time"
 )
 
 // CastFn casts a source interface into a destination interface. A nil interface maps to a nil interface regardless of the destination type.
@@ -12,11 +12,11 @@ type CastFn func(src interface{}) (interface{}, error)
 // castFns is a map from the destination type to the cast function
 var castFns = map[string]CastFn{"int": castToInt, "varchar": castToString, "datetime": castToTime}
 
-func castToInt(src interface{}) (interface{}, error){
+func castToInt(src interface{}) (interface{}, error) {
 	if src == nil {
 		return nil, nil
 	}
-	switch v := src.(type){
+	switch v := src.(type) {
 	case int:
 		return v, nil
 	case float64:
@@ -39,11 +39,11 @@ func castToInt(src interface{}) (interface{}, error){
 	}
 }
 
-func castToString(src interface{}) (interface{}, error){
+func castToString(src interface{}) (interface{}, error) {
 	if src == nil {
 		return nil, nil
 	}
-	switch v := src.(type){
+	switch v := src.(type) {
 	case string:
 		return v, nil
 	case int:
@@ -66,16 +66,16 @@ func castToString(src interface{}) (interface{}, error){
 	}
 }
 
-func castToTime(src interface{}) (interface{}, error){
+func castToTime(src interface{}) (interface{}, error) {
 	if src == nil {
 		return nil, nil
 	}
-	switch v := src.(type){
+	switch v := src.(type) {
 	case string:
 		t, _, err := parseTime(v)
 		return t, err
 	case int:
-		t := time.Unix(int64(v),0)
+		t := time.Unix(int64(v), 0)
 		return &t, nil
 	default:
 		return nil, fmt.Errorf("unsupported type for casting to integer: %T", src)

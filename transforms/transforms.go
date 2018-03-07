@@ -12,7 +12,7 @@ var (
 	types map[string]initializer = map[string]initializer{
 		"aggregate": aggregateInitializer,
 		"lookup":    lookupInitializer,
-		"convert": convertInitializer,
+		"convert":   convertInitializer,
 	}
 )
 

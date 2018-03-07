@@ -6,10 +6,10 @@ import (
 	"time"
 )
 
-func TestCastToInt(t *testing.T){
-	Convey("Given valid destination types", t, func(){
-		Convey("It should be possible to correctly cast them to an integer", func(){
-			tests := map[interface{}]int {1: 1, 2.0: 2, "10": 10, time.Unix(123,0): 123}
+func TestCastToInt(t *testing.T) {
+	Convey("Given valid destination types", t, func() {
+		Convey("It should be possible to correctly cast them to an integer", func() {
+			tests := map[interface{}]int{1: 1, 2.0: 2, "10": 10, time.Unix(123, 0): 123}
 			for input, output := range tests {
 				actual, err := castToInt(input)
 				So(actual, ShouldEqual, output)
@@ -17,8 +17,8 @@ func TestCastToInt(t *testing.T){
 			}
 		})
 	})
-	Convey("Given invalid destination types", t, func(){
-		Convey("It should be impossible to cast them to an integer", func(){
+	Convey("Given invalid destination types", t, func() {
+		Convey("It should be impossible to cast them to an integer", func() {
 			invalid := []interface{}{"asdf", map[string]interface{}{"a": 1}}
 			for _, input := range invalid {
 				_, err := castToInt(input)
@@ -28,11 +28,10 @@ func TestCastToInt(t *testing.T){
 	})
 }
 
-
-func TestCastToString(t *testing.T){
-	Convey("Given valid destination types", t, func(){
-		Convey("It should be possible to correctly cast them to an string", func(){
-			tests := map[interface{}]string {1: "1", 2.0: "2.000000", "10": "10"}
+func TestCastToString(t *testing.T) {
+	Convey("Given valid destination types", t, func() {
+		Convey("It should be possible to correctly cast them to an string", func() {
+			tests := map[interface{}]string{1: "1", 2.0: "2.000000", "10": "10"}
 			for input, output := range tests {
 				actual, err := castToString(input)
 				So(actual, ShouldEqual, output)
@@ -42,10 +41,10 @@ func TestCastToString(t *testing.T){
 	})
 }
 
-func TestCastToTime(t *testing.T){
-	Convey("Given valid destination types", t, func(){
-		Convey("It should be possible to correctly cast them to an time", func(){
-			tests := map[interface{}]time.Time {1: time.Unix(1,0), "1970-01-01T00:00:03Z": time.Unix(3,0)}
+func TestCastToTime(t *testing.T) {
+	Convey("Given valid destination types", t, func() {
+		Convey("It should be possible to correctly cast them to an time", func() {
+			tests := map[interface{}]time.Time{1: time.Unix(1, 0), "1970-01-01T00:00:03Z": time.Unix(3, 0)}
 			for input, output := range tests {
 				actual, err := castToTime(input)
 				So(err, ShouldBeNil)
@@ -59,8 +58,8 @@ func TestCastToTime(t *testing.T){
 			}
 		})
 	})
-	Convey("Given invalid destination types", t, func(){
-		Convey("It should be impossible to cast them to an integer", func(){
+	Convey("Given invalid destination types", t, func() {
+		Convey("It should be impossible to cast them to an integer", func() {
 			invalid := []interface{}{"asdf", map[string]interface{}{"a": 1}}
 			for _, input := range invalid {
 				_, err := castToTime(input)

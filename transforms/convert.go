@@ -19,25 +19,24 @@ var (
 	)), "Keyword"), "String")
 )
 
-
 type Column struct {
 	Column string  `@Ident`
 	Alias  *string `["AS " @Ident]`
 }
 
 type CastColumn struct {
-	Column string `"CAST" "(" @Ident`
-	DestType string `"AS " @Ident ")"`
-	Alias *string `["AS " @Ident]`
+	Column   string  `"CAST" "(" @Ident`
+	DestType string  `"AS " @Ident ")"`
+	Alias    *string `["AS " @Ident]`
 }
 
 type ConversionColumn struct {
-	Lookup *Column `@@`
+	Lookup *Column     `@@`
 	Cast   *CastColumn `| @@`
 }
 
 type Convert struct {
-	Projections   []ConversionColumn  `"CONVERT " @@ {"," @@}`
+	Projections []ConversionColumn `"CONVERT " @@ {"," @@}`
 }
 
 func projectArray(projectionColumns []string, actualColumns []string) (func([]interface{}) []interface{}, error) {
@@ -63,19 +62,15 @@ func projectArray(projectionColumns []string, actualColumns []string) (func([]in
 	}, nil
 }
 
-
 type convert struct {
-	outgoingName      string
-	sourceSeq         []string
-	sourceCols 		[]string
-	outputCols 		[]string
-	castFns         []CastFn
-	projection        []ConversionColumn
-	sequencer         engine.Sequencer
+	outgoingName string
+	sourceSeq    []string
+	sourceCols   []string
+	outputCols   []string
+	castFns      []CastFn
+	projection   []ConversionColumn
+	sequencer    engine.Sequencer
 }
-
-
-
 
 //  Sequence is required to satisfy Sequenceable interface, but does nothing for a convert.
 //  TODO: Fully implement the interface
@@ -91,11 +86,9 @@ func (l *convert) Open(s engine.Stream, dest engine.Stream, logger engine.Logger
 
 	var (
 		firstMessage = true
-		projectOp func([]interface{}) []interface{}
-		err error
+		projectOp    func([]interface{}) []interface{}
+		err          error
 	)
-
-
 
 	for msg := range inChan {
 		l.log(logger, engine.Info, "Convert transform opened")
@@ -127,15 +120,14 @@ func (l *convert) Open(s engine.Stream, dest engine.Stream, logger engine.Logger
 			}
 		}
 
-		outChan <- engine.Message {
-			Source: l.outgoingName,
+		outChan <- engine.Message{
+			Source:      l.outgoingName,
 			Destination: engine.DestinationWildcard,
-			Data: out,
+			Data:        out,
 		}
 	}
 
 	close(outChan)
-
 
 }
 
