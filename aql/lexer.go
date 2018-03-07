@@ -87,7 +87,7 @@ func (d *definition) Lex(r io.Reader) lexer.Lexer {
 	}
 	//fmt.Println(i)
 	l.items = i
-	return l
+	return lexer.Upgrade(l)
 }
 
 func (f *ForwardLexer) Peek() lexer.Token {
