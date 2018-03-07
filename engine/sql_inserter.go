@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/denisenkom/go-mssqldb"
+	"github.com/lib/pq"
 	"strings"
 )
 
@@ -25,7 +26,7 @@ type SQLInserter interface {
 	PreCommit() error
 }
 
-var Inserters = map[string]SQLInserter{"mssql": &MSSQLInserter{}}
+var Inserters = map[string]SQLInserter{"mssql": &MSSQLInserter{}, "postgres": &PostgresInserter{}}
 
 type DefaultInserter struct {
 	l         Logger
@@ -95,6 +96,53 @@ func (m *MSSQLInserter) InsertBatch(tx *sql.Tx, msgs []Message) error {
 	}
 
 	stmt, err := tx.Prepare(mssql.CopyIn(m.tableName, mssql.MssqlBulkOptions{}, m.cols...))
+	defer stmt.Close()
+
+	if err != nil {
+		return fmt.Errorf("error preparing bulk copy statement: %v", err)
+	}
+
+	for _, msg := range msgs {
+		_, err = stmt.Exec(msg.Data...)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err = stmt.Exec()
+
+	if err != nil {
+		return fmt.Errorf("error with bulk copy: %v", err)
+	}
+
+	return nil
+}
+
+type PostgresInserter struct {
+	l         Logger
+	tableName string
+	cols      []string
+}
+
+func (m *PostgresInserter) New() SQLInserter {
+	return &MSSQLInserter{}
+}
+
+func (m *PostgresInserter) Initialize(l Logger, tableName string, db *sql.DB, cols []string) error {
+	m.l = l
+	m.tableName = tableName
+	m.cols = cols
+	return nil
+}
+
+func (m *PostgresInserter) PreCommit() error { return nil }
+
+func (m *PostgresInserter) InsertBatch(tx *sql.Tx, msgs []Message) error {
+	if len(msgs) == 0 {
+		return nil
+	}
+
+	stmt, err := tx.Prepare(pq.CopyIn(m.tableName, m.cols...))
 	defer stmt.Close()
 
 	if err != nil {
