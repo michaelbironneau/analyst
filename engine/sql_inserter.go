@@ -55,11 +55,10 @@ func (d *DefaultInserter) Statement() string {
 
 func (d *DefaultInserter) InsertBatch(tx *sql.Tx, msgs []Message) error {
 	stmt, err := tx.Prepare(d.template)
-	defer stmt.Close()
 	if err != nil {
 		return fmt.Errorf("error preparing statement: %v", err)
 	}
-
+	defer stmt.Close()
 	for _, msg := range msgs {
 		_, err := stmt.Exec(msg.Data...)
 		if err != nil {
