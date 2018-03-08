@@ -16,6 +16,7 @@ type SQLDestination struct {
 	columns          []string
 	manageTx         bool `aql:"MANAGED_TRANSACTION,optional"`
 	RowsPerBatch     int  `aql:"ROWS_PER_BATCH,optional"`
+	DropNulls        bool `aql:"DROP_NULLS,optional"`
 	db               *sql.DB
 	TxUseFunc        func() (*sql.Tx, error)
 	TxReleaseFunc    func()
@@ -132,6 +133,10 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 			sq.fatalerr(err, l, st)
 			return
 		}
+		if sq.DropNulls && hasNulls(msg.Data){
+			sq.log(l, Info, fmt.Sprintf("Dropped row with NULL: %v", msg.Data))
+			continue
+		}
 		sq.log(l, Trace, fmt.Sprintf("Row %v", msg.Data))
 		buffer[rowsInBatch] = msg
 		if len(s.Columns()) != len(msg.Data) {
@@ -184,4 +189,13 @@ func (sq *SQLDestination) Open(s Stream, l Logger, st Stopper) {
 	if err != nil {
 		sq.fatalerr(err, l, st)
 	}
+}
+
+func hasNulls(data []interface{}) bool {
+	for i := range data {
+		if data[i] == nil {
+			return true
+		}
+	}
+	return false
 }

@@ -838,7 +838,14 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 	var (
 		manageTx     bool
 		rowsPerBatch int
+		dropNulls    bool
 	)
+
+	_, err = maybeScan("DROP_NULLS", &dropNulls)
+
+	if err != nil {
+		return err
+	}
 
 	ok, err := maybeScan("MANAGED_TRANSACTION", &manageTx)
 
@@ -868,6 +875,7 @@ func sqlDest(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 		TxReleaseFunc:    func() { txManager.Release(conn.Name) },
 		TxUseFunc:        txUseFunc,
 		RowsPerBatch:     rowsPerBatch,
+		DropNulls: dropNulls,
 	})
 
 	dag.Connect(strings.ToLower(block.GetName()), strings.ToLower(block.GetName()+destinationUniquifier+conn.Name))
