@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	convertLexer = lexer.Unquote(lexer.Upper(lexer.Must(lexer.Regexp(`(\s+)`+
-		`|(?P<Keyword>(?i)CONVERT\s|CAST|AS\s)`+
+	applyLexer = lexer.Unquote(lexer.Upper(lexer.Must(lexer.Regexp(`(\s+)`+
+		`|(?P<Keyword>(?i)APPLY\s|CAST\(|AS\s)`+
 		`|(?P<Ident>[a-zA-Z_][a-zA-Z0-9_]*)`+
 		`|(?P<Number>[-+]?\d*\.?\d+([eE][-+]?\d+)?)`+
 		`|(?P<String>'[^']*'|"[^"]*")`+
@@ -25,7 +25,7 @@ type Column struct {
 }
 
 type CastColumn struct {
-	Column   string  `"CAST" "(" @Ident`
+	Column   string  `"CAST(" @Ident`
 	DestType string  `"AS " @Ident ")"`
 	Alias    *string `["AS " @Ident]`
 }
@@ -35,8 +35,8 @@ type ConversionColumn struct {
 	Cast   *CastColumn `| @@`
 }
 
-type Convert struct {
-	Projections []ConversionColumn `"CONVERT " @@ {"," @@}`
+type Apply struct {
+	Projections []ConversionColumn `"APPLY " @@ {"," @@}`
 }
 
 func projectArray(projectionColumns []string, actualColumns []string) (func([]interface{}) []interface{}, error) {
@@ -62,7 +62,7 @@ func projectArray(projectionColumns []string, actualColumns []string) (func([]in
 	}, nil
 }
 
-type convert struct {
+type apply struct {
 	outgoingName string
 	sourceSeq    []string
 	sourceCols   []string
@@ -72,13 +72,13 @@ type convert struct {
 	sequencer    engine.Sequencer
 }
 
-//  Sequence is required to satisfy Sequenceable interface, but does nothing for a convert.
+//  Sequence is required to satisfy Sequenceable interface, but does nothing for a apply.
 //  TODO: Fully implement the interface
-func (l *convert) Sequence([]string) {}
+func (l *apply) Sequence([]string) {}
 
-func (l *convert) SetName(name string) { l.outgoingName = name }
+func (l *apply) SetName(name string) { l.outgoingName = name }
 
-func (l *convert) Open(s engine.Stream, dest engine.Stream, logger engine.Logger, st engine.Stopper) {
+func (l *apply) Open(s engine.Stream, dest engine.Stream, logger engine.Logger, st engine.Stopper) {
 
 	inChan := s.Chan(l.outgoingName)
 	outChan := dest.Chan(l.outgoingName)
@@ -90,10 +90,10 @@ func (l *convert) Open(s engine.Stream, dest engine.Stream, logger engine.Logger
 		err          error
 	)
 
+	l.log(logger, engine.Info, "Apply transform opened")
 	for msg := range inChan {
-		l.log(logger, engine.Info, "Convert transform opened")
 		if st.Stopped() {
-			l.log(logger, engine.Warning, "Convert transform aborted")
+			l.log(logger, engine.Warning, "Apply transform aborted")
 			return
 		}
 		if firstMessage {
@@ -131,7 +131,7 @@ func (l *convert) Open(s engine.Stream, dest engine.Stream, logger engine.Logger
 
 }
 
-func (l *convert) log(logger engine.Logger, level engine.LogLevel, msg string, args ...interface{}) {
+func (l *apply) log(logger engine.Logger, level engine.LogLevel, msg string, args ...interface{}) {
 	logger.Chan() <- engine.Event{
 		Source:  l.outgoingName,
 		Level:   level,
@@ -140,7 +140,7 @@ func (l *convert) log(logger engine.Logger, level engine.LogLevel, msg string, a
 	}
 }
 
-func (l *convert) fatalerr(err error, s engine.Stream, logger engine.Logger, st engine.Stopper) {
+func (l *apply) fatalerr(err error, s engine.Stream, logger engine.Logger, st engine.Stopper) {
 	logger.Chan() <- engine.Event{
 		Level:   engine.Error,
 		Source:  l.outgoingName,
@@ -151,8 +151,8 @@ func (l *convert) fatalerr(err error, s engine.Stream, logger engine.Logger, st 
 	close(s.Chan(l.outgoingName))
 }
 
-func newConvert(c *Convert) (*convert, error) {
-	var ret convert
+func newApply(c *Apply) (*apply, error) {
+	var ret apply
 
 	ret.castFns = make([]CastFn, len(c.Projections), len(c.Projections))
 
@@ -186,22 +186,22 @@ func newConvert(c *Convert) (*convert, error) {
 
 }
 
-func NewConvert(aqlBody string) (*convert, error) {
-	p, err := participle.Build(&Convert{}, convertLexer)
+func NewApply(aqlBody string) (*apply, error) {
+	p, err := participle.Build(&Apply{}, applyLexer)
 
 	if err != nil {
 		panic(err)
 	}
-	var c Convert
+	var c Apply
 	err = p.ParseString(aqlBody, &c)
 
 	if err != nil {
 		return nil, err
 	}
 
-	return newConvert(&c)
+	return newApply(&c)
 }
 
-func convertInitializer(aqlBody string) (engine.SequenceableTransform, error) {
-	return NewConvert(aqlBody)
+func applyInitializer(aqlBody string) (engine.SequenceableTransform, error) {
+	return NewApply(aqlBody)
 }
