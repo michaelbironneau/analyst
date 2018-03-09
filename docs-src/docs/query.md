@@ -98,7 +98,14 @@ Move data from one database to another:
 ```
 QUERY 'MoveData' FROM CONNECTION MyDb (
 	SELECT * FROM MyTable
-) INTO CONNECTION MyOtherDb WITH (Table = 'SecondTable')
+) INTO CONNECTION MyOtherDb WITH (TABLE = 'SecondTable')
+```
+
+Ignore any rows containing NULLs and don't attempt to insert them into the destination:
+```
+QUERY 'MoveData' FROM CONNECTION MyDb (
+	SELECT * FROM MyTable
+) INTO CONNECTION MyOtherDb WITH (TABLE = 'SecondTable', DROP_NULLS = 'True')
 ```
 
 Use parameters and synchronization to print @Name and @Id in that order.

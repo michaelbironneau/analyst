@@ -46,6 +46,8 @@ CONNECTION 'PostgresExample' (
 )
 ```
 
+When using a `QUERY` or `TRANSFORM` to insert data into a SQL database, an option `DROP_NULLS` is available, which if truthy will ignore a row that includes any NULL value. 
+
 ## Other Connectors
 
 ### Excel

@@ -26,6 +26,7 @@ There are two built-in transforms:
 
 * `LOOKUP`: Performs a lookup using outer or inner join condition
 * `AGGREGATE`: Applies aggregates such as `SUM()` to the data
+* `APPLY`: Apply a scalar function to the data. At present only `CAST` is supported.
 
 Both are documented more extensively in the [Transforms](transforms.md) page.
 

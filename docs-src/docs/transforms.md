@@ -3,7 +3,7 @@ id: transforms
 title: Transforms
 ---
 
-This section explains the usage of built-in transforms, `LOOKUP` and `AGGREGATE`.
+This section explains the usage of built-in transforms: `LOOKUP`, `AGGREGATE` and `APPLY`.
 
 ## The `LOOKUP` transform
 
@@ -116,4 +116,23 @@ TRANSFORM 'Resample' FROM GLOBAL (
     GROUP BY LoadId, Variable
 ) INTO CONSOLE
     WITH (Table = 'Timeseries', CONSOLE_OUTPUT_FORMAT='JSON')
+```
+
+## APPLY
+
+The `APPLY` transform applies a scalar function to a single row. At present, only `CAST` is supported.
+
+The source/destination types for `CAST` are as follows:
+
+* `INT` (integer) -> `VARCHAR`, `DATETIME` (seconds since epoch)
+* `VARCHAR` (string) -> `INT`, `DATETIME` (RFC3339 format with or without nanoseconds)
+* `DATETIME` -> `INT` (seconds since epoch), `VARCHAR` (RFC3339 format)
+* `BOOLEAN` -> `INT` (0 is False, 1 is True), `VARCHAR` (True/False)
+
+**Example:**
+
+```
+TRANSFORM 'ParseDates' FROM GLOBAL (
+    APPLY IntColumn, CAST(DateColumn AS DATETIME), ToBeRenamed As NewColumn
+)
 ```

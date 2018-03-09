@@ -68,7 +68,12 @@
 <p>Move data from one database to another:</p>
 <pre><code class="hljs">QUERY <span class="hljs-string">'MoveData'</span> <span class="hljs-keyword">FROM</span> CONNECTION MyDb (
     <span class="hljs-keyword">SELECT</span> * <span class="hljs-keyword">FROM</span> MyTable
-) <span class="hljs-keyword">INTO</span> CONNECTION MyOtherDb <span class="hljs-keyword">WITH</span> (Table = <span class="hljs-string">'SecondTable'</span>)
+) <span class="hljs-keyword">INTO</span> CONNECTION MyOtherDb <span class="hljs-keyword">WITH</span> (TABLE = <span class="hljs-string">'SecondTable'</span>)
+</code></pre>
+<p>Ignore any rows containing NULLs and don't attempt to insert them into the destination:</p>
+<pre><code class="hljs">QUERY <span class="hljs-string">'MoveData'</span> <span class="hljs-keyword">FROM</span> CONNECTION MyDb (
+    <span class="hljs-keyword">SELECT</span> * <span class="hljs-keyword">FROM</span> MyTable
+) <span class="hljs-keyword">INTO</span> CONNECTION MyOtherDb <span class="hljs-keyword">WITH</span> (TABLE = <span class="hljs-string">'SecondTable'</span>, DROP_NULLS = <span class="hljs-string">'True'</span>)
 </code></pre>
 <p>Use parameters and synchronization to print @Name and @Id in that order.</p>
 <pre><code class="hljs"><span class="hljs-keyword">DECLARE</span> @<span class="hljs-keyword">Id</span>;
