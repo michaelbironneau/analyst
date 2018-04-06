@@ -21,9 +21,6 @@ type SequenceableTransform interface {
 	Sequenceable
 }
 
-//Condition is a func that returns true if the message passes the test and false otherwise.
-type Condition func(map[string]interface{}) bool
-
 type testNode struct {
 	names        []string
 	descs        []string
