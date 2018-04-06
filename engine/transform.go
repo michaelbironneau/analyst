@@ -22,7 +22,7 @@ type SequenceableTransform interface {
 }
 
 //Condition is a func that returns true if the message passes the test and false otherwise.
-type Condition func([]interface{}) bool
+type Condition func(map[string]interface{}) bool
 
 type testNode struct {
 	names        []string
@@ -45,16 +45,32 @@ func (tn *testNode) Ping() error {
 	return nil
 }
 
+func mapConverter(cols []string) func([]interface{}) map[string]interface{}{
+	return func(msg []interface{}) map[string]interface{}{
+		if len(cols) != len(msg){
+			panic("Encountered rows of different lengths! This should not happen")
+		}
+		ret := make(map[string]interface{})
+		for i, c := range cols {
+			ret[c] = msg[i]
+		}
+		return ret
+	}
+}
+
 func (tn *testNode) Open(s Stream, dest Stream, l Logger, st Stopper) {
 	var firstMessage = true
+	var converter func([]interface{}) map[string]interface{}
 	d := dest.Chan(tn.outgoingName)
 	for msg := range s.Chan(tn.outgoingName) {
 		if firstMessage {
+			converter = mapConverter(s.Columns())
 			dest.SetColumns(tn.outgoingName, s.Columns())
 			firstMessage = false
 		}
+		mappedMsg := converter(msg.Data)
 		for i := range tn.conds {
-			if !tn.conds[i](msg.Data) {
+			if !tn.conds[i](mappedMsg) {
 				l.Chan() <- Event{
 					Source:  tn.names[i],
 					Message: fmt.Sprintf("[FAIL] %s", tn.descs[i]),
