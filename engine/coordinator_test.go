@@ -187,7 +187,7 @@ func TestTester(t *testing.T) {
 		c := NewCoordinator(l, tx)
 		msg := [][]interface{}{[]interface{}{"a", "b", "c"}, []interface{}{"d", "e", "f"}}
 		cols := []string{"1", "2", "3"}
-		failTester := func(msg map[string]interface{}) bool {
+		failTester := func(map[string]interface{}, bool) bool {
 			return false
 		}
 		Convey("It should stop stream if a test fails", func() {

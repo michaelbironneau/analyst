@@ -67,7 +67,8 @@ func (tn *testNode) Open(s Stream, dest Stream, l Logger, st Stopper) {
 		}
 		mappedMsg := converter(msg.Data)
 		for i := range tn.conds {
-			if !tn.conds[i](mappedMsg) {
+			//execute tests with EOF = false
+			if !tn.conds[i](mappedMsg, false) {
 				l.Chan() <- Event{
 					Source:  tn.names[i],
 					Message: fmt.Sprintf("[FAIL] %s", tn.descs[i]),
@@ -80,6 +81,19 @@ func (tn *testNode) Open(s Stream, dest Stream, l Logger, st Stopper) {
 			}
 		}
 		d <- msg
+	}
+	//execute tests with EOF = true
+	for i := range tn.conds {
+		if !tn.conds[i](nil, true){
+			l.Chan() <- Event{
+				Source:  tn.names[i],
+				Message: fmt.Sprintf("[FAIL] %s", tn.descs[i]),
+				Time:    time.Now(),
+				Level:   Error,
+			}
+			st.Stop()
+			close(d)
+		}
 	}
 }
 

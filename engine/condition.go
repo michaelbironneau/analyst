@@ -11,7 +11,7 @@ import (
 )
 
 //Condition is a func that returns true if the message passes the test and false otherwise.
-type Condition func(map[string]interface{}) bool
+type Condition func(msg map[string]interface{}, eof bool) bool
 
 func init(){
 	builtins.LoadAllBuiltins()
@@ -22,7 +22,10 @@ func NewSQLCondition(sql string) (Condition, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error parsing condition '%s': %v", sql, err)
 	}
-	return func(msg map[string]interface{}) bool {
+	return func(msg map[string]interface{}, eof bool) bool {
+		if eof {
+			return true
+		}
 		evalContext := datasource.NewContextSimpleNative(msg)
 		val, ok := vm.Eval(evalContext, exprAst)
 		if !ok  {
@@ -42,4 +45,36 @@ func castToBool(val value.Value) bool {
 	}
 	s := strings.ToLower(val.ToString())
 	return s == "1" || s == "true"
+}
+
+func HasAtLeastNRowsCondition(n int) (Condition, error){
+	i := 0
+	return func(msg map[string]interface{}, eof bool) bool {
+		if eof {
+			if i < n {
+				return false
+			}
+			return true
+		}
+		i++
+		return true
+	}, nil
+}
+
+func HasAtMostNRowsCondition(n int) (Condition, error){
+	i := 0
+	return func(msg map[string]interface{}, eof bool) bool {
+		if eof {
+			if i > n {
+				return false
+			}
+			return true
+		}
+		i++
+		if i > n {
+			return false
+		}
+
+		return true
+	}, nil
 }
