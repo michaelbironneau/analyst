@@ -95,7 +95,7 @@ func (m *MSSQLInserter) InsertBatch(tx *sql.Tx, msgs []Message) error {
 		return nil
 	}
 
-	stmt, err := tx.Prepare(mssql.CopyIn(m.tableName, mssql.MssqlBulkOptions{}, m.cols...))
+	stmt, err := tx.Prepare(mssql.CopyIn(m.tableName, mssql.BulkOptions{}, m.cols...))
 	defer stmt.Close()
 
 	if err != nil {
