@@ -93,15 +93,25 @@ type Declaration struct {
 	Name string `DECLARE @IDENT`
 }
 
+/**
+TEST 'BlockName' WITH ASSERTIONS (
+	IT OUTPUTS AT LEAST N ROWS;
+	IT OUTPUTS AT MOST N ROWS;
+	IT OUTPUTS EXACTLY N ROWS;
+	COLUMN <Column Name> HAS AT MOST N DISTINCT VALUES;
+	COLUMN <Column Name> HAS AT LEAST N DISTINCT VALUES;
+	COLUMN <Column Name> HAS EXACTLY N DISTINCT VALUES;
+	COLUMN <Column Name> CONTAINS <Number|QuotedString|Boolean|NULL>;
+	COLUMN <Column Name> IS NOT NULL;
+	COLUMN <Column Name> HAS NO DUPLICATE VALUES;
+	IT SATISFIES <Expression>;
+)
+*/
 type Test struct {
-	Query        bool         `TEST [@QUERY `
-	Plugin       bool         `|@PLUGIN ]`
-	Name         string       `@QUOTED_STRING`
-	Extern       *string      `[EXTERN @QUOTED_STRING]`
-	Sources      []SourceSink `FROM @@ {"," @@}`
-	Content      string       `['(' @PAREN_BODY ')']`
-	Destinations []SourceSink `[INTO @@ {"," @@}]`
-	Options      []Option     `[WITH '(' @@ {"," @@ } ')' ]`
+	TargetBlock string   `TEST @QUOTED_STRING WITH ASSERTIONS`
+	Extern      *string  `[EXTERN @QUOTED_STRING]`
+	Content     string   `['(' @PAREN_BODY ')']`
+	Options     []Option `[WITH '(' @@ {"," @@ } ')' ]`
 }
 
 type Data struct {

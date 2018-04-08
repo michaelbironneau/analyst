@@ -38,3 +38,26 @@ func TestRowCountCondition(t *testing.T){
 		})
 	})
 }
+
+func TestDistinctRowCountCondition(t *testing.T){
+	Convey("Given a slice of messages", t, func(){
+		msg := [][]interface{}{[]interface{}{"as", "bs"}, []interface{}{"as", "bs"}, []interface{}{"cs", "ds"}}
+		converter:= mapConverter([]string{"ColA", "ColB"})
+		Convey("The distinct row count conditions should be correctly evaluted", func(){
+			c, _ := HasAtLeastNDistinctValuesCondition("ColA", 2)
+			c2, _ := HasAtMostNDistinctValuesCondition("ColA", 1)
+			So(c(converter(msg[0]), false), ShouldBeTrue)
+			So(c(converter(msg[1]), false), ShouldBeTrue)
+			So(c(nil, true), ShouldBeFalse)
+			So(c(converter(msg[2]), false), ShouldBeTrue)
+			So(c(nil, true), ShouldBeTrue)
+
+			So(c2(nil, true), ShouldBeTrue)
+			So(c2(converter(msg[0]), false), ShouldBeTrue)
+			So(c2(converter(msg[1]), false), ShouldBeTrue)
+			So(c2(nil, true), ShouldBeTrue)
+			So(c2(converter(msg[2]), false), ShouldBeFalse)
+			So(c2(nil, true), ShouldBeFalse)
+		})
+	})
+}

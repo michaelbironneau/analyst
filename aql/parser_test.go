@@ -502,20 +502,15 @@ func TestTest(t *testing.T) {
 	}
 	Convey("It should parse test blocks successfully", t, func() {
 		//1
-		s1 := `TEST PLUGIN 'name' FROM CONNECTION source (
+		s1 := `TEST 'block_name' WITH ASSERTIONS (
 			query_source()
 		);
 		`
 		b := &Test{}
 		err = parser.ParseString(s1, b)
 		So(err, ShouldBeNil)
-		So(b.Name, ShouldEqual, "name")
+		So(b.TargetBlock, ShouldEqual, "block_name")
 		So(strings.TrimSpace(b.Content), ShouldEqual, "query_source()")
-		So(b.Sources, ShouldHaveLength, 1)
-		s := "source"
-		So(b.Sources[0].Database, ShouldResemble, &s)
-		So(b.Plugin, ShouldBeTrue)
-		So(b.Query, ShouldBeFalse)
 	})
 }
 

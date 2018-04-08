@@ -78,3 +78,35 @@ func HasAtMostNRowsCondition(n int) (Condition, error){
 		return true
 	}, nil
 }
+
+func HasAtMostNDistinctValuesCondition(col string, n int) (Condition, error){
+	vals := make(map[string]interface{})
+	return func(msg map[string]interface{}, eof bool) bool {
+		if eof {
+			if len(vals) > n {
+				return false
+			}
+			return true
+		}
+		vals[fmt.Sprintf("%v", msg[col])] = true
+		if len(vals) > n {
+			return false
+		}
+
+		return true
+	}, nil
+}
+
+func HasAtLeastNDistinctValuesCondition(col string, n int) (Condition, error){
+	vals := make(map[string]interface{})
+	return func(msg map[string]interface{}, eof bool) bool {
+		if eof {
+			if len(vals) < n {
+				return false
+			}
+			return true
+		}
+		vals[fmt.Sprintf("%v", msg[col])] = true
+		return true
+	}, nil
+}
