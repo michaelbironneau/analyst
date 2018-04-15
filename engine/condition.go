@@ -79,6 +79,24 @@ func HasAtMostNRowsCondition(n int) (Condition, error){
 	}, nil
 }
 
+func HasExactlyNRowsCondition(n int) (Condition, error){
+	i := 0
+	return func(msg map[string]interface{}, eof bool) bool {
+		if eof {
+			if i != n {
+				return false
+			}
+			return true
+		}
+		i++
+		if i > n {
+			return false
+		}
+
+		return true
+	}, nil
+}
+
 func HasAtMostNDistinctValuesCondition(col string, n int) (Condition, error){
 	vals := make(map[string]interface{})
 	return func(msg map[string]interface{}, eof bool) bool {
@@ -110,3 +128,41 @@ func HasAtLeastNDistinctValuesCondition(col string, n int) (Condition, error){
 		return true
 	}, nil
 }
+
+func HasExactlyNDistinctValuesCondition(col string, n int) (Condition, error){
+	vals := make(map[string]bool)
+	return func(msg map[string]interface{}, eof bool) bool {
+		if eof {
+			if len(vals) != n {
+				return false
+			}
+			return true
+		}
+		vals[fmt.Sprintf("%v", msg[col])] = true
+		return true
+	}, nil
+}
+
+func HasNoNullValues(col string) (Condition, error){
+	return func(msg map[string]interface{}, eof bool) bool {
+		if eof {
+			return true
+		}
+		return msg[col] != nil
+	}, nil
+}
+
+func HasNoDuplicates(col string) (Condition, error){
+	vals := make(map[string]bool)
+	return func(msg map[string]interface{}, eof bool) bool {
+		if eof {
+			return true
+		}
+		if vals[fmt.Sprintf("%v", msg[col])] {
+			return false
+		}
+		vals[fmt.Sprintf("%v", msg[col])] = true
+		return true
+	}, nil
+}
+
