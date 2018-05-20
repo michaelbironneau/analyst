@@ -23,6 +23,7 @@ func TestModels(t *testing.T) {
 	Convey("The database should be created without problems", t, func() {
 		os.Remove(testDBFile)
 		db, err := gorm.Open("sqlite3", testDBFile)
+		db.Exec("PRAGMA foreign_keys = ON")
 		db.LogMode(true)
 		defer db.Close()
 		So(MigrateDb(db, testDBFile), ShouldBeNil)
@@ -35,6 +36,10 @@ func TestModels(t *testing.T) {
 				ScriptURI: "script",
 			}
 			So(task.Create(db), ShouldBeNil)
+			So(task.Create(db), ShouldNotBeNil) //violates unique constraint
+			task.Name = "Second task"
+			So(task.Create(db), ShouldBeNil)
+			So(task.TaskID, ShouldNotEqual, 0)
 			tasks, err := GetTasks(db)
 			So(err, ShouldBeNil)
 			So(tasks, ShouldHaveLength, 1)
@@ -48,6 +53,13 @@ func TestModels(t *testing.T) {
 				Success: true,
 			}
 			So(invocation.Create(db), ShouldBeNil)
+			invocation = &models.Invocation{
+				TaskID:  1234, //doesn't exist
+				Start:   &s,
+				Finish:  &s2,
+				Success: true,
+			}
+			So(invocation.Create(db), ShouldNotBeNil) //violates constraint
 			invocations, err := tasks[0].GetInvocations(db)
 			So(err, ShouldBeNil)
 			So(invocations, ShouldHaveLength, 1)

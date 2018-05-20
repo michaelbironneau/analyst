@@ -7,7 +7,6 @@ import (
 )
 
 type Task struct {
-	gorm.Model
 	TaskID    uint          `gorm:"PRIMARY_KEY,AUTO_INCREMENT" json:"id"`
 	Name      string        `gorm:"type:varchar(128);UNIQUE;NOT_NULL" json:"name"`
 	Schedule  string        `gorm:"type:varchar(128);NOT_NULL" json:"schedule"`
@@ -34,6 +33,7 @@ func (t *Task) NextInvocation(catchupTime time.Time) (time.Time, error) {
 }
 
 func (t *Task) Create(db *gorm.DB) error {
+	db.Create(t).
 	return db.Create(t).Error
 }
 
