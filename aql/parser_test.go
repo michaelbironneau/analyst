@@ -502,7 +502,7 @@ func TestTest(t *testing.T) {
 	}
 	Convey("It should parse test blocks successfully", t, func() {
 		//1
-		s1 := `TEST 'block_name' WITH ASSERTIONS (
+		s1 := `TEST block_name WITH ASSERTIONS (
 			query_source()
 		);
 		`

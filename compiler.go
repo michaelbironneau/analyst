@@ -29,6 +29,21 @@ type RuntimeOptions struct {
 	ScriptDirectory string
 }
 
+//  neutralizeExecs is a source hook to prevent side effects with execs whilst in test mode
+func neutralizeExecs(name string, src engine.Source) error {
+	if s, ok := src.(*engine.SQLSource); ok && s.ExecOnly {
+			s.Query = "SELECT 1"
+	}
+	return nil
+}
+
+
+//  neutralizeDestination replaces a given destination by a DevNull destination
+func neutralizeDestinations(name string, dest engine.Destination) error {
+	dest = &engine.DevNull{}
+	return nil
+}
+
 func formatOptions(options []aql.Option) string {
 	var s []string
 	for _, opt := range options {
@@ -68,7 +83,7 @@ func checkWrapLogger(l engine.Logger, options []aql.Option) (engine.Logger, erro
 
 }
 
-func execute(js *aql.JobScript, options []aql.Option, lg engine.Logger, compileOnly bool, hooks []interface{}, ctx context.Context, cwd string) error {
+func execute(js *aql.JobScript, options []aql.Option, lg engine.Logger, compileOnly bool, hooks []interface{}, ctx context.Context, cwd string, runTests bool) error {
 	logger := lg
 	options = mergeOptions(js, options)
 
@@ -160,6 +175,17 @@ func execute(js *aql.JobScript, options []aql.Option, lg engine.Logger, compileO
 		return err
 	}
 
+
+	if runTests {
+		//Only run tests in test mode - in production mode they could slow things down too much
+		err = tests(js, dag)
+
+		if err != nil {
+			return err
+		}
+	}
+
+
 	err = constraints(js, dag, connMap)
 
 	if err != nil {
@@ -238,8 +264,33 @@ func ExecuteString(script string, opts *RuntimeOptions) error {
 	if err != nil {
 		return err
 	}
-	return execute(js, opts.Options, opts.Logger, false, opts.Hooks, opts.Context, opts.ScriptDirectory)
+	return execute(js, opts.Options, opts.Logger, false, opts.Hooks, opts.Context, opts.ScriptDirectory, false)
 }
+
+func TestString(script string, opts *RuntimeOptions) error {
+	if opts.Logger == nil {
+		opts.Logger = engine.NewConsoleLogger(engine.Trace)
+	}
+	js, err := aql.ParseString(script)
+	if err != nil {
+		return err
+	}
+	hooks := append(opts.Hooks, engine.DestinationHook(neutralizeDestinations), engine.SourceHook(neutralizeExecs))
+	return execute(js, opts.Options, opts.Logger, false, hooks, opts.Context, opts.ScriptDirectory, true)
+}
+
+func TestFile(filename string, opts *RuntimeOptions) error {
+	if opts.Logger == nil {
+		opts.Logger = engine.NewConsoleLogger(engine.Trace)
+	}
+	js, err := aql.ParseFile(filename)
+	if err != nil {
+		return err
+	}
+	hooks := append(opts.Hooks, engine.DestinationHook(neutralizeDestinations), engine.SourceHook(neutralizeExecs))
+	return execute(js, opts.Options, opts.Logger, false, hooks, opts.Context, opts.ScriptDirectory, true)
+}
+
 
 func ExecuteFile(filename string, opts *RuntimeOptions) error {
 	if opts.Logger == nil {
@@ -249,7 +300,7 @@ func ExecuteFile(filename string, opts *RuntimeOptions) error {
 	if err != nil {
 		return err
 	}
-	return execute(js, opts.Options, opts.Logger, false, opts.Hooks, opts.Context, opts.ScriptDirectory)
+	return execute(js, opts.Options, opts.Logger, false, opts.Hooks, opts.Context, opts.ScriptDirectory, false)
 }
 
 func ValidateString(script string, opts *RuntimeOptions) error {
@@ -260,7 +311,7 @@ func ValidateString(script string, opts *RuntimeOptions) error {
 	if err != nil {
 		return err
 	}
-	return execute(js, opts.Options, opts.Logger, true, opts.Hooks, opts.Context, opts.ScriptDirectory)
+	return execute(js, opts.Options, opts.Logger, true, opts.Hooks, opts.Context, opts.ScriptDirectory, false)
 }
 
 func ValidateFile(filename string, opts *RuntimeOptions) error {
@@ -271,7 +322,7 @@ func ValidateFile(filename string, opts *RuntimeOptions) error {
 	if err != nil {
 		return err
 	}
-	return execute(js, opts.Options, opts.Logger, true, opts.Hooks, opts.Context, opts.ScriptDirectory)
+	return execute(js, opts.Options, opts.Logger, true, opts.Hooks, opts.Context, opts.ScriptDirectory, false)
 }
 
 func declarations(js *aql.JobScript, p *engine.ParameterTable) error {
@@ -672,6 +723,74 @@ func addPlugin(js *aql.JobScript, dag engine.Coordinator, transform aql.Transfor
 	dag.AddTransform(strings.ToLower(transform.Name), strings.ToLower(transform.Name), &s)
 
 	return &s, nil
+}
+
+func toCondition(assertion aql.Assertion) (engine.Condition, error){
+	switch {
+	case assertion.Global != nil:
+		switch {
+		case assertion.Global.Expr != nil:
+			return engine.NewSQLCondition(*assertion.Global.Expr)
+		case assertion.Global.NRows != nil:
+			if assertion.Global.NRows.AtLeast {
+				return engine.HasAtLeastNRowsCondition(assertion.Global.NRows.N)
+			} else if assertion.Global.NRows.AtMost {
+				return engine.HasAtMostNRowsCondition(assertion.Global.NRows.N)
+			} else {
+				//exactly
+				return engine.HasExactlyNRowsCondition(assertion.Global.NRows.N)
+			}
+		default:
+			panic("unmapped global assertion")
+		}
+	case assertion.Column != nil:
+		switch {
+		case assertion.Column.Distinct != nil :
+			if assertion.Column.Distinct.AtLeast {
+				return engine.HasAtLeastNDistinctValuesCondition(*assertion.Column.TargetColumn, assertion.Column.Distinct.N)
+			} else if assertion.Column.Distinct.AtMost {
+				return engine.HasAtMostNDistinctValuesCondition(*assertion.Column.TargetColumn, assertion.Column.Distinct.N)
+			} else {
+				return engine.HasExactlyNDistinctValuesCondition(*assertion.Column.TargetColumn, assertion.Column.Distinct.N)
+			}
+		case assertion.Column.NoDuplicates :
+			return engine.HasNoDuplicates(*assertion.Column.TargetColumn)
+		case assertion.Column.NoNulls:
+			return engine.HasNoNullValues(*assertion.Column.TargetColumn)
+		default:
+			panic("unmapped column assertion")
+		}
+	default:
+		panic("encountered completely blank assertion!")
+	}
+
+}
+
+//  tests parses the AQL assertions and maps them to engine.Conditions. These are then
+//  added to the DAG. These will be ignored if the job is not in test mode.
+func tests(js *aql.JobScript, dag engine.Coordinator) error {
+
+	for tNumber, t := range js.Tests {
+		assertions, err := t.Parse()
+		if err != nil {
+			return err
+		}
+		for i := range assertions {
+			c, err := toCondition(assertions[i])
+			if err != nil {
+				return err
+			}
+			if err := dag.AddTest(strings.ToLower(t.TargetBlock), assertionNodeName(tNumber,i), "", c); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+
+func assertionNodeName(testIndex, assertionIndex int) string {
+	return fmt.Sprintf("Test %d, assertion %d", testIndex+1, assertionIndex+1)
 }
 
 //sources makes engine.Source s out of JobScript sources.

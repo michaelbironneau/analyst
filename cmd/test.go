@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 )
 
-func Validate(c *cli.Context) error {
+func Test(c *cli.Context) error {
 	var (
 		opts []aql.Option
 		err  error
@@ -28,7 +28,6 @@ func Validate(c *cli.Context) error {
 	if len(scriptFile) == 0 {
 		return fmt.Errorf("script file not set")
 	}
-
 	var lev engine.LogLevel
 
 	lev = engine.Warning
@@ -43,12 +42,10 @@ func Validate(c *cli.Context) error {
 
 	l := engine.NewConsoleLogger(lev)
 
-	err = analyst.ValidateFile(scriptFile, &analyst.RuntimeOptions{Options: opts, Logger: l, ScriptDirectory: filepath.Dir(scriptFile)})
+	err = analyst.TestFile(scriptFile, &analyst.RuntimeOptions{Options: opts, Logger: l, ScriptDirectory: filepath.Dir(scriptFile)})
 
 	if err != nil {
 		fmt.Printf("Error: %s\n", err)
-	} else {
-		fmt.Printf("[OK] Script is valid '%s'\n", scriptFile)
 	}
 	return err
 }

@@ -93,22 +93,8 @@ type Declaration struct {
 	Name string `DECLARE @IDENT`
 }
 
-/**
-TEST 'BlockName' WITH ASSERTIONS (
-	IT OUTPUTS AT LEAST N ROWS;
-	IT OUTPUTS AT MOST N ROWS;
-	IT OUTPUTS EXACTLY N ROWS;
-	COLUMN <Column Name> HAS AT MOST N DISTINCT VALUES;
-	COLUMN <Column Name> HAS AT LEAST N DISTINCT VALUES;
-	COLUMN <Column Name> HAS EXACTLY N DISTINCT VALUES;
-	COLUMN <Column Name> CONTAINS <Number|QuotedString|Boolean|NULL>;
-	COLUMN <Column Name> IS NOT NULL;
-	COLUMN <Column Name> HAS NO DUPLICATE VALUES;
-	IT SATISFIES <Expression>;
-)
-*/
 type Test struct {
-	TargetBlock string   `TEST @QUOTED_STRING WITH ASSERTIONS`
+	TargetBlock string   `TEST @IDENT WITH ASSERTIONS`
 	Extern      *string  `[EXTERN @QUOTED_STRING]`
 	Content     string   `['(' @PAREN_BODY ')']`
 	Options     []Option `[WITH '(' @@ {"," @@ } ')' ]`
@@ -169,6 +155,23 @@ type JobScript struct {
 	Globals       []Global             `| @@ `
 	GlobalOptions []GlobalOption       `| @@ `
 	Transforms    []Transform          ` | @@ }`
+}
+
+func (t *Test) Parse() ([]Assertion, error){
+	lines := strings.Split(t.Content, ";")
+	var (
+		ret []Assertion
+		err error
+	)
+	for i := range lines {
+		var a *Assertion
+		a, err = NewAssertion(strings.TrimSpace(lines[i]))
+		if err != nil {
+			return nil, err
+		}
+		ret = append(ret, *a)
+	}
+	return ret, nil
 }
 
 type OptScanner func(needle string, dest interface{}) error

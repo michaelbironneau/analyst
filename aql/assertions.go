@@ -32,8 +32,7 @@ type ColumnAssertion struct {
 	TargetColumn *string `@Ident "HAS" `
 	Distinct     *HasN   `(@@ "DISTINCT " "VALUES"`
 	NoDuplicates bool    `| @"UNIQUE " "VALUES"`
-	NoNulls      bool    `|@"NO " "NULL " "VALUES"`
-	LeastMost    *HasN   `|@@)`
+	NoNulls      bool    `|@"NO " "NULL " "VALUES")`
 }
 
 type Assertion struct {

@@ -1,0 +1,14 @@
+--SET SLACK_WEBHOOK_URL = 'https://hooks.slack.com/services/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'
+--SET SLACK_LOG_LEVEL = 'INFO'
+--SET SLACK_CHANNEL = 'alerts'
+--SET SLACK_NAME = 'Hello world script'
+
+DATA 'MyMessage' (
+	[
+	  ["Hello, World"]
+	]
+) INTO CONSOLE WITH (COLUMNS = 'Message')
+
+TEST MyMessage WITH ASSERTIONS (
+	COLUMN Message HAS UNIQUE VALUES
+);

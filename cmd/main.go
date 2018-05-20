@@ -54,6 +54,35 @@ func main() {
 					Value: ".analyst",
 					Usage: "path to script",
 				},
+				cli.BoolFlag{
+					Name:  "v",
+					Usage: "verbose mode (display INFO events)",
+				},
+				cli.BoolFlag{
+					Name:  "vv",
+					Usage: "super-verbose mode (display TRACE events)",
+				},
+			},
+		},
+		{
+			Name:    "test",
+			Aliases: []string{"t"},
+			Usage:   "runs assertions on a script without executing any destinations and execs",
+			Action:  Test,
+			Flags: []cli.Flag{
+				cli.StringFlag{
+					Name:  "script",
+					Value: ".analyst",
+					Usage: "path to script",
+				},
+				cli.BoolFlag{
+					Name:  "v",
+					Usage: "verbose mode (display INFO events)",
+				},
+				cli.BoolFlag{
+					Name:  "vv",
+					Usage: "super-verbose mode (display TRACE events)",
+				},
 			},
 		},
 	}
