@@ -7,7 +7,7 @@ import (
 )
 
 type Task struct {
-	TaskID    uint          `gorm:"PRIMARY_KEY,AUTO_INCREMENT" json:"id"`
+	gorm.Model
 	Name      string        `gorm:"type:varchar(128);UNIQUE;NOT_NULL" json:"name"`
 	Schedule  string        `gorm:"type:varchar(128);NOT_NULL" json:"schedule"`
 	ScriptURI string        `gorm:"NOT_NULL" json:"script_uri"`
@@ -33,7 +33,6 @@ func (t *Task) NextInvocation(catchupTime time.Time) (time.Time, error) {
 }
 
 func (t *Task) Create(db *gorm.DB) error {
-	db.Create(t).
 	return db.Create(t).Error
 }
 
@@ -47,6 +46,6 @@ func (t *Task) Delete(db *gorm.DB) error {
 
 func (t *Task) GetInvocations(db *gorm.DB) ([]Invocation, error) {
 	var invocations []Invocation
-	err := db.Where("task_id = ?", t.TaskID).Find(&invocations).Error
+	err := db.Model(t).Related(&invocations).Error
 	return invocations, err
 }

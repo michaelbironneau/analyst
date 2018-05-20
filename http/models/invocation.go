@@ -6,8 +6,8 @@ import (
 )
 
 type Invocation struct {
-	InvocationID uint       `gorm:"PRIMARY_KEY,AUTO_INCREMENT" json:"id"`
-	TaskID       uint       `gorm:"index:ix_invocation_task;" json:"-" sql:"type:integer REFERENCES tasks(task_id)"`
+	gorm.Model
+	TaskID       uint       `gorm:"index:ix_invocation_task;" json:"-" sql:"type:integer REFERENCES tasks(id)"`
 	Start        *time.Time `gorm:"index:ix_invocation_time" json:"started_at"`
 	Finish       *time.Time `gorm:"index:ix_invocation_time" json:"finished_at"`
 	Success      bool       `json:"success"`
