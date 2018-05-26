@@ -49,6 +49,12 @@ func TestModels(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(tasks, ShouldHaveLength, 2)
 			So(tasks[0].ScriptURI, ShouldEqual, "script")
+			So(tasks[0].ID, ShouldNotEqual, 0)
+			So(tasks[0].Enabled, ShouldBeFalse)
+			So(tasks[0].Enable(db), ShouldBeNil)
+			tasks, err = GetTasks(db)
+			So(err, ShouldBeNil)
+			So(tasks[0].Enabled||tasks[1].Enabled, ShouldBeTrue)
 			s := time.Now()
 			s2 := s.Add(time.Second)
 			invocation := &models.Invocation{

@@ -6,7 +6,7 @@ import (
 )
 
 type Invocation struct {
-	gorm.Model
+	Model
 	TaskID       uint       `gorm:"index:ix_invocation_task;" json:"-" sql:"type:integer REFERENCES tasks(id)"`
 	Start        *time.Time `gorm:"index:ix_invocation_time" json:"started_at"`
 	Finish       *time.Time `gorm:"index:ix_invocation_time" json:"finished_at"`

@@ -8,6 +8,7 @@ import (
 	"github.com/labstack/echo/middleware"
 	"github.com/michaelbironneau/analyst"
 	"golang.org/x/net/websocket"
+	"github.com/jinzhu/gorm"
 )
 
 const (
@@ -17,6 +18,8 @@ const (
 	MsgCompileScript = "COMPILE"
 	MsgOutput        = "OUTPUT"
 )
+
+const dbFile = "analyst.db"
 
 type RunMessagePayload struct {
 	Script string `json:"script"`
@@ -128,10 +131,37 @@ func receive(c echo.Context) error {
 }
 
 func main() {
+	var (
+		db *gorm.DB
+		err error
+	)
 	e := echo.New()
+	if  db, err = gorm.Open("sqlite3", dbFile); err != nil {
+		e.Logger.Fatal(err)
+		return
+	}
+	db.Exec("PRAGMA foreign_keys = ON")
+	db.LogMode(true)
+	db.SetLogger(e.Logger)
+	defer db.Close()
+	if err := MigrateDb(db, dbFile); err != nil {
+		e.Logger.Fatal(err)
+		return
+	}
 	e.Use(middleware.Logger())
-	//e.Use(middleware.Recover())
+	e.Use(middleware.Recover())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"http://localhost:4200"},
+		AllowMethods: []string{echo.GET, echo.PUT, echo.POST, echo.DELETE},
+	}))
+
 	//e.Static("/", "../public")
-	e.GET("/", receive)
+	e.GET("/tasks", listTasks(db))
+	e.PUT("/tasks/:id/enable", enableTask(db))
+	e.PUT("/tasks/:id/disable", disableTask(db))
+	e.PUT("/tasks/:id", updateTask(db))
+	e.POST("/tasks", createTask(db))
+	e.DELETE("/tasks/:id", deleteTask(db))
+	e.GET("/ws", receive)
 	e.Logger.Fatal(e.Start(":4040"))
 }
