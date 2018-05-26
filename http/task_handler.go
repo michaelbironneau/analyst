@@ -4,6 +4,7 @@ import (
 	"github.com/labstack/echo"
 	"github.com/jinzhu/gorm"
 	"github.com/michaelbironneau/analyst/http/models"
+	"strconv"
 )
 
 func listTasks(db *gorm.DB) func(echo.Context) error {
@@ -80,13 +81,13 @@ func disableTask(db *gorm.DB) func(echo.Context) error {
 
 func deleteTask(db *gorm.DB) func(echo.Context) error {
 	return func(c echo.Context) error {
+		id := c.Param("id")
 		var t models.Task
-		if err := c.Bind(&t); err != nil {
-			return echo.NewHTTPError(400, err.Error())
+		idNum, err := strconv.Atoi(id)
+		if err != nil || idNum < 0 {
+			return echo.NewHTTPError(400, "Invalid ID")
 		}
-		if t.ID == 0 {
-			return echo.NewHTTPError(400, "ID must be specified") //ID > 0, always
-		}
+		t.ID = uint(idNum)
 		if err := t.Delete(db); err != nil {
 			return echo.NewHTTPError(500, err.Error())
 		}
