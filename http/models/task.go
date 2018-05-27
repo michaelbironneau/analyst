@@ -50,12 +50,17 @@ func (t *Task) Update(db *gorm.DB) error {
 
 func (t *Task) Enable(db *gorm.DB) error {
 	t.Enabled = true
-	return db.Model(t).Update("enabled", true).Error
+	n, err := t.NextInvocation(time.Now())
+	if err != nil {
+		t.NextRun = &n
+	}
+	return db.Model(t).Updates(map[string]interface{}{"enabled": true, "next_run": n}).Error
 }
 
 func (t *Task) Disable(db *gorm.DB) error {
 	t.Enabled = false
-	return db.Model(t).Update("enabled", false).Error
+	t.NextRun = nil
+	return db.Model(t).Updates(map[string]interface{}{"enabled": false, "next_run": nil}).Error
 }
 
 func (t *Task) Delete(db *gorm.DB) error {
