@@ -18,7 +18,8 @@ type Task struct {
 	Model
 	Name      string        `gorm:"type:varchar(128);UNIQUE;NOT_NULL" json:"name"`
 	Schedule  string        `gorm:"type:varchar(128);NOT_NULL" json:"schedule"`
-	ScriptURI string        `gorm:"NOT_NULL" json:"script_uri"`
+	Command string          `gorm:"NOT_NULL" json:"command"`
+	Arguments string         `json:"args"`
 	IsAQL     bool          `json:"is_aql"`
 	Enabled   bool          `json:"enabled"`
 	Coalesce  bool          `json:"coalesce"`

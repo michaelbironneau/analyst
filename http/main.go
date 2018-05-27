@@ -4,11 +4,11 @@ import (
 	"fmt"
 
 	"encoding/json"
+	"github.com/jinzhu/gorm"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
 	"github.com/michaelbironneau/analyst"
 	"golang.org/x/net/websocket"
-	"github.com/jinzhu/gorm"
 )
 
 const (
@@ -132,11 +132,11 @@ func receive(c echo.Context) error {
 
 func main() {
 	var (
-		db *gorm.DB
+		db  *gorm.DB
 		err error
 	)
 	e := echo.New()
-	if  db, err = gorm.Open("sqlite3", dbFile); err != nil {
+	if db, err = gorm.Open("sqlite3", dbFile); err != nil {
 		e.Logger.Fatal(err)
 		return
 	}

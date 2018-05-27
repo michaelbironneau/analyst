@@ -31,15 +31,15 @@ func TestModels(t *testing.T) {
 		So(err, ShouldBeNil)
 		Convey("It should create a task correctly", func() {
 			task := &models.Task{
-				Name:      "A task",
-				Schedule:  "@daily",
-				ScriptURI: "script",
+				Name:     "A task",
+				Schedule: "@daily",
+				Command:  "script",
 			}
 			So(task.Create(db), ShouldBeNil)
 			task = &models.Task{
-				Name:      "A task",
-				Schedule:  "@daily",
-				ScriptURI: "script",
+				Name:     "A task",
+				Schedule: "@daily",
+				Command:  "script",
 			}
 			So(task.Create(db), ShouldNotBeNil) //violates unique constraint
 			task.Name = "Second task"
@@ -48,13 +48,13 @@ func TestModels(t *testing.T) {
 			tasks, err := GetTasks(db)
 			So(err, ShouldBeNil)
 			So(tasks, ShouldHaveLength, 2)
-			So(tasks[0].ScriptURI, ShouldEqual, "script")
+			So(tasks[0].Command, ShouldEqual, "script")
 			So(tasks[0].ID, ShouldNotEqual, 0)
 			So(tasks[0].Enabled, ShouldBeFalse)
 			So(tasks[0].Enable(db), ShouldBeNil)
 			tasks, err = GetTasks(db)
 			So(err, ShouldBeNil)
-			So(tasks[0].Enabled||tasks[1].Enabled, ShouldBeTrue)
+			So(tasks[0].Enabled || tasks[1].Enabled, ShouldBeTrue)
 			s := time.Now()
 			s2 := s.Add(time.Second)
 			invocation := &models.Invocation{

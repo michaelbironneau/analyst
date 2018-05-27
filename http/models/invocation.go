@@ -7,9 +7,10 @@ import (
 
 type Invocation struct {
 	Model
-	TaskID       uint       `gorm:"index:ix_invocation_task;" json:"-" sql:"type:integer REFERENCES tasks(id)"`
-	Start        *time.Time `gorm:"index:ix_invocation_time" json:"started_at"`
-	Finish       *time.Time `gorm:"index:ix_invocation_time" json:"finished_at"`
+	TaskID       uint       `gorm:"index:ix_invocation_time;" json:"-" sql:"type:integer REFERENCES tasks(id)"`
+	ScheduledAt  *time.Time `gorm:"index:ix_invocation_time" json:"scheduled_to_start_at"`
+	Start        *time.Time `json:"started_at"`
+	Finish       *time.Time `json:"finished_at"`
 	Success      bool       `json:"success"`
 	ErrorMessage string     `json:"error_message"`
 }
