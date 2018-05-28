@@ -95,19 +95,22 @@ func (s *Scheduler) Next(now time.Time) ([]models.Task, error) {
 			continue
 		}
 		s.Lock()
-		if task, ok := s.tasks[task.ID]; ok {
-			if task.running == 1 {
+		if tt, ok := s.tasks[task.ID]; ok {
+			if tt.running == 1 {
+				s.logger.Debugf("Task %s already running", task.Name)
+				s.Unlock()
 				continue
 			}
-			task.running = 1
+			tt.running = 1
+			s.tasks[task.ID] = tt
 		}
 		s.Unlock()
-		s.beginInvocation(task, now)
+		go s.execute(task, now)
 	}
 	return tasks, nil
 }
 
-func (s *Scheduler) beginInvocation(task models.Task, now time.Time){
+func (s *Scheduler) execute(task models.Task, now time.Time){
 	if task.NextRun == nil {
 		s.logger.Warnf("Attempted to start invocation with nil Next Run time!")
 		return
@@ -117,37 +120,70 @@ func (s *Scheduler) beginInvocation(task models.Task, now time.Time){
 	if !ok {
 		t = &invocation{running:1}
 		s.tasks[task.ID] = t
+	} else {
+		t.running = 1
 	}
 	s.Unlock()
 	//check that it hasn't been superceded by another invocation
 	if ok && !t.lastExec.Before(*task.NextRun){
 		s.logger.Debugf("Invocation for invocation %s time %v superceded by time %v", task.Name, task.NextRun, t.lastExec)
+		t.running = 0
+		s.Lock()
+		s.tasks[task.ID] = t
+		s.Unlock()
+		if err := s.updateNextRun(&task, now); err != nil{
+			s.logger.Errorf("Error updating next run time: %v", err)
+		}
 		return
 	}
-	t.lastExec = *task.NextRun
-	var ctx context.Context
-	//create new invocation
-	ctx, t.cancel = context.WithCancel(s.ctx)
 
+	//catch-up loop. For coalesced tasks this will run at most once.
+	for task.NextRun.Before(now){
+		//check task is still enabled
+		var latestT models.Task
+		err := s.DB.Where("id = ?", task.ID).Select("enabled").First(&latestT).Error
+		if err != nil {
+			s.logger.Errorf("Error retrieving task enabled status: %v", err)
+			break
+		}
+		if !latestT.Enabled{
+			break
+		}
+		t.lastExec = *task.NextRun
+		var ctx context.Context
+		//create new invocation
+		ctx, t.cancel = context.WithCancel(s.ctx)
+		s.runSingleInvocation(task, now, ctx)
+		if err := s.updateNextRun(&task, now); err != nil{
+			s.logger.Errorf("Error updating next run time: %v", err)
+			break
+		}
+	}
+	s.Lock()
+	t.running = 0
+	s.Unlock()
+}
+
+func (s *Scheduler) runSingleInvocation(task models.Task, now time.Time, ctx context.Context){
 	s.logger.Infof("Starting invocation for invocation %s with run time %v", task.Name, task.NextRun)
 	var i models.Invocation
 	i.ScheduledAt = task.NextRun
 	i.TaskID = task.ID
-	i.Start = &now
-
+	tt := time.Now()
+	i.Start = &tt
 	err := i.Create(s.DB)
 	if err != nil {
 		s.logger.Errorf("Could not create invocation in database: %v", err)
 		return
 	}
 	if task.IsAQL {
-		go s.runWithCtx(ctx, task, "analyst", "run", "--script", task.Command)
+		s.runWithCtx(ctx, task, &i,"analyst",  "run", "--script", task.Command)
 	} else {
-		go s.runWithCtx(ctx, task, task.Command, task.Arguments)
+		s.runWithCtx(ctx, task, &i, task.Command, task.Arguments)
 	}
 }
 
-func (s *Scheduler) runWithCtx(ctx context.Context, t models.Task, name string, arg ...string) error {
+func (s *Scheduler) runWithCtx(ctx context.Context, t models.Task, i *models.Invocation, name string, arg ...string) error {
 	cmd := exec.CommandContext(ctx, name, arg...)
 	stdout := &bytes.Buffer{}
 	stderr := &bytes.Buffer{}
@@ -155,29 +191,22 @@ func (s *Scheduler) runWithCtx(ctx context.Context, t models.Task, name string, 
 	cmd.Stdout = stdout
 	err := cmd.Start()
 	if err != nil {
-		return s.endInvocation(t, time.Now(), err)
+		return s.endInvocation(t, time.Now(), i, err)
 	}
-
 	err = cmd.Wait()
 	if err != nil {
-		return s.endInvocation(t, time.Now(), err)
+		return s.endInvocation(t, time.Now(), i, err)
 	}
 	s.InvocationOutput <- stdout.String()
 	s.InvocationOutput <- stderr.String()
-	return s.endInvocation(t, time.Now(), nil)
+	return s.endInvocation(t, time.Now(), i, nil)
 }
 
-func (s *Scheduler) endInvocation(t models.Task, now time.Time, withError error) error {
-	var i models.Invocation
-	err := s.DB.Where("task_id = ? AND scheduled_at = ?", t.ID, t.NextRun).First(&i).Error
-	if err != nil {
-		return err
-	}
-	i.Finish = &now
-	if withError != nil {
-		i.ErrorMessage = withError.Error()
-	}
-	var nextRun time.Time
+func (s *Scheduler) updateNextRun(t *models.Task, now time.Time) error {
+	var (
+		nextRun time.Time
+		err error
+	)
 	if t.Coalesce {
 		nextRun, err = t.NextInvocation(now)
 	} else {
@@ -187,24 +216,26 @@ func (s *Scheduler) endInvocation(t models.Task, now time.Time, withError error)
 		return err
 	}
 	t.NextRun = &nextRun
-	err = t.Update(s.DB)
+	return s.DB.Model(&t).Update("next_run", t.NextRun).Error
+}
+
+func (s *Scheduler) endInvocation(t models.Task, now time.Time, i *models.Invocation, withError error) error {
+	tt := time.Now()
+	i.Finish = &tt
+	if withError != nil {
+		i.ErrorMessage = withError.Error()
+	} else {
+		i.Success = true
+	}
+	err := s.updateNextRun(&t, now)
 	if err != nil {
 		return err
 	}
+
 	err = i.Update(s.DB)
 	if err != nil {
 		s.logger.Warnf("Could not write invocation to DB: %v", err)
 	}
-	if !t.Coalesce && t.NextRun.Before(now){
-			//start next invocation immediately
-			//this is recursive because beginInvocation calls endInvocation
-			//s.logger.Debugf("Starting backlogged invocation for invocation %s with run time %v", t.Name, t.NextRun)
-			s.beginInvocation(t, now)
-	}
-	s.Lock()
-	tt := s.tasks[t.ID] //must exist
-	tt.running = 0
-	s.Unlock()
 	return nil
 }
 

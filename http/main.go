@@ -163,11 +163,16 @@ func main() {
 	}))
 
 	s := NewScheduler(db, context.Background(), e.Logger)
+	go func(){
+		for {
+			<- s.InvocationOutput //TODO: Something useful with this
+		}
+	}()
 	go runSchedulerForever(s, e.Logger)
 	//e.Static("/", "../public")
 	e.GET("/tasks", listTasks(db))
 	e.PUT("/tasks/:id/enable", enableTask(db))
-	e.PUT("/tasks/:id/disable", disableTask(db))
+	e.PUT("/tasks/:id/disable", disableTask(db, s))
 	e.PUT("/tasks/:id", updateTask(db))
 	e.POST("/tasks", createTask(db))
 	e.DELETE("/tasks/:id", deleteTask(db))

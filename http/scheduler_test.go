@@ -44,7 +44,7 @@ func TestScheduler(t *testing.T) {
 			s := NewScheduler(db, context.Background(), logger)
 
 			n := time.Now()
-			now := n.Add(time.Hour * 48)
+			now := n.Add(time.Hour * 24 + time.Second)
 			n = n.Add(time.Hour * 24)
 			expectedScheduledTime := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC)
 			tasks, err := s.Next(now)
@@ -80,7 +80,7 @@ func TestScheduler(t *testing.T) {
 			err = task.Enable(db)
 			So(err, ShouldBeNil)
 			s := NewScheduler(db, context.Background(), echo.New().Logger)
-			now := time.Now().Add(time.Hour * 48)
+			now := time.Now().Add(time.Hour * 24 + time.Second)
 			tasks, err := s.Next(now)
 			So(err, ShouldBeNil)
 			So(tasks, ShouldHaveLength, 1)
@@ -97,6 +97,37 @@ func TestScheduler(t *testing.T) {
 			s.Shutdown()
 			output := <-s.InvocationOutput
 			So(output, ShouldBeBlank)
+		})
+
+		Convey("It should stop task catch-up when disabling", func() {
+			task := &models.Task{
+				Name:      "A invocation",
+				Schedule:  "@every 250ms",
+				Command:   "echo",
+				Arguments: "hello",
+				Enabled:   false,
+			}
+			err = task.Create(db)
+			So(err, ShouldBeNil)
+			err = task.Enable(db)
+			So(err, ShouldBeNil)
+			tt, err := GetTasks(db)
+			So(err, ShouldBeNil)
+			So(tt, ShouldHaveLength, 1)
+			s := NewScheduler(db, context.Background(), logger)
+
+			n := time.Now()
+			now := n.Add(time.Second*10)
+
+			//  FIXME: This is brittle and prone to failure as it is based on how goroutines
+			//  are scheduled. Some synchronisation would help, although the scheduler would
+			//  need to be modified.
+			tasks, err := s.Next(now) // spins off goroutine so the next line should get invoked first
+			So(tasks[0].Disable(db), ShouldBeNil)
+			time.Sleep(time.Millisecond * 500)
+			invocations, err := tasks[0].GetInvocations(db)
+			So(err, ShouldBeNil)
+			So(invocations, ShouldHaveLength, 0)
 		})
 
 	})

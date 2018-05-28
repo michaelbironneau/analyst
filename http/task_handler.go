@@ -63,7 +63,7 @@ func enableTask(db *gorm.DB) func(echo.Context) error {
 	}
 }
 
-func disableTask(db *gorm.DB) func(echo.Context) error {
+func disableTask(db *gorm.DB, s *Scheduler) func(echo.Context) error {
 	return func(c echo.Context) error {
 		id := c.Param("id")
 		var t models.Task
@@ -72,6 +72,7 @@ func disableTask(db *gorm.DB) func(echo.Context) error {
 			return echo.NewHTTPError(400, "Invalid ID")
 		}
 		t.ID = uint(idNum)
+		s.Cancel(t)
 		if err := t.Disable(db); err != nil {
 			return echo.NewHTTPError(500, err.Error())
 		}
