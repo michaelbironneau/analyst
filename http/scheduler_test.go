@@ -44,7 +44,7 @@ func TestScheduler(t *testing.T) {
 			s := NewScheduler(db, context.Background(), logger)
 
 			n := time.Now()
-			now := n.Add(time.Hour * 24 + time.Second)
+			now := n.Add(time.Hour*24 + time.Second)
 			n = n.Add(time.Hour * 24)
 			expectedScheduledTime := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC)
 			tasks, err := s.Next(now)
@@ -53,7 +53,7 @@ func TestScheduler(t *testing.T) {
 			time.Sleep(time.Millisecond * 100)
 			So(tasks[0].NextRun.Before(now), ShouldBeTrue)
 			//Check that invocation was correctly created
-			i, err := tasks[0].GetInvocations(db)
+			i, err := tasks[0].GetInvocations(db, 100)
 			So(err, ShouldBeNil)
 			So(i, ShouldHaveLength, 1)
 			So(i[0].TaskID, ShouldEqual, tasks[0].ID)
@@ -80,14 +80,14 @@ func TestScheduler(t *testing.T) {
 			err = task.Enable(db)
 			So(err, ShouldBeNil)
 			s := NewScheduler(db, context.Background(), echo.New().Logger)
-			now := time.Now().Add(time.Hour * 24 + time.Second)
+			now := time.Now().Add(time.Hour*24 + time.Second)
 			tasks, err := s.Next(now)
 			So(err, ShouldBeNil)
 			So(tasks, ShouldHaveLength, 1)
 			time.Sleep(time.Millisecond * 100)
 			So(tasks[0].NextRun.Before(now), ShouldBeTrue)
 			//Check that invocation was correctly created
-			i, err := tasks[0].GetInvocations(db)
+			i, err := tasks[0].GetInvocations(db, 100)
 			So(err, ShouldBeNil)
 			So(i, ShouldHaveLength, 1)
 			So(i[0].TaskID, ShouldEqual, tasks[0].ID)
@@ -117,7 +117,7 @@ func TestScheduler(t *testing.T) {
 			s := NewScheduler(db, context.Background(), logger)
 
 			n := time.Now()
-			now := n.Add(time.Second*10)
+			now := n.Add(time.Second * 10)
 
 			//  FIXME: This is brittle and prone to failure as it is based on how goroutines
 			//  are scheduled. Some synchronisation would help, although the scheduler would
@@ -125,7 +125,7 @@ func TestScheduler(t *testing.T) {
 			tasks, err := s.Next(now) // spins off goroutine so the next line should get invoked first
 			So(tasks[0].Disable(db), ShouldBeNil)
 			time.Sleep(time.Millisecond * 500)
-			invocations, err := tasks[0].GetInvocations(db)
+			invocations, err := tasks[0].GetInvocations(db, 100)
 			So(err, ShouldBeNil)
 			So(invocations, ShouldHaveLength, 0)
 		})

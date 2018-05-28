@@ -71,7 +71,7 @@ func TestModels(t *testing.T) {
 				Success: true,
 			}
 			So(invocation.Create(db), ShouldNotBeNil) //violates constraint
-			invocations, err := tasks[1].GetInvocations(db)
+			invocations, err := tasks[1].GetInvocations(db, 100)
 			So(err, ShouldBeNil)
 			So(invocations, ShouldHaveLength, 1)
 			So(invocations[0].Success, ShouldBeTrue)

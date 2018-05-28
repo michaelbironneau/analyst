@@ -12,8 +12,8 @@ import (
 )
 
 type invocation struct {
-	running int64
-	cancel context.CancelFunc
+	running  int64
+	cancel   context.CancelFunc
 	lastExec time.Time
 }
 
@@ -110,7 +110,7 @@ func (s *Scheduler) Next(now time.Time) ([]models.Task, error) {
 	return tasks, nil
 }
 
-func (s *Scheduler) execute(task models.Task, now time.Time){
+func (s *Scheduler) execute(task models.Task, now time.Time) {
 	if task.NextRun == nil {
 		s.logger.Warnf("Attempted to start invocation with nil Next Run time!")
 		return
@@ -118,27 +118,27 @@ func (s *Scheduler) execute(task models.Task, now time.Time){
 	s.Lock()
 	t, ok := s.tasks[task.ID]
 	if !ok {
-		t = &invocation{running:1}
+		t = &invocation{running: 1}
 		s.tasks[task.ID] = t
 	} else {
 		t.running = 1
 	}
 	s.Unlock()
 	//check that it hasn't been superceded by another invocation
-	if ok && !t.lastExec.Before(*task.NextRun){
+	if ok && !t.lastExec.Before(*task.NextRun) {
 		s.logger.Debugf("Invocation for invocation %s time %v superceded by time %v", task.Name, task.NextRun, t.lastExec)
 		t.running = 0
 		s.Lock()
 		s.tasks[task.ID] = t
 		s.Unlock()
-		if err := s.updateNextRun(&task, now); err != nil{
+		if err := s.updateNextRun(&task, now); err != nil {
 			s.logger.Errorf("Error updating next run time: %v", err)
 		}
 		return
 	}
 
 	//catch-up loop. For coalesced tasks this will run at most once.
-	for task.NextRun.Before(now){
+	for task.NextRun.Before(now) {
 		//check task is still enabled
 		var latestT models.Task
 		err := s.DB.Where("id = ?", task.ID).Select("enabled").First(&latestT).Error
@@ -146,7 +146,7 @@ func (s *Scheduler) execute(task models.Task, now time.Time){
 			s.logger.Errorf("Error retrieving task enabled status: %v", err)
 			break
 		}
-		if !latestT.Enabled{
+		if !latestT.Enabled {
 			break
 		}
 		t.lastExec = *task.NextRun
@@ -154,7 +154,7 @@ func (s *Scheduler) execute(task models.Task, now time.Time){
 		//create new invocation
 		ctx, t.cancel = context.WithCancel(s.ctx)
 		s.runSingleInvocation(task, now, ctx)
-		if err := s.updateNextRun(&task, now); err != nil{
+		if err := s.updateNextRun(&task, now); err != nil {
 			s.logger.Errorf("Error updating next run time: %v", err)
 			break
 		}
@@ -164,7 +164,7 @@ func (s *Scheduler) execute(task models.Task, now time.Time){
 	s.Unlock()
 }
 
-func (s *Scheduler) runSingleInvocation(task models.Task, now time.Time, ctx context.Context){
+func (s *Scheduler) runSingleInvocation(task models.Task, now time.Time, ctx context.Context) {
 	s.logger.Infof("Starting invocation for invocation %s with run time %v", task.Name, task.NextRun)
 	var i models.Invocation
 	i.ScheduledAt = task.NextRun
@@ -177,7 +177,7 @@ func (s *Scheduler) runSingleInvocation(task models.Task, now time.Time, ctx con
 		return
 	}
 	if task.IsAQL {
-		s.runWithCtx(ctx, task, &i,"analyst",  "run", "--script", task.Command)
+		s.runWithCtx(ctx, task, &i, "analyst", "run", "--script", task.Command)
 	} else {
 		s.runWithCtx(ctx, task, &i, task.Command, task.Arguments)
 	}
@@ -205,7 +205,7 @@ func (s *Scheduler) runWithCtx(ctx context.Context, t models.Task, i *models.Inv
 func (s *Scheduler) updateNextRun(t *models.Task, now time.Time) error {
 	var (
 		nextRun time.Time
-		err error
+		err     error
 	)
 	if t.Coalesce {
 		nextRun, err = t.NextInvocation(now)

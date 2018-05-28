@@ -24,3 +24,9 @@ func GetTasks(db *gorm.DB) ([]models.Task, error) {
 	err := db.Find(&tasks).Error
 	return tasks, err
 }
+
+func GetInvocations(db *gorm.DB, limit int) ([]models.Invocation, error) {
+	var invocations []models.Invocation
+	err := db.Order("id desc").Limit(limit).Find(&invocations).Error
+	return invocations, err
+}

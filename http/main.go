@@ -3,15 +3,15 @@ package main
 import (
 	"fmt"
 
+	"context"
 	"encoding/json"
 	"github.com/jinzhu/gorm"
 	"github.com/labstack/echo"
 	"github.com/labstack/echo/middleware"
+	"github.com/labstack/gommon/log"
 	"github.com/michaelbironneau/analyst"
 	"golang.org/x/net/websocket"
-	"context"
 	"time"
-	"github.com/labstack/gommon/log"
 )
 
 const (
@@ -23,8 +23,8 @@ const (
 )
 
 const (
-	dbFile = "analyst.db"
-	schedulerInterval = time.Second*5
+	dbFile            = "analyst.db"
+	schedulerInterval = time.Second * 5
 )
 
 type RunMessagePayload struct {
@@ -148,8 +148,8 @@ func main() {
 		return
 	}
 	db.Exec("PRAGMA foreign_keys = ON")
-	//db.LogMode(true)
-	//db.SetLogger(e.Logger)
+	db.LogMode(true)
+	db.SetLogger(e.Logger)
 	defer db.Close()
 	if err := MigrateDb(db, dbFile); err != nil {
 		e.Logger.Fatal(err)
@@ -163,14 +163,17 @@ func main() {
 	}))
 
 	s := NewScheduler(db, context.Background(), e.Logger)
-	go func(){
+	go func() {
 		for {
-			<- s.InvocationOutput //TODO: Something useful with this
+			<-s.InvocationOutput //TODO: Something useful with this
 		}
 	}()
 	go runSchedulerForever(s, e.Logger)
 	//e.Static("/", "../public")
 	e.GET("/tasks", listTasks(db))
+	e.GET("/invocations", listInvocations(db))
+	e.GET("/tasks/:id/last-invocation", getLastInvocation(db))
+	e.GET("/tasks/:id/invocations", getInvocations(db))
 	e.PUT("/tasks/:id/enable", enableTask(db))
 	e.PUT("/tasks/:id/disable", disableTask(db, s))
 	e.PUT("/tasks/:id", updateTask(db))
@@ -180,9 +183,9 @@ func main() {
 	e.Logger.Fatal(e.Start(":4040"))
 }
 
-func runSchedulerForever(s *Scheduler, l echo.Logger){
+func runSchedulerForever(s *Scheduler, l echo.Logger) {
 	for {
-		<- time.After(schedulerInterval)
+		<-time.After(schedulerInterval)
 		if _, err := s.Next(time.Now()); err != nil {
 			l.Errorf("Error in scheduler: %v", err)
 		}

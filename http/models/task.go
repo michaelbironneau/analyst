@@ -8,9 +8,9 @@ import (
 
 //  Model is base for model, copied from gorm.Model
 type Model struct {
-	ID        uint `gorm:"primary_key" json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID        uint       `gorm:"primary_key" json:"id"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 	DeletedAt *time.Time `sql:"index" json:"deleted_at"`
 }
 
@@ -18,8 +18,8 @@ type Task struct {
 	Model
 	Name      string        `gorm:"type:varchar(128);UNIQUE;NOT_NULL" json:"name"`
 	Schedule  string        `gorm:"type:varchar(128);NOT_NULL" json:"schedule"`
-	Command string          `gorm:"NOT_NULL" json:"command"`
-	Arguments string         `json:"args"`
+	Command   string        `gorm:"NOT_NULL" json:"command"`
+	Arguments string        `json:"args"`
 	IsAQL     bool          `json:"is_aql"`
 	Enabled   bool          `json:"enabled"`
 	Coalesce  bool          `json:"coalesce"`
@@ -68,8 +68,14 @@ func (t *Task) Delete(db *gorm.DB) error {
 	return db.Delete(t).Error
 }
 
-func (t *Task) GetInvocations(db *gorm.DB) ([]Invocation, error) {
+func (t *Task) GetInvocations(db *gorm.DB, limit int) ([]Invocation, error) {
 	var invocations []Invocation
-	err := db.Model(t).Related(&invocations).Error
+	err := db.Model(t).Order("id desc").Limit(limit).Related(&invocations).Error
 	return invocations, err
+}
+
+func (t *Task) GetLastInvocation(db *gorm.DB) (Invocation, error) {
+	var invocation Invocation
+	err := db.Where("task_id = ?", t.ID).Last(&invocation).Error
+	return invocation, err
 }
