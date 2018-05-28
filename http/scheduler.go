@@ -11,13 +11,19 @@ import (
 	"time"
 )
 
+type invocation struct {
+	running int64
+	cancel context.CancelFunc
+	lastExec time.Time
+}
+
 type Scheduler struct {
 	sync.RWMutex
 	ctx              context.Context
 	InvocationOutput chan string //
 	DB               *gorm.DB
 	logger           echo.Logger
-	tasks            map[uint]context.CancelFunc
+	tasks            map[uint]*invocation
 }
 
 func NewScheduler(db *gorm.DB, ctx context.Context, logger echo.Logger) *Scheduler {
@@ -25,7 +31,7 @@ func NewScheduler(db *gorm.DB, ctx context.Context, logger echo.Logger) *Schedul
 		ctx:              ctx,
 		DB:               db,
 		InvocationOutput: make(chan string, 100),
-		tasks:            make(map[uint]context.CancelFunc),
+		tasks:            make(map[uint]*invocation),
 		logger:           logger,
 	}
 }
@@ -33,6 +39,8 @@ func NewScheduler(db *gorm.DB, ctx context.Context, logger echo.Logger) *Schedul
 //  Repair updates the next_run time of all the tasks in the db and returns the enabled tasks with their next run times
 //  It should not be necessary to run this unless the next_run values are somehow corrupted.
 func (s *Scheduler) Repair(now time.Time) ([]models.Task, error) {
+	s.Lock()
+	defer s.Unlock()
 	s.logger.Info("Repairing next run times by computing them from previous invocations")
 	var previousRuns []struct {
 		ID       uint
@@ -60,7 +68,7 @@ func (s *Scheduler) Repair(now time.Time) ([]models.Task, error) {
 		}
 		nextRun, err := tasks[i].NextInvocation(scheduleTime)
 		if err != nil {
-			s.logger.Warnf("Could not compute next invocation for task %s: %v", tasks[i].Name, err)
+			s.logger.Warnf("Could not compute next invocation for invocation %s: %v", tasks[i].Name, err)
 			continue
 		}
 		tasks[i].NextRun = &nextRun
@@ -81,38 +89,62 @@ func (s *Scheduler) Next(now time.Time) ([]models.Task, error) {
 		return nil, err
 	}
 	s.logger.Infof("There are %d enabled tasks", len(tasks))
-	s.Lock()
 	for _, task := range tasks {
 		if task.NextRun.After(now) {
-			s.logger.Debugf("Task %s not scheduled to run yet", task.Name)
+			s.logger.Infof("Task %s not scheduled to run yet", task.Name)
 			continue
 		}
-		if s.tasks[task.ID] == nil {
-			var ctx context.Context
-			//create new task
-			ctx, s.tasks[task.ID] = context.WithCancel(s.ctx)
-			s.logger.Infof("Starting invocation for task %s with run time %v", task.Name, task.NextRun)
-			s.startInvocation(task, now, ctx)
-			if task.IsAQL {
-				go s.runWithCtx(ctx, task, "analyst", "run", "--script", task.Command)
-			} else {
-				go s.runWithCtx(ctx, task, task.Command, task.Arguments)
+		s.Lock()
+		if task, ok := s.tasks[task.ID]; ok {
+			if task.running == 1 {
+				continue
 			}
-		} else {
-			// the task is already running; leave it alone
+			task.running = 1
 		}
+		s.Unlock()
+		s.beginInvocation(task, now)
 	}
-	s.Unlock()
 	return tasks, nil
 }
 
-func (s *Scheduler) startInvocation(t models.Task, now time.Time, ctx context.Context) error {
+func (s *Scheduler) beginInvocation(task models.Task, now time.Time){
+	if task.NextRun == nil {
+		s.logger.Warnf("Attempted to start invocation with nil Next Run time!")
+		return
+	}
+	s.Lock()
+	t, ok := s.tasks[task.ID]
+	if !ok {
+		t = &invocation{running:1}
+		s.tasks[task.ID] = t
+	}
+	s.Unlock()
+	//check that it hasn't been superceded by another invocation
+	if ok && !t.lastExec.Before(*task.NextRun){
+		s.logger.Debugf("Invocation for invocation %s time %v superceded by time %v", task.Name, task.NextRun, t.lastExec)
+		return
+	}
+	t.lastExec = *task.NextRun
+	var ctx context.Context
+	//create new invocation
+	ctx, t.cancel = context.WithCancel(s.ctx)
+
+	s.logger.Infof("Starting invocation for invocation %s with run time %v", task.Name, task.NextRun)
 	var i models.Invocation
-	i.ScheduledAt = t.NextRun
-	i.TaskID = t.ID
+	i.ScheduledAt = task.NextRun
+	i.TaskID = task.ID
 	i.Start = &now
 
-	return i.Create(s.DB)
+	err := i.Create(s.DB)
+	if err != nil {
+		s.logger.Errorf("Could not create invocation in database: %v", err)
+		return
+	}
+	if task.IsAQL {
+		go s.runWithCtx(ctx, task, "analyst", "run", "--script", task.Command)
+	} else {
+		go s.runWithCtx(ctx, task, task.Command, task.Arguments)
+	}
 }
 
 func (s *Scheduler) runWithCtx(ctx context.Context, t models.Task, name string, arg ...string) error {
@@ -159,15 +191,29 @@ func (s *Scheduler) endInvocation(t models.Task, now time.Time, withError error)
 	if err != nil {
 		return err
 	}
-	return i.Update(s.DB)
+	err = i.Update(s.DB)
+	if err != nil {
+		s.logger.Warnf("Could not write invocation to DB: %v", err)
+	}
+	if !t.Coalesce && t.NextRun.Before(now){
+			//start next invocation immediately
+			//this is recursive because beginInvocation calls endInvocation
+			//s.logger.Debugf("Starting backlogged invocation for invocation %s with run time %v", t.Name, t.NextRun)
+			s.beginInvocation(t, now)
+	}
+	s.Lock()
+	tt := s.tasks[t.ID] //must exist
+	tt.running = 0
+	s.Unlock()
+	return nil
 }
 
-// Cancel is a best effort to cancel the task. It will get restarted on the next Next() call.
+// Cancel is a best effort to cancel the invocation. It will get restarted on the next Next() call.
 func (s *Scheduler) Cancel(t models.Task) {
 	s.Lock()
 	defer s.Unlock()
-	if cancel := s.tasks[t.ID]; cancel != nil {
-		cancel()
+	if t := s.tasks[t.ID]; t != nil && t.cancel != nil {
+		t.cancel()
 	}
 	delete(s.tasks, t.ID)
 }
@@ -175,8 +221,10 @@ func (s *Scheduler) Cancel(t models.Task) {
 func (s *Scheduler) Shutdown() {
 	s.Lock()
 	defer s.Unlock()
-	for _, cancel := range s.tasks {
-		cancel()
+	for _, t := range s.tasks {
+		if t != nil && t.cancel != nil {
+			t.cancel()
+		}
 	}
 	close(s.InvocationOutput)
 }

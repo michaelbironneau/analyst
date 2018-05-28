@@ -9,6 +9,9 @@ import (
 	"github.com/labstack/echo/middleware"
 	"github.com/michaelbironneau/analyst"
 	"golang.org/x/net/websocket"
+	"context"
+	"time"
+	"github.com/labstack/gommon/log"
 )
 
 const (
@@ -19,7 +22,10 @@ const (
 	MsgOutput        = "OUTPUT"
 )
 
-const dbFile = "analyst.db"
+const (
+	dbFile = "analyst.db"
+	schedulerInterval = time.Second*5
+)
 
 type RunMessagePayload struct {
 	Script string `json:"script"`
@@ -136,13 +142,14 @@ func main() {
 		err error
 	)
 	e := echo.New()
+	e.Logger.SetLevel(log.DEBUG)
 	if db, err = gorm.Open("sqlite3", dbFile); err != nil {
 		e.Logger.Fatal(err)
 		return
 	}
 	db.Exec("PRAGMA foreign_keys = ON")
-	db.LogMode(true)
-	db.SetLogger(e.Logger)
+	//db.LogMode(true)
+	//db.SetLogger(e.Logger)
 	defer db.Close()
 	if err := MigrateDb(db, dbFile); err != nil {
 		e.Logger.Fatal(err)
@@ -155,6 +162,8 @@ func main() {
 		AllowMethods: []string{echo.GET, echo.PUT, echo.POST, echo.DELETE},
 	}))
 
+	s := NewScheduler(db, context.Background(), e.Logger)
+	go runSchedulerForever(s, e.Logger)
 	//e.Static("/", "../public")
 	e.GET("/tasks", listTasks(db))
 	e.PUT("/tasks/:id/enable", enableTask(db))
@@ -164,4 +173,13 @@ func main() {
 	e.DELETE("/tasks/:id", deleteTask(db))
 	e.GET("/ws", receive)
 	e.Logger.Fatal(e.Start(":4040"))
+}
+
+func runSchedulerForever(s *Scheduler, l echo.Logger){
+	for {
+		<- time.After(schedulerInterval)
+		if _, err := s.Next(time.Now()); err != nil {
+			l.Errorf("Error in scheduler: %v", err)
+		}
+	}
 }

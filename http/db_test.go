@@ -29,20 +29,20 @@ func TestModels(t *testing.T) {
 		So(MigrateDb(db, testDBFile), ShouldBeNil)
 
 		So(err, ShouldBeNil)
-		Convey("It should create a task correctly", func() {
+		Convey("It should create a invocation correctly", func() {
 			task := &models.Task{
-				Name:     "A task",
+				Name:     "A invocation",
 				Schedule: "@daily",
 				Command:  "script",
 			}
 			So(task.Create(db), ShouldBeNil)
 			task = &models.Task{
-				Name:     "A task",
+				Name:     "A invocation",
 				Schedule: "@daily",
 				Command:  "script",
 			}
 			So(task.Create(db), ShouldNotBeNil) //violates unique constraint
-			task.Name = "Second task"
+			task.Name = "Second invocation"
 			So(task.Create(db), ShouldBeNil)
 			So(task.ID, ShouldNotEqual, 0)
 			tasks, err := GetTasks(db)

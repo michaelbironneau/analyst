@@ -26,9 +26,9 @@ func TestScheduler(t *testing.T) {
 		logger.SetLevel(log.DEBUG)
 		logger.SetOutput(os.Stdout)
 
-		Convey("It should correctly schedule a single task, creating invocation", func() {
+		Convey("It should correctly schedule a single invocation, creating invocation", func() {
 			task := &models.Task{
-				Name:      "A task",
+				Name:      "A invocation",
 				Schedule:  "@daily",
 				Command:   "echo",
 				Arguments: "hello, world",
@@ -67,9 +67,9 @@ func TestScheduler(t *testing.T) {
 			So(output, ShouldStartWith, "hello, world")
 		})
 
-		Convey("It should successfully interrupt a long-running task", func() {
+		Convey("It should successfully interrupt a long-running invocation", func() {
 			task := &models.Task{
-				Name:      "A task",
+				Name:      "A invocation",
 				Schedule:  "@daily", //  the @ notation should force it to run straight away
 				Command:   "bash",
 				Arguments: "-c 'sleep 10; echo hello'",
