@@ -9,6 +9,7 @@ import (
 	"os/exec"
 	"sync"
 	"time"
+	"text/template"
 )
 
 type invocation struct {
@@ -176,10 +177,15 @@ func (s *Scheduler) runSingleInvocation(task models.Task, now time.Time, ctx con
 		s.logger.Errorf("Could not create invocation in database: %v", err)
 		return
 	}
+	args, err := s.executeArgTemplate(task)
+	if err != nil {
+		s.endInvocation(task, now, &i, err)
+		return
+	}
 	if task.IsAQL {
-		s.runWithCtx(ctx, task, &i, "analyst", "run", "--script", task.Command)
+		s.runWithCtx(ctx, task, &i, "analyst", "run", "--script", task.Command, "--params", args)
 	} else {
-		s.runWithCtx(ctx, task, &i, task.Command, task.Arguments)
+		s.runWithCtx(ctx, task, &i, task.Command, args)
 	}
 }
 
@@ -200,6 +206,23 @@ func (s *Scheduler) runWithCtx(ctx context.Context, t models.Task, i *models.Inv
 	s.InvocationOutput <- stdout.String()
 	s.InvocationOutput <- stderr.String()
 	return s.endInvocation(t, time.Now(), i, nil)
+}
+
+func (s *Scheduler) executeArgTemplate(task models.Task) (string, error) {
+	var data struct {
+		TaskStartTime *time.Time
+	}
+	data.TaskStartTime = task.NextRun
+	t, err := template.New("").Parse(task.Arguments)
+	if err != nil {
+		return "", err
+	}
+	var b bytes.Buffer
+	err = t.Execute(&b, data)
+	if err != nil {
+		return "", err
+	}
+	return b.String(), nil
 }
 
 func (s *Scheduler) updateNextRun(t *models.Task, now time.Time) error {
