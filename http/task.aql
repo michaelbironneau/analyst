@@ -1,0 +1,6 @@
+DATA 'MyMessage' (
+	[
+	  ["{{ .Message }}"]
+	]
+) INTO CONSOLE WITH (COLUMNS = 'Message', CONSOLE_OUTPUT_FORMAT='JSON')
+

@@ -13,6 +13,7 @@ type Invocation struct {
 	Finish       *time.Time `json:"finished_at"`
 	Success      bool       `json:"success"`
 	ErrorMessage string     `json:"error_message"`
+	Log         string     `json:"log" sql:"type:text"`
 }
 
 func (i *Invocation) Create(db *gorm.DB) error {
