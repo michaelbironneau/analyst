@@ -24,6 +24,7 @@ const (
 
 const (
 	dbFile            = "analyst.db"
+	reposFolder       = "repositories"
 	schedulerInterval = time.Second * 5
 )
 
@@ -179,6 +180,11 @@ func main() {
 	e.PUT("/tasks/:id", updateTask(db))
 	e.POST("/tasks", createTask(db))
 	e.DELETE("/tasks/:id", deleteTask(db))
+	//e.PUT("/repositories/:id", updateRepo(db)) TODO
+	e.GET("/repositories", listRepos(db))
+	e.POST("/repositories/:id/update", pullRepo(db))
+	e.DELETE("/repositories/:id", deleteRepo(db))
+	e.POST("/repositories", createRepo(db, reposFolder))
 	e.GET("/ws", receive)
 	e.Logger.Fatal(e.Start(":4040"))
 }

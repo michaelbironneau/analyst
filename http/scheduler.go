@@ -8,8 +8,8 @@ import (
 	"github.com/michaelbironneau/analyst/http/models"
 	"os/exec"
 	"sync"
-	"time"
 	"text/template"
+	"time"
 )
 
 type invocation struct {
