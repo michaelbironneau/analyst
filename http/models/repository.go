@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"time"
+	"path/filepath"
 )
 
 type Repository struct {
@@ -53,6 +54,21 @@ func (r *Repository) Pull(password string) error {
 		RecurseSubmodules: git.DefaultSubmoduleRecursionDepth,
 		Auth:              &http.BasicAuth{r.AuthUser, password},
 	})
+}
+
+func (r *Repository) Files() ([]string, error) {
+	var s []string
+	err := filepath.Walk(r.LocalPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if info.IsDir(){
+			return nil
+		}
+		s = append(s, path)
+		return nil
+	})
+	return s, err
 }
 
 func (r *Repository) UpdateStats(db *gorm.DB) error {

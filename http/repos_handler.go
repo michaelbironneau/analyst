@@ -86,3 +86,23 @@ func deleteRepo(db *gorm.DB) func(echo.Context) error {
 		return c.NoContent(204)
 	}
 }
+
+func listRepoFiles(db *gorm.DB) func(echo.Context) error {
+	return func(c echo.Context) error {
+		id := c.Param("id")
+		idInt, err := strconv.Atoi(id)
+		if err != nil {
+			return echo.NewHTTPError(404, "Repository not found")
+		}
+		var rr models.Repository
+		err = db.Where("id = ?", idInt).First(&rr).Error
+		if err != nil {
+			return echo.NewHTTPError(500, err.Error())
+		}
+		files, err := rr.Files()
+		if err != nil {
+			return echo.NewHTTPError(500, err.Error())
+		}
+		return c.JSON(200, files)
+	}
+}

@@ -18,6 +18,7 @@ type Task struct {
 	Model
 	Name      string        `gorm:"type:varchar(128);UNIQUE;NOT_NULL" json:"name"`
 	Schedule  string        `gorm:"type:varchar(128);NOT_NULL" json:"schedule"`
+	Repository string       `gorm:"type:varchar(255)" json:"repository"`
 	Command   string        `gorm:"NOT_NULL" json:"command"`
 	Arguments string        `json:"args"`
 	IsAQL     bool          `json:"is_aql"`

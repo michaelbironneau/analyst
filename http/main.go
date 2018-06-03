@@ -184,6 +184,7 @@ func main() {
 	e.GET("/repositories", listRepos(db))
 	e.POST("/repositories/:id/update", pullRepo(db))
 	e.DELETE("/repositories/:id", deleteRepo(db))
+	e.GET("/repositories/:id/files", listRepoFiles(db))
 	e.POST("/repositories", createRepo(db, reposFolder))
 	e.GET("/ws", receive)
 	e.Logger.Fatal(e.Start(":4040"))

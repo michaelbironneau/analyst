@@ -10,6 +10,7 @@ import (
 	"sync"
 	"text/template"
 	"time"
+	"path"
 )
 
 type invocation struct {
@@ -183,7 +184,7 @@ func (s *Scheduler) runSingleInvocation(task models.Task, now time.Time, ctx con
 		return
 	}
 	if task.IsAQL {
-		s.runWithCtx(ctx, task, &i, "analyst", "run", "--v", "--script", task.Command, "--params", args)
+		s.runWithCtx(ctx, task, &i, "analyst", "run", "--v", "--script", path.Join(task.Repository, task.Command), "--params", args)
 	} else {
 		s.runWithCtx(ctx, task, &i, task.Command, args)
 	}
