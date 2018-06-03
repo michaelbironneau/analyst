@@ -4,9 +4,9 @@ before_install:
   - sudo apt-get install -qq python python-pip
   - sudo pip install python-jsonrpc
 go:
-  - 1.9
-  - 1.10
-  - tip
+  - "1.9"
+  - "1.10"
+  - "tip"
 matrix:
   allow_failures:
     - go: tip
