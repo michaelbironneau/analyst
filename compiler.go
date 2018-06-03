@@ -599,7 +599,7 @@ func createDataBlock(js *aql.JobScript, dag engine.Coordinator, dataBlock *aql.D
 
 		f, ok := engine.LiteralSourceFormats[strings.ToUpper(fStr)]
 		if !ok {
-			return fmt.Errorf("expected FORMAT option to be one of JSON_ARRAY, JSON_OBJECTS or CSV but got %s", format)
+			return fmt.Errorf("expected FORMAT option to be one of JSON_ARRAY, JSON_OBJECTS or CSV but got %v", format)
 		}
 		dataFormat = f
 	}
