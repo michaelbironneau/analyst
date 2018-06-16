@@ -186,6 +186,7 @@ func (s *Scheduler) runSingleInvocation(task models.Task, now time.Time, ctx con
 	if task.IsAQL {
 		s.runWithCtx(ctx, task, &i, "analyst", "run", "--v", "--script", path.Join(task.Repository, task.Command), "--params", args)
 	} else {
+		s.logger.Infof("Starting executable %s with args %s", path.Join(task.Repository, task.Command), args)
 		s.runWithCtx(ctx, task, &i, task.Command, args)
 	}
 }
@@ -198,6 +199,8 @@ func (s *Scheduler) runWithCtx(ctx context.Context, t models.Task, i *models.Inv
 	cmd.Stdout = stdout
 	err := cmd.Start()
 	if err != nil {
+		i.Log = stdout.String()
+		i.ErrorMessage = stderr.String()
 		return s.endInvocation(t, time.Now(), i, err)
 	}
 	err = cmd.Wait()
