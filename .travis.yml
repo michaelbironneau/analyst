@@ -3,6 +3,10 @@ before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq python python-pip
   - sudo pip install python-jsonrpc
+  # Download the binary to bin folder in $GOPATH
+  - curl -L -s https://github.com/golang/dep/releases/download/v${DEP_VERSION}/dep-linux-amd64 -o $GOPATH/bin/dep
+  # Make the binary executable
+  - chmod +x $GOPATH/bin/dep
 go:
   - "1.9"
   - "1.10"
@@ -10,3 +14,7 @@ go:
 matrix:
   allow_failures:
     - go: tip
+env:
+  - DEP_VERSION="0.4.1"
+install:
+  - dep ensure
