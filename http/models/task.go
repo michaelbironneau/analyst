@@ -11,7 +11,6 @@ type Model struct {
 	ID        uint       `gorm:"primary_key" json:"id"`
 	CreatedAt time.Time  `json:"created_at"`
 	UpdatedAt time.Time  `json:"updated_at"`
-	DeletedAt *time.Time `sql:"index" json:"deleted_at"`
 }
 
 type Task struct {
@@ -66,6 +65,10 @@ func (t *Task) Disable(db *gorm.DB) error {
 }
 
 func (t *Task) Delete(db *gorm.DB) error {
+	//delete log entries
+	if err := db.Where("task_id = ?", t.ID).Delete(&Invocation{}).Error; err != nil {
+		return err
+	}
 	return db.Delete(t).Error
 }
 

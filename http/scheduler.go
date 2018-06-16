@@ -11,6 +11,7 @@ import (
 	"text/template"
 	"time"
 	"path"
+	shellquote "github.com/kballard/go-shellquote"
 )
 
 type invocation struct {
@@ -183,11 +184,18 @@ func (s *Scheduler) runSingleInvocation(task models.Task, now time.Time, ctx con
 		s.endInvocation(task, now, &i, err)
 		return
 	}
+	argS, errArg := shellquote.Split(args)
+	if errArg != nil {
+		s.logger.Warnf("Error parsing command-line args for task %s: %v", task.Name, errArg.Error())
+	}
 	if task.IsAQL {
 		s.runWithCtx(ctx, task, &i, "analyst", "run", "--v", "--script", path.Join(task.Repository, task.Command), "--params", args)
 	} else {
-		s.logger.Infof("Starting executable %s with args %s", path.Join(task.Repository, task.Command), args)
-		s.runWithCtx(ctx, task, &i, task.Command, args)
+		if errArg != nil {
+			s.runWithCtx(ctx, task, &i, task.Command, args)
+		} else {
+			s.runWithCtx(ctx, task, &i, task.Command, argS...)
+		}
 	}
 }
 
