@@ -63,7 +63,7 @@
 
 [[constraint]]
   name = "github.com/keighl/mandrill"
-  version = "1.1.0"
+  branch = "master"
 
 [[constraint]]
   name = "github.com/labstack/echo"
@@ -104,6 +104,10 @@
 [[constraint]]
   name = "github.com/urfave/cli"
   version = "1.20.0"
+
+[[constraint]]
+  name = "github.com/gobuffalo/packr"
+  version = "v1.11.1"
 
 [[constraint]]
   branch = "master"

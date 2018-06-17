@@ -91,6 +91,12 @@
   version = "v1.9.0"
 
 [[projects]]
+  name = "github.com/gobuffalo/packr"
+  packages = ["."]
+  revision = "bd47f2894846e32edcf9aa37290fef76c327883f"
+  version = "v1.11.1"
+
+[[projects]]
   name = "github.com/gogo/protobuf"
   packages = [
     "gogoproto",
@@ -217,6 +223,7 @@
   revision = "95032a82bc518f77982ea72343cc1ade730072f0"
 
 [[projects]]
+  branch = "master"
   name = "github.com/keighl/mandrill"
   packages = ["."]
   revision = "1775dd4b3b4121aa2731132552ebcff17253d103"
@@ -339,6 +346,12 @@
   packages = ["."]
   revision = "c37440a7cf42ac63b919c752ca73a85067e05992"
   version = "v0.2.0"
+
+[[projects]]
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  revision = "645ef00459ed84a119197bfb8d8205042c6df63d"
+  version = "v0.8.0"
 
 [[projects]]
   name = "github.com/robfig/cron"
@@ -544,6 +557,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "a77795ae312235f31d57d198e1cee6eb16d25b0115c3e7f23a105d4dee28d007"
+  inputs-digest = "6f9edf2db5527ace68dd1e529e986078c0feb57a9bd124d8dbdd26cca72e19ea"
   solver-name = "gps-cdcl"
   solver-version = 1

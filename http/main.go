@@ -12,6 +12,8 @@ import (
 	"github.com/michaelbironneau/analyst"
 	"golang.org/x/net/websocket"
 	"time"
+	"github.com/gobuffalo/packr"
+	"net/http"
 )
 
 const (
@@ -158,14 +160,11 @@ func main() {
 	}
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"http://localhost:4200"},
-		AllowMethods: []string{echo.GET, echo.PUT, echo.POST, echo.DELETE},
-	}))
+	e.Use(middleware.CORS())
 
 	s := NewScheduler(db, context.Background(), e.Logger)
 	go func() {
-		for {
+		for  {
 			<-s.InvocationOutput //TODO: Something useful with this
 		}
 	}()
@@ -187,7 +186,16 @@ func main() {
 	e.GET("/repositories/:id/files", listRepoFiles(db))
 	e.POST("/repositories", createRepo(db, reposFolder))
 	e.GET("/ws", receive)
+	go serveStatic(e.Logger)
 	e.Logger.Fatal(e.Start(":4040"))
+}
+
+func serveStatic(logger echo.Logger){
+	const path = "./static"
+	box := packr.NewBox(path)
+	http.Handle("/", http.FileServer(box))
+	logger.Infof("Serving UI from packed files with root %s", path)
+	http.ListenAndServe(":8080", nil)
 }
 
 func runSchedulerForever(s *Scheduler, l echo.Logger) {
