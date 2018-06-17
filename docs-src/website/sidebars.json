@@ -2,7 +2,7 @@
   "docs": {
     "Get Started": ["intro", "cli", "data-flow", "blocks", "connections", "transforms"],
     "Recipes" : ["email", "http", "logic"],
-    "Blocks": ["include", "connection", "query", "exec", "transform", "data", "declare", "global", "set"]
+    "Blocks": ["include", "connection", "query", "exec", "transform", "data", "declare", "global", "set", "tests"]
     
   },
   "docs-other": {

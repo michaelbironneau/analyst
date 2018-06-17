@@ -7,6 +7,7 @@ The `analyst` command can be used to validate or execute a script. There are two
 
 * `analyst validate`: Attempts to parse the script and assemble the DAG, returning any errors
 * `analyst run`: Executes the script
+* `analyst test`: Runs the script, validating the assertions in `TEST` blocks, returning any failures as errors. *All destinations will be mocked*.
 
 The parameters are as follows:
 
