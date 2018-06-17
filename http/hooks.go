@@ -33,13 +33,13 @@ func (w *websocketWriter) Write(p []byte) (n int, err error) {
 }
 
 func redirectOutputHook(ws *websocket.Conn, msgType string) engine.DestinationHook {
-	return func(_ string, d engine.Destination) error {
+	return func(_ string, d engine.Destination) (engine.Destination, error) {
 		cd, ok := d.(*engine.ConsoleDestination)
 		if !ok {
-			return nil
+			return nil, nil
 		}
 		cd.Writer = &websocketWriter{ws, msgType}
-		return nil
+		return nil, nil
 	}
 }
 
