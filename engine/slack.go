@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"errors"
 )
 
 type SlackOpts struct {
@@ -21,6 +22,7 @@ type SlackOpts struct {
 type slackLogger struct {
 	Opts     SlackOpts
 	l        Logger
+	latestError error
 	minLevel LogLevel
 	c        chan Event
 	client   *http.Client
@@ -93,6 +95,10 @@ func StrToLevel(s string) (LogLevel, bool) {
 	return Error, false
 }
 
+func (s *slackLogger) Error() error  {
+	return s.latestError
+}
+
 //SlackWrapper intercepts messages to a logger and forwards any with the given minimum log level to Slack incoming Webhook.
 func SlackWrapper(l Logger, opts SlackOpts) Logger {
 	if opts.WebhookURL == "" {
@@ -115,6 +121,9 @@ func SlackWrapper(l Logger, opts SlackOpts) Logger {
 	outChan := l.Chan()
 	go func() {
 		for msg := range s.c {
+			if msg.Level == Error {
+				s.latestError = errors.New(msg.Message)
+			}
 			outChan <- msg
 			if msg.Level >= min {
 				go s.sendSlackMessage(msg, outChan)

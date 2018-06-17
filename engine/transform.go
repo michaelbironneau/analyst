@@ -55,11 +55,21 @@ func mapConverter(cols []string) func([]interface{}) map[string]interface{}{
 	}
 }
 
+func (tn *testNode) log(l Logger, level LogLevel, msg string) {
+	l.Chan() <- Event{
+		Time:    time.Now(),
+		Source: "Test node",
+		Message: msg,
+		Level:   level,
+	}
+}
+
 func (tn *testNode) Open(s Stream, dest Stream, l Logger, st Stopper) {
 	var firstMessage = true
 	var converter func([]interface{}) map[string]interface{}
 	d := dest.Chan(tn.outgoingName)
 	for msg := range s.Chan(tn.outgoingName) {
+		tn.log(l, Trace, fmt.Sprintf("Found message %s", msg.Data))
 		if firstMessage {
 			converter = mapConverter(s.Columns())
 			dest.SetColumns(tn.outgoingName, s.Columns())
@@ -69,12 +79,7 @@ func (tn *testNode) Open(s Stream, dest Stream, l Logger, st Stopper) {
 		for i := range tn.conds {
 			//execute tests with EOF = false
 			if !tn.conds[i](mappedMsg, false) {
-				l.Chan() <- Event{
-					Source:  tn.names[i],
-					Message: fmt.Sprintf("[FAIL] %s", tn.descs[i]),
-					Time:    time.Now(),
-					Level:   Error,
-				}
+				tn.log(l, Error, fmt.Sprintf("[FAIL] %s", tn.names[i]))
 				st.Stop()
 				close(d)
 				return //a test should stop the job on first failure
@@ -85,16 +90,14 @@ func (tn *testNode) Open(s Stream, dest Stream, l Logger, st Stopper) {
 	//execute tests with EOF = true
 	for i := range tn.conds {
 		if !tn.conds[i](nil, true){
-			l.Chan() <- Event{
-				Source:  tn.names[i],
-				Message: fmt.Sprintf("[FAIL] %s", tn.descs[i]),
-				Time:    time.Now(),
-				Level:   Error,
-			}
+			tn.log(l, Error, fmt.Sprintf("[FAIL] %s", tn.names[i]))
 			st.Stop()
 			close(d)
+		} else {
+			tn.log(l, Info, fmt.Sprintf("[PASS] %s", tn.names[i]))
 		}
 	}
+	close(d)
 }
 
 type Passthrough struct {

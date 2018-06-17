@@ -368,6 +368,9 @@ func (c *coordinator) Execute() error {
 	if interrupted {
 		return ErrInterrupted
 	}
+	if loggedErr := c.l.Error(); loggedErr != nil {
+		return loggedErr
+	}
 	return nil
 }
 

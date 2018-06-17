@@ -29,6 +29,8 @@ func (s *sqlDriverManager) DB(driver, connectionString string) (*sql.DB, error) 
 		return db, nil
 	}
 	db, err := sql.Open(driver, connectionString)
+	//db.SetMaxOpenConns(1)
+	//db.SetMaxIdleConns(1)
 	if err == nil {
 		s.dbs[driver+driverManagerSeparator+connectionString] = db
 	}
