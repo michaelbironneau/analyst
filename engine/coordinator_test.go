@@ -204,7 +204,7 @@ func TestTester(t *testing.T) {
 			err = c.Compile()
 			So(err, ShouldBeNil)
 			err = c.Execute()
-			So(err, ShouldBeNil)
+			So(err, ShouldNotBeNil)
 			So(d.Results(), ShouldHaveLength, 0)
 		})
 
