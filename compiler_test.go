@@ -97,6 +97,22 @@ func TestCompilerAssertions(t *testing.T) {
 			COLUMN Word HAS UNIQUE VALUES
 		)
 	`
+	script2 := `
+		DATA 'Values' (
+		[
+	  		["Hello, World"],
+			["Hello, World"]
+		]
+		)
+			INTO CONSOLE
+			WITH (FORMAT = 'JSON_ARRAY',
+                  COLUMNS = 'Word')
+
+		TEST Values WITH ASSERTIONS (
+			IT OUTPUTS AT LEAST 2 ROWS;
+			IT OUTPUTS AT MOST 2 ROWS
+		)
+	`
 	Convey("Given a literal data source and a failing test", t, func() {
 		Convey("It should return an error", func() {
 			l := engine.NewConsoleLogger(engine.Trace)
@@ -108,6 +124,20 @@ func TestCompilerAssertions(t *testing.T) {
 			})
 			err := TestString(script, &RuntimeOptions{nil, l, []interface{}{replaceReaderHook}, nil, ""})
 			So(err, ShouldNotBeNil)
+			So(buf.String(), ShouldHaveLength, 0) //Should have been replaced by DevNull destination
+		})
+	})
+	Convey("Given a literal data source and some passing tests", t, func() {
+		Convey("It should return no error", func() {
+			l := engine.NewConsoleLogger(engine.Trace)
+			buf := bytes.NewBufferString("")
+			replaceReaderHook := engine.DestinationHook(func(s string, d engine.Destination) (engine.Destination, error) {
+				cd, _ := d.(*engine.ConsoleDestination)
+				cd.Writer = buf
+				return nil, nil
+			})
+			err := TestString(script2, &RuntimeOptions{nil, l, []interface{}{replaceReaderHook}, nil, ""})
+			So(err, ShouldBeNil)
 			So(buf.String(), ShouldHaveLength, 0) //Should have been replaced by DevNull destination
 		})
 	})
