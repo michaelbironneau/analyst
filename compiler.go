@@ -11,6 +11,7 @@ import (
 	builtins "github.com/michaelbironneau/analyst/transforms"
 	"strings"
 	"time"
+	"reflect"
 )
 
 const (
@@ -30,18 +31,28 @@ type RuntimeOptions struct {
 }
 
 //  neutralizeExecs is a source hook to prevent side effects with execs whilst in test mode
-func neutralizeExecs(name string, src engine.Source) error {
+func neutralizeExecs(name string, src engine.Source) (engine.Source, error) {
 	if s, ok := src.(*engine.SQLSource); ok && s.ExecOnly {
 			s.Query = "SELECT 1"
 	}
-	return nil
+	return nil, nil
 }
 
-
 //  neutralizeDestination replaces a given destination by a DevNull destination
-func neutralizeDestinations(name string, dest engine.Destination) error {
-	dest = &engine.DevNull{}
-	return nil
+func neutralizeDestinations(name string, dest engine.Destination) (engine.Destination, error) {
+	val := reflect.ValueOf(dest).Elem().FieldByName("Alias")
+	if val.Kind() == reflect.String && val.String() != "" {
+		return &engine.DevNull{Name: val.String()}, nil
+	}
+
+	val = reflect.ValueOf(dest).Elem().FieldByName("Name")
+
+	if val.Kind() == reflect.String && val.String() != "" {
+		return &engine.DevNull{Name: val.String()}, nil
+	}
+
+	return &engine.DevNull{Name: name}, nil
+
 }
 
 func formatOptions(options []aql.Option) string {

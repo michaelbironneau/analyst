@@ -19,16 +19,16 @@ var ErrInterrupted = errors.New("The execution was interrupted by a context canc
 //  this may be necessary to satisfy future use cases.
 type (
 	//SourceHook takes the source name and interface and does something to it, possibly
-	//returning an error.
-	SourceHook func(string, Source) error
+	//returning an error. If it returns a non-nil Source, this will overwrite the existing Source.
+	SourceHook func(string, Source) (Source, error)
 
 	//TransformHook takes the transform name and interface and does something to it, possibly
-	//returning an error.
-	TransformHook func(string, Transform) error
+	//returning an error. If it returns a non-nil Transform, this will overwrite the existing Transform.
+	TransformHook func(string, Transform) (Transform, error)
 
 	//DestinationHook takes the destination name and interface and does something to it, possibly
-	//returning an error.
-	DestinationHook func(string, Destination) error
+	//returning an error. If it returns a non-nil Destination, this will overwrite the existing Destination.
+	DestinationHook func(string, Destination) (Destination, error)
 )
 
 type Coordinator interface {
@@ -156,24 +156,57 @@ func (c *coordinator) makeConstraints() map[string]*sync.WaitGroup {
 func (c *coordinator) runHooks() error {
 	for name, source := range c.sources {
 		for _, hook := range c.sourceHooks {
-			if err := hook(name, source); err != nil {
+			if s, err := hook(name, source); err != nil {
 				return err
+			} else if s != nil {
+				c.l.Chan() <- Event {
+					Level: Trace,
+					Source: "Coordinator",
+					Time: time.Now(),
+					Message: fmt.Sprintf("Replaced source %s with %T %v", name, s, s),
+				}
+				c.sources[name] = s
+				sn := c.nodes[name].(*sourceNode)
+				sn.s = s
+				c.nodes[name] = sn
 			}
 		}
 	}
 
 	for name, transform := range c.transformations {
 		for _, hook := range c.transformHooks {
-			if err := hook(name, transform); err != nil {
+			if t, err := hook(name, transform); err != nil {
 				return err
+			} else if t != nil {
+				c.l.Chan() <- Event {
+					Level: Trace,
+					Source: "Coordinator",
+					Time: time.Now(),
+					Message: fmt.Sprintf("Replaced transformation %s with %T %v", name, t, t),
+				}
+				c.transformations[name] = t
+				cn := c.nodes[name].(*transformNode)
+				cn.t = t
+				c.nodes[name] = cn
 			}
 		}
 	}
 
 	for name, destination := range c.destinations {
 		for _, hook := range c.destHooks {
-			if err := hook(name, destination); err != nil {
+			if d, err := hook(name, destination); err != nil {
 				return err
+			} else if d != nil {
+				c.l.Chan() <- Event {
+					Level: Trace,
+					Source: "Coordinator",
+					Time: time.Now(),
+					Message: fmt.Sprintf("Replaced source %s with %T %v", name, d, d),
+				}
+				dn := c.nodes[name].(*destinationNode)
+				dn.d = d
+				c.nodes[name] = dn
+				c.destinations[name] = d
 			}
 		}
 	}
@@ -183,6 +216,10 @@ func (c *coordinator) runHooks() error {
 
 func (c *coordinator) Compile() error {
 	if err := c.checkConstraints(); err != nil {
+		return err
+	}
+
+	if err := c.runHooks(); err != nil {
 		return err
 	}
 
@@ -219,7 +256,7 @@ func (c *coordinator) Compile() error {
 		}
 	}
 
-	return c.runHooks()
+	return nil
 }
 
 func (c *coordinator) RegisterHooks(hooks ...interface{}) {

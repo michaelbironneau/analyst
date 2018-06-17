@@ -69,10 +69,10 @@ func TestCompilerDataLiteralAndHooks(t *testing.T) {
 		Convey("It should run without errors", func() {
 			l := engine.NewConsoleLogger(engine.Trace)
 			buf := bytes.NewBufferString("")
-			replaceReaderHook := engine.DestinationHook(func(s string, d engine.Destination) error {
+			replaceReaderHook := engine.DestinationHook(func(s string, d engine.Destination) (engine.Destination, error) {
 				cd, _ := d.(*engine.ConsoleDestination)
 				cd.Writer = buf
-				return nil
+				return nil, nil
 			})
 			err := ExecuteString(script, &RuntimeOptions{nil, l, []interface{}{replaceReaderHook}, nil, ""})
 			So(err, ShouldBeNil)
@@ -101,13 +101,14 @@ func TestCompilerAssertions(t *testing.T) {
 		Convey("It should return an error", func() {
 			l := engine.NewConsoleLogger(engine.Trace)
 			buf := bytes.NewBufferString("")
-			replaceReaderHook := engine.DestinationHook(func(s string, d engine.Destination) error {
+			replaceReaderHook := engine.DestinationHook(func(s string, d engine.Destination) (engine.Destination, error) {
 				cd, _ := d.(*engine.ConsoleDestination)
 				cd.Writer = buf
-				return nil
+				return nil, nil
 			})
 			err := TestString(script, &RuntimeOptions{nil, l, []interface{}{replaceReaderHook}, nil, ""})
 			So(err, ShouldNotBeNil)
+			So(buf.String(), ShouldHaveLength, 0) //Should have been replaced by DevNull destination
 		})
 	})
 }
@@ -124,10 +125,10 @@ func TestCompilerDataLiteralSourceDest(t *testing.T) {
 		Convey("It should run without errors", func() {
 			l := engine.NewConsoleLogger(engine.Trace)
 			buf := bytes.NewBufferString("")
-			replaceReaderHook := engine.DestinationHook(func(s string, d engine.Destination) error {
+			replaceReaderHook := engine.DestinationHook(func(s string, d engine.Destination) (engine.Destination, error) {
 				cd, _ := d.(*engine.ConsoleDestination)
 				cd.Writer = buf
-				return nil
+				return nil, nil
 			})
 			err := ExecuteString(script, &RuntimeOptions{nil, l, []interface{}{replaceReaderHook}, nil, ""})
 			So(err, ShouldBeNil)
