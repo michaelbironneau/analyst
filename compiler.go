@@ -858,11 +858,13 @@ func sources(js *aql.JobScript, dag engine.Coordinator, connMap map[string]*aql.
 			}
 			autoSQL = true
 		}
+
 		if autoSQL {
 			scanner := aql.OptionScanner(query.Name, "", query.Options, conn.Options, globalOptions)
 			maybeScanner := aql.MaybeOptionScanner(query.Name, "", query.Options, conn.Options, globalOptions)
 			s := engine.AutoSQLTransform{
 				Name:           query.Name,
+				Table:          conn.Name,
 				Query:          query.Content,
 				ParameterTable: params,
 				ParameterNames: query.Parameters,

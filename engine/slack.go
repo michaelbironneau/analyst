@@ -22,6 +22,7 @@ type SlackOpts struct {
 type slackLogger struct {
 	Opts     SlackOpts
 	l        Logger
+	waitChan chan bool
 	latestError error
 	minLevel LogLevel
 	c        chan Event
@@ -115,6 +116,7 @@ func SlackWrapper(l Logger, opts SlackOpts) Logger {
 		Opts:     opts,
 		l:        l,
 		minLevel: min,
+		waitChan: make(chan bool, 1),
 		c:        make(chan Event, DefaultBufferSize),
 		client:   &http.Client{},
 	}
@@ -129,6 +131,11 @@ func SlackWrapper(l Logger, opts SlackOpts) Logger {
 				go s.sendSlackMessage(msg, outChan)
 			}
 		}
+		s.waitChan <- true
 	}()
 	return &s
+}
+
+func (s *slackLogger) Wait(){
+	<- s.waitChan
 }

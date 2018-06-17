@@ -84,6 +84,9 @@ func (a *AutoSQLTransform) connectToStaging(l Logger) error {
 
 //createTableStatement returns a CREATE TABLE statement by inferring the row types.
 func (a *AutoSQLTransform) createTableStatement(row []interface{}, cols []string, l Logger) (string, error) {
+	if a.Table == "" {
+		return "", fmt.Errorf("bug: Table name not set for auto-SQL transform: %s", a.Name)
+	}
 	template := `CREATE TABLE %s (
 		%s
 	)`

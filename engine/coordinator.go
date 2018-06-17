@@ -365,11 +365,12 @@ func (c *coordinator) Execute() error {
 	if endErr != nil {
 		return endErr
 	}
-	if interrupted {
-		return ErrInterrupted
-	}
+	c.l.Wait()
 	if loggedErr := c.l.Error(); loggedErr != nil {
 		return loggedErr
+	}
+	if interrupted {
+		return ErrInterrupted
 	}
 	return nil
 }

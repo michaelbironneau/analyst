@@ -48,22 +48,27 @@ type Event struct {
 }
 
 type Logger interface {
-	//Chan returns a chan that can be used to log events
+	//  Chan returns a chan that can be used to log events
 	Chan() chan<- Event
 
-	//Error returns the latest error that has been logged
+	//  Error returns the latest error that has been logged. The logger must keep track of this.
 	Error() error
+
+	// Wait should block until the logger is done processing messages in its chan. The sender should close the chan before calling this or it will deadlock
+	Wait()
 }
 
 type ConsoleLogger struct {
 	MinLevel LogLevel
 	latestError error
+	waitChan chan bool
 	c        chan Event
 }
 
 type GenericLogger struct {
 	MinLevel LogLevel
 	latestError error
+	waitChan chan bool
 	Writer   io.Writer
 	c        chan Event
 }
@@ -72,6 +77,7 @@ func NewGenericLogger(minLevel LogLevel, writer io.Writer) *GenericLogger {
 	gl := GenericLogger{
 		Writer:   writer,
 		MinLevel: minLevel,
+		waitChan: make(chan bool, 1),
 		c:        make(chan Event, DefaultBufferSize),
 	}
 
@@ -85,6 +91,7 @@ func NewGenericLogger(minLevel LogLevel, writer io.Writer) *GenericLogger {
 				writer.Write([]byte(msg))
 			}
 		}
+		gl.waitChan <- true
 	}()
 
 	return &gl
@@ -99,9 +106,14 @@ func (gl *GenericLogger) Error() error {
 	return gl.latestError
 }
 
+func (gl *GenericLogger) Wait(){
+	<- gl.waitChan
+}
+
 func NewConsoleLogger(minLevel LogLevel) *ConsoleLogger {
 	cl := ConsoleLogger{
 		MinLevel: minLevel,
+		waitChan: make(chan bool, 1),
 		c:        make(chan Event, DefaultBufferSize),
 	}
 
@@ -114,6 +126,7 @@ func NewConsoleLogger(minLevel LogLevel) *ConsoleLogger {
 				fmt.Println(eventTypeColors[event.Level](eventTypeMap[event.Level]), event.Time.Format(timeFormat), "- ("+event.Source+")", event.Message)
 			}
 		}
+		cl.waitChan <- true
 	}()
 
 	return &cl
@@ -126,4 +139,8 @@ func (cl *ConsoleLogger) Chan() chan<- Event {
 
 func (cl *ConsoleLogger) Error() error {
 	return cl.latestError
+}
+
+func (cl *ConsoleLogger) Wait() {
+	<- cl.waitChan
 }
