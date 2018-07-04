@@ -42,6 +42,11 @@ func (d *DefaultInserter) New() SQLInserter {
 func (d *DefaultInserter) Initialize(l Logger, tableName string, db *sql.DB, cols []string) error {
 	d.tableName = tableName
 	d.cols = cols
+	for i := range cols {
+		if cols[i] == "" {
+			return fmt.Errorf("SQL Inserter requires all columns to have names but got list: %v", cols)
+		}
+	}
 	d.template = d.Statement()
 	d.l = l
 	return nil
@@ -57,7 +62,7 @@ func (d *DefaultInserter) Statement() string {
 func (d *DefaultInserter) InsertBatch(tx *sql.Tx, msgs []Message) error {
 	stmt, err := tx.Prepare(d.template)
 	if err != nil {
-		return fmt.Errorf("error preparing statement: %v", err)
+		return fmt.Errorf("error preparing statement: %v\n%s", err, d.template)
 	}
 	defer stmt.Close()
 	for _, msg := range msgs {
